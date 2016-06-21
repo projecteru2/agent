@@ -45,6 +45,7 @@ func (e *Engine) Run() {
 		log.Infof("Eru Agent Catch %s", s)
 		return
 	case e := <-e.errChan:
+		e.store.Crash()
 		log.Panicf("Eru Agent Error %s", e)
 	}
 }
