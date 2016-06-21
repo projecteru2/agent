@@ -34,7 +34,6 @@ type NICConfig struct {
 
 type Config struct {
 	PidFile  string `yaml:"pid"`
-	Pod      string `yaml:"pod"`
 	HostName string
 
 	Docker  DockerConfig

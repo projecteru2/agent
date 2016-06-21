@@ -1,5 +1,4 @@
 pid: /tmp/agent.pid
-pod: testdev
 
 docker:
   endpoint: tcp://192.168.59.103:2376
