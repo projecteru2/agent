@@ -3,12 +3,12 @@ package main
 import (
 	"io/ioutil"
 	"os"
-	"os/signal"
-	"syscall"
 
 	log "github.com/Sirupsen/logrus"
 	"gitlab.ricebook.net/platform/agent/common"
+	"gitlab.ricebook.net/platform/agent/engine"
 	"gitlab.ricebook.net/platform/agent/types"
+	"gitlab.ricebook.net/platform/agent/utils"
 	"gopkg.in/urfave/cli.v1"
 	"gopkg.in/yaml.v2"
 )
@@ -17,13 +17,6 @@ var (
 	configPath string
 	logLevel   string
 )
-
-func waitSignal() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGQUIT)
-	<-c
-	log.Info("Terminating...")
-}
 
 func setupLogLevel(l string) error {
 	level, err := log.ParseLevel(l)
@@ -70,8 +63,15 @@ func serve() {
 		config.Etcd.Prefix = common.DEFAULT_ETCD_PREFIX
 	}
 	log.Debug(config)
+	utils.WritePid(config.PidFile)
+	defer os.Remove(config.PidFile)
 
-	waitSignal()
+	agent, err := engine.NewEngine(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	agent.Run()
 }
 
 func main() {
