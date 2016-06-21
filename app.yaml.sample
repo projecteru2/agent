@@ -1,7 +1,7 @@
 pid: /tmp/agent.pid
 
 docker:
-  endpoint: tcp://192.168.59.103:2376
+  endpoint: tcp://10.10.192.213:2376
 
 etcd:
   prefix: agent2
