@@ -1,5 +1,5 @@
 package types
 
-type NodeStats struct {
+type Node struct {
 	Alive bool
 }

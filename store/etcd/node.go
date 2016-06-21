@@ -9,8 +9,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-func (c *Client) UpdateStats(stats *types.NodeStats) error {
-	b, err := json.Marshal(stats)
+func (c *Client) UpdateStats(node *types.Node) error {
+	b, err := json.Marshal(node)
 	if err != nil {
 		return err
 	}
@@ -21,12 +21,12 @@ func (c *Client) UpdateStats(stats *types.NodeStats) error {
 	return nil
 }
 
-func (c *Client) RegisterNode(stats *types.NodeStats) error {
+func (c *Client) RegisterNode(node *types.Node) error {
 	_, err := c.etcd.Set(context.Background(), c.containers, "", &client.SetOptions{Dir: true, PrevExist: client.PrevNoExist})
 	if utils.CheckExistsError(err) != nil {
 		return err
 	}
-	return c.UpdateStats(stats)
+	return c.UpdateStats(node)
 }
 
 func (c *Client) Crash() error {
@@ -34,14 +34,14 @@ func (c *Client) Crash() error {
 	if err != nil {
 		return err
 	}
-	for _, node := range resp.Node.Nodes {
-		stats := types.ContainerStats{}
-		err := json.Unmarshal([]byte(node.Value), &stats)
+	for _, n := range resp.Node.Nodes {
+		container := &types.Container{}
+		err := json.Unmarshal([]byte(n.Value), container)
 		if err != nil {
 			return err
 		}
-		stats.Alive = false
-		if err := c.UpdateContainer(&stats); err != nil {
+		container.Alive = false
+		if err := c.UpdateContainer(container); err != nil {
 			return err
 		}
 	}
@@ -49,11 +49,11 @@ func (c *Client) Crash() error {
 	if err != nil {
 		return err
 	}
-	stats := types.NodeStats{}
-	err = json.Unmarshal([]byte(resp.Node.Value), &stats)
+	node := &types.Node{}
+	err = json.Unmarshal([]byte(resp.Node.Value), node)
 	if err != nil {
 		return err
 	}
-	stats.Alive = false
-	return c.UpdateStats(&stats)
+	node.Alive = false
+	return c.UpdateStats(node)
 }

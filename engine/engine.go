@@ -5,6 +5,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"golang.org/x/net/context"
+
 	log "github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/engine-api/client"
 	"gitlab.ricebook.net/platform/agent/store"
@@ -38,14 +40,25 @@ func NewEngine(config types.Config) (*Engine, error) {
 }
 
 func (e *Engine) Run() {
+	_, err := e.docker.Info(context.Background())
+	if err != nil {
+		log.Panicf("Docker down", err)
+	}
+	e.store.RegisterNode(&types.Node{Alive: true})
+	if err := e.load(); err != nil {
+		log.Panicf("Eru Agent load failed %s", err)
+	}
+
+	//go e.Status()
+
 	var c = make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGQUIT)
 	select {
 	case s := <-c:
 		log.Infof("Eru Agent Catch %s", s)
 		return
-	case e := <-e.errChan:
+	case err := <-e.errChan:
 		e.store.Crash()
-		log.Panicf("Eru Agent Error %s", e)
+		log.Panicf("Eru Agent Error %s", err)
 	}
 }
