@@ -1,0 +1,31 @@
+pid: /tmp/agent.pid
+pod: testdev
+
+docker:
+  endpoint: tcp://192.168.59.103:2376
+
+etcd:
+  prefix: agent2
+  etcd:
+    - http://10.10.158.89:2379
+
+metrics:
+  step: 30
+  transfers:
+    - 10.1.201.45:8125
+
+api:
+  addr: 0.0.0.0:12345
+
+log:
+  forwards:
+    - udp://10.100.1.154:50433
+  stdout: False
+  count: 10
+
+limit:
+  memory: 5293824
+
+nic:
+  physical:
+    - em1
