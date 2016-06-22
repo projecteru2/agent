@@ -50,7 +50,21 @@ func (e *Engine) monitorContainerEvents(c chan eventtypes.Message) {
 }
 
 func (e *Engine) handleContainerStart(event eventtypes.Message) {
-	log.Info(event.ID)
+	log.Debugf("container %s start", event.ID[:7])
+	container, err := e.store.GetContainer(event.ID)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	if container == nil {
+		return
+	}
+	container.Alive = true
+	if err := e.store.UpdateContainer(container); err != nil {
+		log.Error(err)
+	}
+	//go c.Attach()
+	//go c.Metrics()
 }
 
 func (e *Engine) handleContainerDie(event eventtypes.Message) {
@@ -82,5 +96,5 @@ func (e *Engine) handleContainerDestroy(event eventtypes.Message) {
 	if err := e.store.RemoveContainer(event.ID); err != nil {
 		log.Error(err)
 	}
-	log.Debugf("container %s removed", event.ID[:7])
+	log.Debugf("container %s data removed", event.ID[:7])
 }
