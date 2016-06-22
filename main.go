@@ -41,7 +41,7 @@ func initConfig(configPath string) (types.Config, error) {
 	return config, nil
 }
 
-func serve() {
+func serve() error {
 	if err := setupLogLevel(logLevel); err != nil {
 		log.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func serve() {
 		log.Fatal(err)
 	}
 
-	agent.Run()
+	return agent.Run()
 }
 
 func main() {
@@ -96,8 +96,7 @@ func main() {
 		},
 	}
 	app.Action = func(c *cli.Context) error {
-		serve()
-		return nil
+		return serve()
 	}
 
 	app.Run(os.Args)

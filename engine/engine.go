@@ -20,6 +20,10 @@ type Engine struct {
 	config  types.Config
 	docker  *engineapi.Client
 	errChan chan error
+
+	transfers *utils.HashBackends
+	forwards  *utils.HashBackends
+	physical  *utils.HashBackends
 }
 
 func NewEngine(config types.Config) (*Engine, error) {
@@ -36,26 +40,32 @@ func NewEngine(config types.Config) (*Engine, error) {
 	engine.store = store
 	engine.docker = docker
 	engine.errChan = make(chan error)
+	engine.transfers = utils.NewHashBackends(config.Metrics.Transfers)
+	engine.forwards = utils.NewHashBackends(config.Log.Forwards)
+	engine.physical = utils.NewHashBackends(config.NIC.Physical)
 	return engine, nil
 }
 
-func (e *Engine) Run() {
+func (e *Engine) Run() error {
 	// check docker alive
 	_, err := e.docker.Info(context.Background())
 	if err != nil {
-		log.Panicf("Docker down", err)
+		log.Errorf("Docker down %s", err)
+		return err
 	}
 
 	// load container
 	if err := e.load(); err != nil {
-		log.Panicf("Eru Agent load failed %s", err)
+		log.Errorf("Eru Agent load failed %s", err)
+		return err
 	}
 	// start status watcher
 	go e.monitor()
 
 	// tell core this node is ready
 	if err := e.store.RegisterNode(&types.Node{Alive: true}); err != nil {
-		log.Panic(err)
+		log.Errorf("register node failed %s", err)
+		return err
 	}
 	log.Info("Node activated")
 
@@ -65,9 +75,10 @@ func (e *Engine) Run() {
 	select {
 	case s := <-c:
 		log.Infof("Eru Agent Catch %s", s)
-		return
+		return nil
 	case err := <-e.errChan:
 		e.store.Crash()
-		log.Panicf("Eru Agent Error %s", err)
+		log.Errorf("Eru Agent Error %s", err)
+		return err
 	}
 }

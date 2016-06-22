@@ -63,7 +63,8 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 	if err := e.store.UpdateContainer(container); err != nil {
 		log.Error(err)
 	}
-	//go c.Attach()
+
+	go e.attach(container)
 	//go c.Metrics()
 }
 

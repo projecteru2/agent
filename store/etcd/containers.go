@@ -10,7 +10,7 @@ import (
 )
 
 func (c *Client) UpdateContainer(container *types.Container) error {
-	path := fmt.Sprintf("%s/%s", c.containers, container.Cid)
+	path := fmt.Sprintf("%s/%s", c.containers, container.ID)
 	b, err := json.Marshal(container)
 	if err != nil {
 		return err

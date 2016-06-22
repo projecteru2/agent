@@ -18,7 +18,7 @@ api:
 
 log:
   forwards:
-    - udp://10.100.1.154:50433
+    - udp://10.10.31.119:5144
   stdout: False
 
 limit:

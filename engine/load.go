@@ -10,6 +10,7 @@ import (
 )
 
 func (e *Engine) load() error {
+	log.Info("Load containers")
 	ctx := context.Background()
 	options := enginetypes.ContainerListOptions{All: true}
 
@@ -29,12 +30,13 @@ func (e *Engine) load() error {
 		}
 		status := getStatus(container.Status)
 		if status != common.STATUS_START {
+			log.Infof("container %s down", c.ID[:7])
 			c.Alive = false
 			e.store.UpdateContainer(c)
 			continue
 		}
 
-		//go c.Attach()
+		go e.attach(c)
 		//go c.Metrics()
 	}
 	return nil

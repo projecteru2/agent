@@ -4,7 +4,7 @@ import "sync"
 
 type Container struct {
 	sync.Mutex
-	Cid        string
+	ID         string
 	Pid        int
 	Alive      bool
 	Name       string
