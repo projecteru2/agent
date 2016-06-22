@@ -40,17 +40,26 @@ func NewEngine(config types.Config) (*Engine, error) {
 }
 
 func (e *Engine) Run() {
+	// check docker alive
 	_, err := e.docker.Info(context.Background())
 	if err != nil {
 		log.Panicf("Docker down", err)
 	}
-	e.store.RegisterNode(&types.Node{Alive: true})
+
+	// load container
 	if err := e.load(); err != nil {
 		log.Panicf("Eru Agent load failed %s", err)
 	}
+	// start status watcher
+	go e.monitor()
 
-	//go e.Status()
+	// tell core this node is ready
+	if err := e.store.RegisterNode(&types.Node{Alive: true}); err != nil {
+		log.Panic(err)
+	}
+	log.Info("Node activated")
 
+	// wait for signal
 	var c = make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGQUIT)
 	select {

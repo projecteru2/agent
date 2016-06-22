@@ -21,7 +21,6 @@ type APIConfig struct {
 type LogConfig struct {
 	Forwards []string `yaml:"forwards"`
 	Stdout   bool     `yaml:"stdout"`
-	Count    int      `yaml:"count"`
 }
 
 type LimitConfig struct {
