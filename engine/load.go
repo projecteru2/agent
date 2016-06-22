@@ -36,7 +36,7 @@ func (e *Engine) load() error {
 			continue
 		}
 
-		go e.attach(c)
+		e.attach(c)
 		//go c.Metrics()
 	}
 	return nil
