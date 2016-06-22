@@ -10,4 +10,5 @@ type Store interface {
 	UpdateContainer(container *types.Container) error
 
 	GetContainer(cid string) (*types.Container, error)
+	RemoveContainer(cid string) error
 }

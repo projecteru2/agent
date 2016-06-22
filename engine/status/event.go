@@ -5,7 +5,6 @@ import (
 	"io"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
 	eventtypes "github.com/docker/engine-api/types/events"
 )
 
@@ -28,7 +27,7 @@ func (e *EventHandler) Handle(action string, h func(eventtypes.Message)) {
 
 func (e *EventHandler) Watch(c <-chan eventtypes.Message) {
 	for ev := range c {
-		log.Debugf("cid %s action %s", ev.ID[:7], ev.Action)
+		//		log.Debugf("cid %s action %s", ev.ID[:7], ev.Action)
 		e.Lock()
 		h, exists := e.handlers[ev.Action]
 		e.Unlock()

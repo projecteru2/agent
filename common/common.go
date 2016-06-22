@@ -5,6 +5,7 @@ const (
 	ERU_AGENT_VERSION   = "2.0.0"
 	DOCKER_CLI_VERSION  = "v1.23"
 
-	STATUS_DIE   = "die"
-	STATUS_START = "start"
+	STATUS_DIE     = "die"
+	STATUS_START   = "start"
+	STATUS_DESTROY = "destroy"
 )

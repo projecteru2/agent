@@ -24,10 +24,21 @@ func (c *Client) GetContainer(cid string) (*types.Container, error) {
 	container := &types.Container{}
 	resp, err := c.etcd.Get(context.Background(), path, &client.GetOptions{})
 	if err != nil {
+		if etcdError, ok := err.(client.Error); ok {
+			if etcdError.Code == client.ErrorCodeKeyNotFound {
+				return nil, nil
+			}
+		}
 		return nil, err
 	}
 	if err := json.Unmarshal([]byte(resp.Node.Value), container); err != nil {
 		return nil, err
 	}
 	return container, nil
+}
+
+func (c *Client) RemoveContainer(cid string) error {
+	path := fmt.Sprintf("%s/%s", c.containers, cid)
+	_, err := c.etcd.Delete(context.Background(), path, &client.DeleteOptions{})
+	return err
 }

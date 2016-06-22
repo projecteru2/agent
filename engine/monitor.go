@@ -14,8 +14,9 @@ import (
 var eventHandler = status.NewEventHandler()
 
 func (e *Engine) monitor() {
-	eventHandler.Handle(common.STATUS_START, status.HandleContainerStart)
-	eventHandler.Handle(common.STATUS_DIE, status.HandleContainerDie)
+	eventHandler.Handle(common.STATUS_START, e.handleContainerStart)
+	eventHandler.Handle(common.STATUS_DIE, e.handleContainerDie)
+	eventHandler.Handle(common.STATUS_DESTROY, e.handleContainerDestroy)
 
 	var eventChan = make(chan eventtypes.Message)
 	go eventHandler.Watch(eventChan)
@@ -46,4 +47,40 @@ func (e *Engine) monitorContainerEvents(c chan eventtypes.Message) {
 		c <- event
 		return nil
 	})
+}
+
+func (e *Engine) handleContainerStart(event eventtypes.Message) {
+	log.Info(event.ID)
+}
+
+func (e *Engine) handleContainerDie(event eventtypes.Message) {
+	log.Debugf("container %s die", event.ID[:7])
+	container, err := e.store.GetContainer(event.ID)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	if container == nil {
+		return
+	}
+	container.Alive = false
+	if err := e.store.UpdateContainer(container); err != nil {
+		log.Error(err)
+	}
+}
+
+func (e *Engine) handleContainerDestroy(event eventtypes.Message) {
+	log.Debugf("container %s destroy", event.ID[:7])
+	container, err := e.store.GetContainer(event.ID)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	if container == nil {
+		return
+	}
+	if err := e.store.RemoveContainer(event.ID); err != nil {
+		log.Error(err)
+	}
+	log.Debugf("container %s removed", event.ID[:7])
 }

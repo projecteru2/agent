@@ -24,7 +24,9 @@ func (e *Engine) load() error {
 			log.Debugf("Load container stats failed %s", err)
 			continue
 		}
-
+		if c == nil {
+			continue
+		}
 		status := getStatus(container.Status)
 		if status != common.STATUS_START {
 			c.Alive = false
