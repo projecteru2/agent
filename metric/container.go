@@ -11,7 +11,7 @@ import (
 	"gitlab.ricebook.net/platform/agent/types"
 )
 
-func (s *Stats) getCPUStats() (*types.CPUStats, error) {
+func (s *Stats) GetCPUStats() (*types.CPUStats, error) {
 	var line string
 	cpuStats := &types.CPUStats{}
 	f, err := os.Open(s.cpuPath)
@@ -50,7 +50,7 @@ func (s *Stats) getCPUStats() (*types.CPUStats, error) {
 	return nil, fmt.Errorf("invalid stat format. Error trying to parse the cpuacct file")
 }
 
-func (s *Stats) getContainerMemory() (*types.MemoryStats, error) {
+func (s *Stats) GetMemoryStats() (*types.MemoryStats, error) {
 	var line string
 	memoryStats := &types.MemoryStats{}
 	memoryStats.Detail = map[string]uint64{}
@@ -60,7 +60,7 @@ func (s *Stats) getContainerMemory() (*types.MemoryStats, error) {
 	}
 	memoryStats.Usage = usage
 
-	maxUsage, err = convert(s.memoryMaxUsagePath)
+	maxUsage, err := convert(s.memoryMaxUsagePath)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (s *Stats) getContainerMemory() (*types.MemoryStats, error) {
 }
 
 func convert(path string) (uint64, error) {
-	f, err := os.Open(s.memoryUsagePath)
+	f, err := os.Open(path)
 	defer f.Close()
 	if err != nil {
 		return 0, err
@@ -107,6 +107,6 @@ func convert(path string) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	v, err := strconv.ParseUint(strings.Trim(string(b), 10, 64))
+	v, err := strconv.ParseUint(strings.Trim(string(b), "\n"), 10, 64)
 	return v, err
 }

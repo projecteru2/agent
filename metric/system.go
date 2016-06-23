@@ -31,15 +31,15 @@ func NewStats(container *types.Container) *Stats {
 		pid:       container.Pid,
 		bufReader: bufio.NewReaderSize(nil, 128),
 	}
-	s.cpuPath = fmt.Sprintf(common.CGROUP_BASE_PATH, "cpu,cpuacct", cid, "cpuacct.stat")
-	s.memoryUsagePath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", cid, "memory.usage_in_bytes")
-	s.memoryMaxUsagePath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", cid, "memory.max_usage_in_bytes")
-	s.memoryDetailPath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", cid, "memory.stat")
+	s.cpuPath = fmt.Sprintf(common.CGROUP_BASE_PATH, "cpu,cpuacct", container.ID, "cpuacct.stat")
+	s.memoryUsagePath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.usage_in_bytes")
+	s.memoryMaxUsagePath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.max_usage_in_bytes")
+	s.memoryDetailPath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.stat")
 
 	return s
 }
 
-func (s *Stats) getTotalJiffies() (uint64, error) {
+func (s *Stats) GetTotalJiffies() (uint64, error) {
 	var line string
 	f, err := os.Open("/proc/stat")
 	if err != nil {

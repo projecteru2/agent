@@ -41,7 +41,7 @@ func (e *Engine) load() error {
 		}
 
 		e.attach(c)
-		//go c.Metrics()
+		go e.stat(c)
 	}
 	return nil
 }

@@ -65,7 +65,7 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 		return
 	}
 	e.attach(container)
-	//go c.Metrics()
+	go e.stat(container)
 }
 
 func (e *Engine) handleContainerDie(event eventtypes.Message) {

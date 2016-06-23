@@ -7,10 +7,9 @@ import (
 	"strings"
 
 	"gitlab.ricebook.net/platform/agent/common"
-	"gitlab.ricebook.net/platform/agent/types"
 )
 
-func (s *Stats) getNetworkStats() (map[string]types.NetStats, error) {
+func (s *Stats) GetNetworkStats() (map[string]uint64, error) {
 	f, err := os.Open(fmt.Sprintf("/proc/%d/net/dev", s.pid))
 	if err != nil {
 		return nil, err
@@ -18,10 +17,10 @@ func (s *Stats) getNetworkStats() (map[string]types.NetStats, error) {
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
 	var d uint64
-	result := map[string]types.NetStats{}
+	var n [8]uint64
+	result := map[string]uint64{}
 	for scanner.Scan() {
 		var name string
-		var n [8]uint64
 		text := scanner.Text()
 		if strings.Index(text, ":") < 1 {
 			continue
@@ -31,16 +30,19 @@ func (s *Stats) getNetworkStats() (map[string]types.NetStats, error) {
 		if !strings.HasPrefix(name, common.VLAN_PREFIX) && name != common.DEFAULT_BR {
 			continue
 		}
-		result[name] = types.NetStats{}
 		fmt.Sscanf(ts[1],
 			"%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d",
-			&result[name].Inbytes, &result[name].Inpackets,
-			&result[name].Inerrs, &result[name].Indrop,
-			&d, &d, &d, &d,
-			&result[name].Outbytes, &result[name].Outpackets,
-			&result[name].Outerrs, &result[name].Outdrop,
-			&d, &d, &d, &d,
+			&n[0], &n[1], &n[2], &n[3], &d, &d, &d, &d,
+			&n[4], &n[5], &n[6], &n[7], &d, &d, &d, &d,
 		)
+		result[name+".inbytes"] = n[0]
+		result[name+".inpackets"] = n[1]
+		result[name+".inerrs"] = n[2]
+		result[name+".indrop"] = n[3]
+		result[name+".outbytes"] = n[4]
+		result[name+".outpackets"] = n[5]
+		result[name+".outerrs"] = n[6]
+		result[name+".outdrop"] = n[7]
 	}
 	return result, nil
 }
