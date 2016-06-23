@@ -6,6 +6,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 	enginetypes "github.com/docker/engine-api/types"
 	"gitlab.ricebook.net/platform/agent/common"
+	"gitlab.ricebook.net/platform/agent/types"
+	"gitlab.ricebook.net/platform/agent/utils"
 	"golang.org/x/net/context"
 )
 
@@ -30,9 +32,11 @@ func (e *Engine) load() error {
 		}
 		status := getStatus(container.Status)
 		if status != common.STATUS_START {
-			log.Infof("container %s down", c.ID[:7])
+			log.Warnf("%s container %s down", c.Name, c.ID[:7])
 			c.Alive = false
-			e.store.UpdateContainer(c)
+			if err := e.bind(c); err != nil {
+				log.Errorf("bind container info failed %s", err)
+			}
 			continue
 		}
 
@@ -40,6 +44,22 @@ func (e *Engine) load() error {
 		//go c.Metrics()
 	}
 	return nil
+}
+
+func (e *Engine) bind(container *types.Container) error {
+	c, err := e.docker.ContainerInspect(context.Background(), container.ID)
+	if err != nil {
+		return err
+	}
+	container.Pid = c.State.Pid
+	name, entrypoint, ident, err := utils.GetAppInfo(c.Name)
+	if err != nil {
+		return err
+	}
+	container.Name = name
+	container.EntryPoint = entrypoint
+	container.Ident = ident
+	return e.store.UpdateContainer(container)
 }
 
 func getStatus(s string) string {

@@ -19,7 +19,7 @@ api:
 log:
   forwards:
     - udp://10.10.31.119:5144
-  stdout: True
+  stdout: False
 
 limit:
   memory: 5293824

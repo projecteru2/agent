@@ -38,26 +38,26 @@ func (e *Engine) attach(container *types.Container) {
 		}
 		resp, err := e.docker.ContainerAttach(ctx, container.ID, options)
 		if err != nil && err != httputil.ErrPersistEOF {
-			log.Errorf("Log attach %s failed %s", container.ID[:7], err)
+			log.Errorf("attach %s container %s failed %s", container.Name, container.ID[:7], err)
 			return
 		}
 		defer resp.Close()
 		defer outw.Close()
 		defer errw.Close()
 		_, err = stdcopy.StdCopy(outw, errw, resp.Reader)
-		log.Infof("Log attach %s finished", container.ID[:7])
+		log.Infof("attach %s container %s finished", container.Name, container.ID[:7])
 		if err != nil {
-			log.Errorf("Log attach get stream failed %s", err)
+			log.Errorf("attach get stream failed %s", err)
 		}
 	}()
-	log.Infof("Log attach %s success", container.ID[:7])
+	log.Infof("attach %s container %s success", container.Name, container.ID[:7])
 	pump := func(typ string, source io.Reader) {
 		buf := bufio.NewReader(source)
 		for {
 			data, err := buf.ReadString('\n')
 			if err != nil {
 				if err != io.EOF {
-					log.Errorf("Log pump: %s %s %s", container.ID[:7], typ, err)
+					log.Errorf("attach pump %s %s %s %s", container.Name, container.ID[:7], typ, err)
 				}
 				return
 			}
@@ -71,7 +71,7 @@ func (e *Engine) attach(container *types.Container) {
 				Data:       data,
 				Datetime:   time.Now().Format(common.DATETIME_FORMAT),
 			}); err != nil {
-				log.Errorf("container %s log write failed %s", container.ID, err)
+				log.Errorf("%s container %s write failed %s", container.Name, container.ID[:7], err)
 				log.Error(data)
 			}
 		}

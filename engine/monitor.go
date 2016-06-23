@@ -60,10 +60,10 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 		return
 	}
 	container.Alive = true
-	if err := e.store.UpdateContainer(container); err != nil {
+	if err := e.bind(container); err != nil {
 		log.Error(err)
+		return
 	}
-
 	e.attach(container)
 	//go c.Metrics()
 }
