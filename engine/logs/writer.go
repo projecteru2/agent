@@ -14,6 +14,7 @@ type Writer struct {
 	addr    string
 	scheme  string
 	conn    io.Writer
+	stdout  bool
 	encoder *json.Encoder
 	Close   func() error
 }
@@ -25,6 +26,7 @@ func NewWriter(addr string, stdout bool) (*Writer, error) {
 		return nil, err
 	}
 	writer := &Writer{addr: u.Host, scheme: u.Scheme}
+	writer.stdout = stdout
 	switch {
 	case u.Scheme == "udp":
 		err = writer.createUDPConn()
@@ -36,8 +38,8 @@ func NewWriter(addr string, stdout bool) (*Writer, error) {
 	return nil, nil
 }
 
-func (w *Writer) Write(logline *types.Log, stdout bool) error {
-	if stdout {
+func (w *Writer) Write(logline *types.Log) error {
+	if w.stdout {
 		log.Info(logline)
 	}
 	return w.encoder.Encode(logline)

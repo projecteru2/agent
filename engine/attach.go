@@ -45,12 +45,12 @@ func (e *Engine) attach(container *types.Container) {
 		defer outw.Close()
 		defer errw.Close()
 		_, err = stdcopy.StdCopy(outw, errw, resp.Reader)
-		log.Debugf("Log attach %s finished", container.ID[:7])
+		log.Infof("Log attach %s finished", container.ID[:7])
 		if err != nil {
 			log.Errorf("Log attach get stream failed %s", err)
 		}
 	}()
-	log.Debugf("Log attach %s success", container.ID[:7])
+	log.Infof("Log attach %s success", container.ID[:7])
 	pump := func(typ string, source io.Reader) {
 		buf := bufio.NewReader(source)
 		for {
@@ -61,15 +61,19 @@ func (e *Engine) attach(container *types.Container) {
 				}
 				return
 			}
-			writer.Write(&types.Log{
+			data = strings.TrimSuffix(data, "\n")
+			if err := writer.Write(&types.Log{
 				ID:         container.ID,
 				Name:       container.Name,
 				Type:       typ,
 				EntryPoint: container.EntryPoint,
 				Ident:      container.Ident,
-				Data:       strings.TrimSuffix(data, "\n"),
+				Data:       data,
 				Datetime:   time.Now().Format(common.DATETIME_FORMAT),
-			}, e.config.Log.Stdout)
+			}); err != nil {
+				log.Errorf("container %s log write failed %s", container.ID, err)
+				log.Error(data)
+			}
 		}
 	}
 	go pump("stdout", outr)
