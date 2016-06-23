@@ -11,4 +11,6 @@ const (
 
 	DATETIME_FORMAT = "2006-01-02 15:04:05"
 	CNAME_NUM       = 3
+
+	CGROUP_BASE_PATH = "/sys/fs/cgroup/%s/docker/%s/%s"
 )
