@@ -11,7 +11,7 @@ import (
 	"gitlab.ricebook.net/platform/agent/types"
 )
 
-func (s *Stats) getCPUStats(cid string) (*types.CPUStats, error) {
+func (s *Stats) getCPUStats() (*types.CPUStats, error) {
 	var line string
 	cpuStats := &types.CPUStats{}
 	f, err := os.Open(s.cpuPath)
@@ -50,7 +50,7 @@ func (s *Stats) getCPUStats(cid string) (*types.CPUStats, error) {
 	return nil, fmt.Errorf("invalid stat format. Error trying to parse the cpuacct file")
 }
 
-func (s *Stats) getContainerMemory(cid string) (*types.MemoryStats, error) {
+func (s *Stats) getContainerMemory() (*types.MemoryStats, error) {
 	var line string
 	memoryStats := &types.MemoryStats{}
 	memoryStats.Detail = map[string]uint64{}

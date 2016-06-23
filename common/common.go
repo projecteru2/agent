@@ -13,4 +13,7 @@ const (
 	CNAME_NUM       = 3
 
 	CGROUP_BASE_PATH = "/sys/fs/cgroup/%s/docker/%s/%s"
+
+	VLAN_PREFIX = "vnbe"
+	DEFAULT_BR  = "eth0"
 )

@@ -19,24 +19,23 @@ type Stats struct {
 	interval  time.Duration
 	bufReader *bufio.Reader
 
-	cpuPath string
-
+	cpuPath            string
 	memoryUsagePath    string
 	memoryMaxUsagePath string
 	memoryDetailPath   string
 }
 
-func NewStats(container *types.Container, interval time.Duration) *Stats {
+func NewStats(container *types.Container) *Stats {
 	s := &Stats{
 		cid:       container.ID,
 		pid:       container.Pid,
-		interval:  interval,
 		bufReader: bufio.NewReaderSize(nil, 128),
 	}
 	s.cpuPath = fmt.Sprintf(common.CGROUP_BASE_PATH, "cpu,cpuacct", cid, "cpuacct.stat")
 	s.memoryUsagePath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", cid, "memory.usage_in_bytes")
 	s.memoryMaxUsagePath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", cid, "memory.max_usage_in_bytes")
 	s.memoryDetailPath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", cid, "memory.stat")
+
 	return s
 }
 
