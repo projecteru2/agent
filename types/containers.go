@@ -8,5 +8,5 @@ type Container struct {
 	EntryPoint string
 	Ident      string
 	Version    string
-	Extend     map[string]interface{}
+	Extend     map[string]interface{} `json:"Extend"`
 }

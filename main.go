@@ -5,6 +5,7 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
+	"gitlab.ricebook.net/platform/agent/api"
 	"gitlab.ricebook.net/platform/agent/common"
 	"gitlab.ricebook.net/platform/agent/engine"
 	"gitlab.ricebook.net/platform/agent/types"
@@ -70,6 +71,8 @@ func serve() error {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	go api.Serve(config.API.Addr, agent.GetStore())
 
 	return agent.Run()
 }
