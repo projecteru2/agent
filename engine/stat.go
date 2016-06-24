@@ -10,7 +10,7 @@ import (
 	"gitlab.ricebook.net/platform/agent/types"
 )
 
-func (e *Engine) stat(container *types.Container) {
+func (e *Engine) stat(container *types.Container, stop chan int) {
 	s := metric.NewStats(container)
 	t, c, _, n, err := getStats(s)
 	if err != nil {
@@ -18,8 +18,6 @@ func (e *Engine) stat(container *types.Container) {
 		return
 	}
 
-	stop := make(chan error)
-	defer close(stop)
 	tick := time.NewTicker(time.Duration(e.config.Metrics.Step) * time.Second)
 	defer tick.Stop()
 	statsd := metric.NewStatsdClient(e.transfers.Get(container.ID, 0))
@@ -33,13 +31,8 @@ func (e *Engine) stat(container *types.Container) {
 	} else {
 		tagString = fmt.Sprintf("%s.%s", e.config.HostName, container.ID[:7])
 	}
-	//FIXME remove version meta data
-	var version interface{} = "AGENT2_TEST"
-	if ver, ok := container.Extend["__version__"]; ok {
-		version = ver
-		delete(container.Extend, "__version__")
-	}
-	endpoint := fmt.Sprintf("%s.%v.%s", container.Name, version, container.EntryPoint)
+
+	endpoint := fmt.Sprintf("%s.%s.%s", container.Name, container.Version, container.EntryPoint)
 	defer log.Infof("container %s %s metric report stop", container.Name, container.ID[:7])
 	log.Infof("container %s %s metric report start", container.Name, container.ID[:7])
 
@@ -49,7 +42,7 @@ func (e *Engine) stat(container *types.Container) {
 			go func() {
 				t2, c2, m, n2, err := getStats(s)
 				if err != nil {
-					stop <- err
+					log.Errorf("stat %s container %s failed %s", container.Name, container.ID[:7], err)
 					return
 				}
 				result := map[string]float64{}
@@ -65,8 +58,8 @@ func (e *Engine) stat(container *types.Container) {
 				t, c, n = t2, c2, n2
 				statsd.Send(result, endpoint, tagString)
 			}()
-		case err := <-stop:
-			log.Errorf("stat %s container %s failed %s", container.Name, container.ID[:7], err)
+		case <-stop:
+			close(stop)
 			return
 		}
 	}

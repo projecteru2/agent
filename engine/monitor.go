@@ -64,8 +64,10 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 		log.Error(err)
 		return
 	}
-	e.attach(container)
-	go e.stat(container)
+
+	stop := make(chan int)
+	e.attach(container, stop)
+	go e.stat(container, stop)
 }
 
 func (e *Engine) handleContainerDie(event eventtypes.Message) {

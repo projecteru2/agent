@@ -40,8 +40,9 @@ func (e *Engine) load() error {
 			continue
 		}
 
-		e.attach(c)
-		go e.stat(c)
+		stop := make(chan int)
+		e.attach(c, stop)
+		go e.stat(c, stop)
 	}
 	return nil
 }

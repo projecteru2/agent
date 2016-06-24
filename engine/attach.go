@@ -18,7 +18,7 @@ import (
 	"gitlab.ricebook.net/platform/agent/types"
 )
 
-func (e *Engine) attach(container *types.Container) {
+func (e *Engine) attach(container *types.Container, stop chan int) {
 	transfer := e.forwards.Get(container.ID, 0)
 	writer, err := logs.NewWriter(transfer, e.config.Log.Stdout)
 	if err != nil {
@@ -46,6 +46,7 @@ func (e *Engine) attach(container *types.Container) {
 		defer errw.Close()
 		_, err = stdcopy.StdCopy(outw, errw, resp.Reader)
 		log.Infof("attach %s container %s finished", container.Name, container.ID[:7])
+		stop <- 1
 		if err != nil {
 			log.Errorf("attach get stream failed %s", err)
 		}
