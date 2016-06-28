@@ -46,15 +46,37 @@ func (e *Engine) monitorContainerEvents(c chan eventtypes.Message) {
 
 func (e *Engine) handleContainerStart(event eventtypes.Message) {
 	log.Debugf("container %s start", event.ID[:7])
+	if _, ok := event.Actor.Attributes["ERU"]; !ok {
+		return
+	}
+	//清理掉 ERU 标志
+	delete(event.Actor.Attributes, "ERU")
+
+	//看是否有元数据，有则是 crash 后重启
 	container, err := e.store.GetContainer(event.ID)
 	if err != nil {
 		log.Error(err)
 		return
 	}
+
+	//没有元数据就从 label 数据中生成元数据
 	if container == nil {
+		log.Debug(event.Actor.Attributes)
+		container, err = status.GenerateContainerMeta(event.ID, event.Actor.Attributes)
+		if err != nil {
+			return
+		}
+	}
+
+	c, err := e.docker.ContainerInspect(context.Background(), event.ID)
+	if err != nil {
+		log.Error(err)
 		return
 	}
+
+	container.Pid = c.State.Pid
 	container.Alive = true
+	log.Debug(container)
 	if err := e.bind(container); err != nil {
 		log.Error(err)
 		return

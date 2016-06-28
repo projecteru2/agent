@@ -25,7 +25,7 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 	if len(container.Extend) > 0 {
 		tag := []string{}
 		for _, v := range container.Extend {
-			tag = append(tag, fmt.Sprintf("%v", v))
+			tag = append(tag, v)
 		}
 		tagString = fmt.Sprintf("%s.%s.%s", e.config.HostName, strings.Join(tag, "."), container.ID[:7])
 	} else {
