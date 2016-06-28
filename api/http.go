@@ -60,9 +60,9 @@ func Serve(addr string, store store.Store) {
 			"/profile/": h.profile,
 			"/version/": h.version,
 		},
-		"POST": {
-			"/api/container/add/": h.addNewContainer,
-		},
+		//	"POST": {
+		//		"/api/container/add/": h.addNewContainer,
+		//	},
 	}
 
 	for method, routes := range handlers {
