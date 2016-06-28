@@ -39,14 +39,9 @@ func (e *Engine) monitorContainerEvents(c chan eventtypes.Message) {
 	log.Info("Status watch start")
 	defer resBody.Close()
 
-	status.DecodeEvents(resBody, func(event eventtypes.Message, err error) error {
-		if err != nil {
-			e.errChan <- err
-			return nil
-		}
-		c <- event
-		return nil
-	})
+	if err := status.DecodeEvents(resBody, c); err != nil {
+		e.errChan <- err
+	}
 }
 
 func (e *Engine) handleContainerStart(event eventtypes.Message) {

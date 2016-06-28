@@ -8,8 +8,6 @@ import (
 	eventtypes "github.com/docker/engine-api/types/events"
 )
 
-type EventProcesser func(event eventtypes.Message, err error) error
-
 type EventHandler struct {
 	sync.Mutex
 	handlers map[string]func(eventtypes.Message)
@@ -38,18 +36,17 @@ func (e *EventHandler) Watch(c <-chan eventtypes.Message) {
 	}
 }
 
-func DecodeEvents(input io.Reader, ep EventProcesser) error {
+func DecodeEvents(input io.Reader, c chan eventtypes.Message) error {
 	dec := json.NewDecoder(input)
 	for {
 		var event eventtypes.Message
-		err := dec.Decode(&event)
-		if err != nil && err == io.EOF {
-			break
+		if err := dec.Decode(&event); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
 		}
-
-		if procErr := ep(event, err); procErr != nil {
-			return procErr
-		}
+		c <- event
 	}
 	return nil
 }
