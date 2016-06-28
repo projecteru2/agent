@@ -21,9 +21,6 @@ log:
     - udp://10.10.31.119:5144
   stdout: False
 
-limit:
-  memory: 5293824
-
 nic:
   physical:
     - em1

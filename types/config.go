@@ -23,10 +23,6 @@ type LogConfig struct {
 	Stdout   bool     `yaml:"stdout"`
 }
 
-type LimitConfig struct {
-	Memory uint64 `yaml:"memory"`
-}
-
 type NICConfig struct {
 	Physical []string `yaml:"physical"`
 }
@@ -40,6 +36,5 @@ type Config struct {
 	Metrics MetricsConfig
 	API     APIConfig
 	Log     LogConfig
-	Limit   LimitConfig
 	NIC     NICConfig
 }
