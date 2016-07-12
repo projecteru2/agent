@@ -72,7 +72,7 @@ func serve() error {
 		log.Fatal(err)
 	}
 
-	go api.Serve(config.API.Addr, agent.GetStore())
+	go api.Serve(config.API.Addr)
 
 	return agent.Run()
 }

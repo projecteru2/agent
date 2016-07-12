@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 )
 
 type JSON map[string]interface{}
@@ -15,13 +14,5 @@ func JSONWrapper(f func(*Request) (int, interface{})) func(http.ResponseWriter, 
 		code, result := f(r)
 		w.WriteHeader(code)
 		json.NewEncoder(w).Encode(result)
-	}
-}
-
-func Atoi(s string, def int) int {
-	if r, err := strconv.Atoi(s); err != nil {
-		return def
-	} else {
-		return r
 	}
 }

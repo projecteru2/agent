@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	log "github.com/Sirupsen/logrus"
+	"gitlab.ricebook.net/platform/agent/utils"
 )
 
 type Request struct {
@@ -13,8 +14,8 @@ type Request struct {
 }
 
 func (r *Request) Init() {
-	r.Start = Atoi(r.Form.Get("start"), 0)
-	r.Limit = Atoi(r.Form.Get("limit"), 20)
+	r.Start = utils.Atoi(r.Form.Get("start"), 0)
+	r.Limit = utils.Atoi(r.Form.Get("limit"), 20)
 }
 
 func NewRequest(r *http.Request) *Request {
