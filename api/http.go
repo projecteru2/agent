@@ -11,9 +11,12 @@ import (
 	"gitlab.ricebook.net/platform/agent/common"
 	"gitlab.ricebook.net/platform/agent/types"
 	"gitlab.ricebook.net/platform/agent/utils"
+	"gitlab.ricebook.net/platform/agent/watcher"
 
 	"github.com/bmizerany/pat"
 )
+
+type JSON map[string]interface{}
 
 type Handler struct {
 }
@@ -51,11 +54,12 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 			log.Error(err)
 			return
 		}
-		log.Infof("%s log attached", app)
-		logWatcher := types.LogWatcher{
+		logConsumer := &types.LogConsumer{
 			ID:  utils.RandStringRunes(8),
 			App: app, Conn: conn, Buf: buf,
 		}
+		watcher.LogMonitor.ConsumerC <- logConsumer
+		log.Infof("%s %s log attached", app, logConsumer.ID)
 	}
 }
 

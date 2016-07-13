@@ -16,6 +16,7 @@ import (
 	"gitlab.ricebook.net/platform/agent/common"
 	"gitlab.ricebook.net/platform/agent/engine/logs"
 	"gitlab.ricebook.net/platform/agent/types"
+	"gitlab.ricebook.net/platform/agent/watcher"
 )
 
 func (e *Engine) attach(container *types.Container, stop chan int) {
@@ -63,7 +64,8 @@ func (e *Engine) attach(container *types.Container, stop chan int) {
 				return
 			}
 			data = strings.TrimSuffix(data, "\n")
-			if err := writer.Write(&types.Log{
+			data = strings.TrimSuffix(data, "\r")
+			l := &types.Log{
 				ID:         container.ID,
 				Name:       container.Name,
 				Type:       typ,
@@ -71,7 +73,9 @@ func (e *Engine) attach(container *types.Container, stop chan int) {
 				Ident:      container.Ident,
 				Data:       data,
 				Datetime:   time.Now().Format(common.DATETIME_FORMAT),
-			}); err != nil {
+			}
+			watcher.LogMonitor.LogC <- l
+			if err := writer.Write(l); err != nil {
 				log.Errorf("%s container %s write failed %s", container.Name, container.ID[:7], err)
 				log.Error(data)
 			}
