@@ -82,7 +82,3 @@ func (e *Engine) Run() error {
 		return err
 	}
 }
-
-func (e *Engine) GetStore() store.Store {
-	return e.store
-}

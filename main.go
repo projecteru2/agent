@@ -10,6 +10,7 @@ import (
 	"gitlab.ricebook.net/platform/agent/engine"
 	"gitlab.ricebook.net/platform/agent/types"
 	"gitlab.ricebook.net/platform/agent/utils"
+	"gitlab.ricebook.net/platform/agent/watcher"
 	"gopkg.in/urfave/cli.v1"
 	"gopkg.in/yaml.v2"
 )
@@ -63,16 +64,20 @@ func serve() error {
 	if config.Etcd.Prefix == "" {
 		config.Etcd.Prefix = common.DEFAULT_ETCD_PREFIX
 	}
+
 	log.Debug(config)
 	utils.WritePid(config.PidFile)
 	defer os.Remove(config.PidFile)
+
+	watcher.InitMonitor()
+	go watcher.LogMonitor.Serve()
 
 	agent, err := engine.NewEngine(config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	go api.Serve(config.API.Addr, agent.GetStore())
+	go api.Serve(config.API.Addr)
 
 	return agent.Run()
 }

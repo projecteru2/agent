@@ -44,3 +44,11 @@ func GetAppInfo(containerName string) (name string, entrypoint string, ident str
 	l := len(appinfo)
 	return strings.Join(appinfo[:l-2], "_"), appinfo[l-2], appinfo[l-1], nil
 }
+
+func Atoi(s string, def int) int {
+	if r, err := strconv.Atoi(s); err != nil {
+		return def
+	} else {
+		return r
+	}
+}
