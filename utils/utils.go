@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strconv"
 	"strings"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/client"
 	engineapi "github.com/docker/engine-api/client"
 	"gitlab.ricebook.net/platform/agent/common"
