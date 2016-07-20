@@ -30,13 +30,13 @@ func (w *Watcher) Serve() {
 		select {
 		case log := <-w.LogC:
 			if consumers, ok := w.consumer[log.Name]; ok {
+				data, err := json.Marshal(log)
+				if err != nil {
+					logrus.Error(err)
+					break
+				}
+				line := fmt.Sprintf("%X\r\n%s\r\n\r\n", len(data)+2, string(data))
 				for id, consumer := range consumers {
-					data, err := json.Marshal(log)
-					if err != nil {
-						logrus.Error(err)
-						break
-					}
-					line := fmt.Sprintf("%X\r\n%s\r\n\r\n", len(data)+2, string(data))
 					if _, err := consumer.Buf.WriteString(line); err != nil {
 						logrus.Error(err)
 						logrus.Infof("%s %s log detached", consumer.App, consumer.ID)
