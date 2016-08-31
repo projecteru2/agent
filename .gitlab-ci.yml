@@ -2,7 +2,6 @@ image: "hub.ricebook.net/base/alpine:golang-eru-agent-2016.08.31"
 build:
     script:
         - "echo 'start building'"
-        - "mkdir -p $GOPATH/src/gitlab.ricebook.net/platform"
         - "ln -s $CI_PROJECT_DIR $GOPATH/src/gitlab.ricebook.net/platform/agent"
         - go build -ldflags "-s -w" -a -tags netgo -installsuffix netgo
         - "echo 'build done'"
