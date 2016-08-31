@@ -1,5 +1,5 @@
-image: "hub.ricebook.net/base/alpine:golang-2016.08.31"
-test_job:
+image: "hub.ricebook.net/base/alpine:golang-eru-agent-2016.08.31"
+build:
     script:
         - "echo 'start building'"
         - "mkdir -p $GOPATH/src/gitlab.ricebook.net/platform"
