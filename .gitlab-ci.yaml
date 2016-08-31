@@ -1,0 +1,12 @@
+image: "hub.ricebook.net/base/alpine:golang-2016.08.31"
+test_job:
+    script:
+        - "echo 'start building'"
+        - "mkdir -p $GOPATH/src/gitlab.ricebook.net/platform"
+        - "ln -s $CI_PROJECT_DIR $GOPATH/src/gitlab.ricebook.net/platform/agent"
+        - "go get github.com/Sirupsen/logrus github.com/bmizerany/pat github.com/docker/docker github.com/CMGS/statsd github.com/coreos/etcd gopkg.in/yaml.v2"
+        - go build -ldflags "-s -w" -a -tags netgo -installsuffix netgo"
+        - "echo 'build done'"
+    artifacts:
+        paths:
+            - "agent"
