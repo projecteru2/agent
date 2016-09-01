@@ -12,6 +12,7 @@ build:
   artifacts:
     paths:
       - "agent"
+    expire_in: 1 week
 rpm:
   stage: rpm
   script:
@@ -23,3 +24,5 @@ rpm:
   artifacts:
     paths:
       - "eru-agent*.rpm"
+    expire_in: 1 week
+
