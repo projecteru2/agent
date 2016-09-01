@@ -3,12 +3,14 @@ stages:
   - build
   - rpm
 build:
+  stage: build
   script:
     - "echo 'start building'"
     - "ln -s $CI_PROJECT_DIR $GOPATH/src/gitlab.ricebook.net/platform/agent"
     - go build -ldflags "-s -w" -a -tags netgo -installsuffix netgo
     - "echo 'build done'"
 rpm:
+  stage: rpm
   script:
     - "echo 'start make rpm'"
     - "./make-rpm"
