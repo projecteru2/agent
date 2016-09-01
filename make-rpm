@@ -10,6 +10,9 @@ mkdir -p $CONF
 mkdir -p $SERVICE
 
 mv agent $BIN/eru-agent
+mv agent.yaml.sample $CONF
+mv eru-agent.service $SERVICE
+
 OUTPUT=($($BIN/eru-agent -v 2>&1))
 VERSION=${OUTPUT[-1]%\"}
 echo $VERSION rpm build begin
