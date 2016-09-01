@@ -1,10 +1,15 @@
-image: "hub.ricebook.net/base/alpine:golang-eru-agent-2016.08.31"
+image: "hub.ricebook.net/base/centos:eru-agent-onbuild-2016.09.01"
 build:
     script:
         - "echo 'start building'"
         - "ln -s $CI_PROJECT_DIR $GOPATH/src/gitlab.ricebook.net/platform/agent"
         - go build -ldflags "-s -w" -a -tags netgo -installsuffix netgo
         - "echo 'build done'"
+rpm:
+    script:
+        - "echo 'start make rpm'"
+        - "./make-rpm"
+        - "echo 'make rpm done'"
     artifacts:
         paths:
-            - "agent"
+            - "eru-agent*.rpm"
