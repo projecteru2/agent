@@ -1,4 +1,7 @@
 image: "hub.ricebook.net/base/centos:eru-agent-onbuild-2016.09.01"
+stages:
+  - build
+  - rpm
 build:
     script:
         - "echo 'start building'"
