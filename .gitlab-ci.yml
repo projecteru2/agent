@@ -1,4 +1,4 @@
-image: "hub.ricebook.net/base/centos:eru-agent-onbuild-2016.09.01"
+image: "hub.ricebook.net/base/centos:onbuild-eru-agent-2016.09.02"
 stages:
   - build
   - rpm
