@@ -2,7 +2,7 @@ package common
 
 const (
 	DEFAULT_ETCD_PREFIX = "eru"
-	ERU_AGENT_VERSION   = "2.0.3"
+	ERU_AGENT_VERSION   = "2.0.4"
 	DOCKER_CLI_VERSION  = "v1.23"
 
 	STATUS_DIE     = "die"
@@ -14,6 +14,6 @@ const (
 
 	CGROUP_BASE_PATH = "/sys/fs/cgroup/%s/docker/%s/%s"
 
-	VLAN_PREFIX = "vnbe"
+	VLAN_PREFIX = "cali0"
 	DEFAULT_BR  = "eth0"
 )
