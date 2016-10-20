@@ -22,14 +22,17 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 	defer tick.Stop()
 	statsd := metric.NewStatsdClient(e.transfers.Get(container.ID, 0))
 	var tagString string
+	host := strings.Split(e.config.HostName, ".")[0]
+
 	if len(container.Extend) > 0 {
 		tag := []string{}
-		for _, v := range container.Extend {
+		for k, v := range container.Extend { // 是的，这里是会出现不同的排列顺序的，但是，如果都不确定 Extend 里面的顺序是怎样的，那怎么排
 			tag = append(tag, v)
+			log.Debugf("stat: %s  %s", k, v)
 		}
-		tagString = fmt.Sprintf("%s.%s.%s", e.config.HostName, strings.Join(tag, "."), container.ID[:7])
+		tagString = fmt.Sprintf("%s.%s.%s", host, strings.Join(tag, "."), container.ID[:7])
 	} else {
-		tagString = fmt.Sprintf("%s.%s", e.config.HostName, container.ID[:7])
+		tagString = fmt.Sprintf("%s.%s", host, container.ID[:7])
 	}
 
 	endpoint := fmt.Sprintf("%s.%s.%s", container.Name, container.Version, container.EntryPoint)

@@ -26,6 +26,15 @@ func GenerateContainerMeta(ID string, attrs map[string]string) (*types.Container
 	} else {
 		container.Version = "UNKNOWN"
 	}
+
+	// stat: vendor  CentOS
+	// stat: build-date  20160906
+	// stat: license  GPLv2
+	// 都不知道为什么会出现这三项
+
+	delete(attrs, "vendor")
+	delete(attrs, "build-date")
+	delete(attrs, "license")
 	container.Extend = attrs
 
 	return container, nil
