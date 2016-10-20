@@ -22,7 +22,7 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 	defer tick.Stop()
 	statsd := metric.NewStatsdClient(e.transfers.Get(container.ID, 0))
 	var tagString string
-	host := strings.Split(e.config.HostName, ".")[0]
+	host := strings.Replace(e.config.HostName, ".", "-", -1)
 
 	if len(container.Extend) > 0 {
 		tag := []string{}
