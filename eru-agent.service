@@ -8,6 +8,7 @@ Requires=docker.socket
 Type=simple
 Environment=GOTRACEBACK=crash
 ExecStart=/usr/bin/eru-agent --config /etc/eru-agent/agent.yaml
+Restart=on-failure
 LimitNOFILE=10485760
 LimitNPROC=10485760
 LimitCORE=infinity
