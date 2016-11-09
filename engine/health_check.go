@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -23,11 +22,8 @@ func (e *Engine) healthCheck() {
 	}
 
 	tick := time.NewTicker(time.Duration(interval) * time.Second)
-	for {
-		select {
-		case <-tick.C:
-			go e.checkAllContainers()
-		}
+	for ; ; <-tick.C {
+		go e.checkAllContainers()
 	}
 }
 
@@ -73,25 +69,9 @@ func (e *Engine) checkAllContainers() {
 // 事实上一般也就一个
 func checkSingleContainer(container enginetypes.Container) bool {
 	backends := getContainerBackends(container)
-	total := len(backends)
-
-	ch := make(chan bool, total)
-	wg := sync.WaitGroup{}
-	wg.Add(total)
-
 	for _, backend := range backends {
-		go func(backend string) {
-			defer wg.Done()
-			url := fmt.Sprintf("http://%s/healthcheck", backend)
-			ch <- checkOneURL(url)
-		}(backend)
-	}
-	wg.Wait()
-
-	defer close(ch)
-	for i := 0; i < total; i++ {
-		r, ok := <-ch
-		if !r || !ok {
+		url := fmt.Sprintf("http://%s/healthcheck", backend)
+		if !checkOneURL(url) {
 			return false
 		}
 	}
