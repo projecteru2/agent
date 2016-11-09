@@ -28,8 +28,9 @@ type NICConfig struct {
 }
 
 type Config struct {
-	PidFile  string `yaml:"pid"`
-	HostName string
+	PidFile             string `yaml:"pid"`
+	HostName            string
+	HealthCheckInterval int `yaml:"health_check_interval"`
 
 	Docker  DockerConfig
 	Etcd    ETCDConfig

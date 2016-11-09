@@ -62,6 +62,9 @@ func (e *Engine) Run() error {
 	// start status watcher
 	go e.monitor()
 
+	// start health check
+	go e.healthCheck()
+
 	// tell core this node is ready
 	if err := e.store.RegisterNode(&types.Node{Alive: true}); err != nil {
 		log.Errorf("register node failed %s", err)
