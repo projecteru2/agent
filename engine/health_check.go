@@ -68,11 +68,11 @@ func (e *Engine) checkAllContainers() {
 		if status && !c.Alive {
 			c.Alive = true
 			e.store.UpdateContainer(c)
-			log.Infof("Container %s resurges")
+			log.Infof("Container %s resurges", container.ID)
 		} else if !status && c.Alive {
 			c.Alive = false
 			e.store.UpdateContainer(c)
-			log.Infof("Container %s dies")
+			log.Infof("Container %s dies", container.ID)
 		}
 	}
 }
@@ -83,7 +83,6 @@ func checkSingleContainer(container enginetypes.Container, checkMethod string) b
 	} else if checkMethod == "http" {
 		return checkHTTP(container)
 	}
-	log.Errorf("Unsupported check method: %s, must be tcp / http", checkMethod)
 	return false
 }
 
