@@ -7,6 +7,7 @@ import (
 	filtertypes "github.com/docker/engine-api/types/filters"
 	"golang.org/x/net/context"
 
+	"github.com/coreos/etcd/client"
 	"gitlab.ricebook.net/platform/agent/common"
 	"gitlab.ricebook.net/platform/agent/engine/status"
 )
@@ -55,15 +56,17 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 	//看是否有元数据，有则是 crash 后重启
 	container, err := e.store.GetContainer(event.ID)
 	if err != nil {
-		log.Error(err)
-		return
-	}
+		// 看看是不是 etcd 的 KeyNotFound error, 我们只需要对这种做进一步处理
+		if etcdErr, ok := err.(client.Error); !ok || etcdErr.Code != client.ErrorCodeKeyNotFound {
+			log.Error(err)
+			return
+		}
 
-	//没有元数据就从 label 数据中生成元数据
-	if container == nil {
+		// 找不到说明需要重新从 label 生成数据
 		log.Debug(event.Actor.Attributes)
 		container, err = status.GenerateContainerMeta(event.ID, event.Actor.Attributes)
 		if err != nil {
+			log.Error(err)
 			return
 		}
 	}
@@ -94,9 +97,6 @@ func (e *Engine) handleContainerDie(event eventtypes.Message) {
 		log.Error(err)
 		return
 	}
-	if container == nil {
-		return
-	}
 	container.Alive = false
 	if err := e.store.UpdateContainer(container); err != nil {
 		log.Error(err)
@@ -105,12 +105,9 @@ func (e *Engine) handleContainerDie(event eventtypes.Message) {
 
 func (e *Engine) handleContainerDestroy(event eventtypes.Message) {
 	log.Debugf("container %s destroy", event.ID[:7])
-	container, err := e.store.GetContainer(event.ID)
+	_, err := e.store.GetContainer(event.ID)
 	if err != nil {
 		log.Error(err)
-		return
-	}
-	if container == nil {
 		return
 	}
 	if err := e.store.RemoveContainer(event.ID); err != nil {
