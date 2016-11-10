@@ -50,7 +50,7 @@ func (e *Engine) checkAllContainers() {
 
 		// 拿下检查方法, 暂时只支持tcp和http
 		checkMethod, ok := container.Labels["healthcheck"]
-		if !ok || checkMethod != "tcp" || checkMethod != "http" {
+		if !(ok && (checkMethod == "tcp" || checkMethod == "http")) {
 			continue
 		}
 
