@@ -14,6 +14,8 @@ import (
 	"golang.org/x/net/context/ctxhttp"
 )
 
+const timeout = 5 * time.Second
+
 func (e *Engine) healthCheck() {
 	// 默认用一分钟
 	interval := e.config.HealthCheckInterval
@@ -22,6 +24,7 @@ func (e *Engine) healthCheck() {
 	}
 
 	tick := time.NewTicker(time.Duration(interval) * time.Second)
+	defer tick.Stop()
 	for ; ; <-tick.C {
 		log.Debugf("Start to check all containers...")
 		go e.checkAllContainers()
@@ -45,6 +48,12 @@ func (e *Engine) checkAllContainers() {
 			continue
 		}
 
+		// 拿下检查方法, 暂时只支持tcp和http
+		checkMethod, ok := container.Labels["healthcheck"]
+		if !ok || checkMethod != "tcp" || checkMethod != "http" {
+			continue
+		}
+
 		// 拿老的数据出来
 		c, err := e.store.GetContainer(container.ID)
 		if err != nil {
@@ -55,7 +64,7 @@ func (e *Engine) checkAllContainers() {
 		// 检查现在是不是还健康
 		// 如果健康并且之前是挂了, 那么修改成健康
 		// 如果挂了并且之前是健康, 那么修改成挂了
-		status := checkSingleContainer(container)
+		status := checkSingleContainer(container, checkMethod)
 		if status && !c.Alive {
 			c.Alive = true
 			e.store.UpdateContainer(c)
@@ -68,13 +77,35 @@ func (e *Engine) checkAllContainers() {
 	}
 }
 
+func checkSingleContainer(container enginetypes.Container, checkMethod string) bool {
+	if checkMethod == "tcp" {
+		return checkTCP(container)
+	} else if checkMethod == "http" {
+		return checkHTTP(container)
+	}
+	log.Errorf("Unsupported check method: %s, must be tcp / http", checkMethod)
+	return false
+}
+
 // 检查一个容器的所有URL
 // 事实上一般也就一个
-func checkSingleContainer(container enginetypes.Container) bool {
+func checkHTTP(container enginetypes.Container) bool {
 	backends := getContainerBackends(container)
 	for _, backend := range backends {
 		url := fmt.Sprintf("http://%s/healthcheck", backend)
 		if !checkOneURL(url) {
+			return false
+		}
+	}
+	return true
+}
+
+// 检查一个TCP
+func checkTCP(container enginetypes.Container) bool {
+	backends := getContainerBackends(container)
+	for _, backend := range backends {
+		_, err := net.DialTimeout("tcp", backend, timeout)
+		if err != nil {
 			return false
 		}
 	}
@@ -130,7 +161,7 @@ func getIPForContainer(container enginetypes.Container) string {
 
 // 就先定义 [200, 500) 这个区间的 code 都算是成功吧
 func checkOneURL(url string) bool {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	resp, err := ctxhttp.Get(ctx, nil, url)
