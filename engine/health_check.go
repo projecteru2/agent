@@ -23,6 +23,7 @@ func (e *Engine) healthCheck() {
 
 	tick := time.NewTicker(time.Duration(interval) * time.Second)
 	for ; ; <-tick.C {
+		log.Debugf("Start to check all containers...")
 		go e.checkAllContainers()
 	}
 }
@@ -58,9 +59,11 @@ func (e *Engine) checkAllContainers() {
 		if status && !c.Alive {
 			c.Alive = true
 			e.store.UpdateContainer(c)
+			log.Infof("Container %s resurges")
 		} else if !status && c.Alive {
 			c.Alive = false
 			e.store.UpdateContainer(c)
+			log.Infof("Container %s dies")
 		}
 	}
 }

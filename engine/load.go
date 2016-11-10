@@ -27,9 +27,6 @@ func (e *Engine) load() error {
 			log.Debugf("Load container stats failed %s", err)
 			continue
 		}
-		if c == nil {
-			continue
-		}
 		status := getStatus(container.Status)
 		if status != common.STATUS_START {
 			log.Warnf("%s container %s down", c.Name, c.ID[:7])
