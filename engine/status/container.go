@@ -35,6 +35,8 @@ func GenerateContainerMeta(ID string, attrs map[string]string) (*types.Container
 	delete(attrs, "vendor")
 	delete(attrs, "build-date")
 	delete(attrs, "license")
+	// 小六又加了一项
+	delete(attrs, "ports")
 	container.Extend = attrs
 
 	return container, nil
