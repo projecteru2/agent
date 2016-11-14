@@ -24,16 +24,7 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 	var tagString string
 	host := strings.Replace(e.config.HostName, ".", "-", -1)
 
-	if len(container.Extend) > 0 {
-		tag := []string{}
-		for k, v := range container.Extend { // 是的，这里是会出现不同的排列顺序的，但是，如果都不确定 Extend 里面的顺序是怎样的，那怎么排
-			tag = append(tag, v)
-			log.Debugf("stat: %s  %s", k, v)
-		}
-		tagString = fmt.Sprintf("%s.%s.%s", host, strings.Join(tag, "."), container.ID[:7])
-	} else {
-		tagString = fmt.Sprintf("%s.%s", host, container.ID[:7])
-	}
+	tagString = fmt.Sprintf("%s.%s", host, container.ID[:7])
 
 	endpoint := fmt.Sprintf("%s.%s.%s", container.Name, container.Version, container.EntryPoint)
 	defer log.Infof("container %s %s metric report stop", container.Name, container.ID[:7])
