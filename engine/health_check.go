@@ -107,16 +107,16 @@ func (e *Engine) checkOneContainer(container enginetypes.ContainerJSON) int {
 	healthy := checkSingleContainerHealthy(container, checkMethod)
 	if healthy {
 		// 如果健康并且之前是挂了, 那么修改成健康
-		if !c.Alive {
-			c.Alive = true
+		if !c.Healthy {
+			c.Healthy = true
 			e.store.UpdateContainer(c)
 			log.Infof("Container %s resurges", container.ID)
 		}
 		return HEALTH_GOOD
 	} else {
 		// 如果挂了并且之前是健康, 那么修改成挂了
-		if c.Alive {
-			c.Alive = false
+		if c.Healthy {
+			c.Healthy = false
 			e.store.UpdateContainer(c)
 			log.Infof("Container %s dies", container.ID)
 		}

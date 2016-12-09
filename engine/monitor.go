@@ -79,6 +79,7 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 
 	container.Pid = c.State.Pid
 	container.Alive = true
+	container.Healthy = false
 	log.Debug(container)
 	if err := e.bind(container); err != nil {
 		log.Error(err)
@@ -100,6 +101,7 @@ func (e *Engine) handleContainerDie(event eventtypes.Message) {
 		return
 	}
 	container.Alive = false
+	container.Healthy = false
 	if err := e.store.UpdateContainer(container); err != nil {
 		log.Error(err)
 	}

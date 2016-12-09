@@ -41,6 +41,7 @@ func (c *Client) Crash() error {
 			return err
 		}
 		container.Alive = false
+		container.Healthy = false
 		if err := c.UpdateContainer(container); err != nil {
 			return err
 		}
