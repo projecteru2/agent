@@ -84,6 +84,15 @@ func (e *Engine) checkNewContainerHealth(container enginetypes.ContainerJSON) {
 	}
 }
 
+// 第一次上的容器可能没有设置health check
+// 那么我们认为这个容器一直是健康的, 并且不做检查
+// 需要告诉第一次上的时候这个容器是健康的, 还是不是
+func (e *Engine) judgeContainerHealth(container enginetypes.ContainerJSON) bool {
+	// 如果找不到健康检查, 那么就认为不需要检查, 一直是健康的
+	checkMethod, ok := container.Config.Labels["healthcheck"]
+	return !(ok && (checkMethod == "tcp" || checkMethod == "http"))
+}
+
 // 检查一个容器
 func (e *Engine) checkOneContainer(container enginetypes.ContainerJSON) int {
 	// 不是running就不检查, 也没办法检查啊...
