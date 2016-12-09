@@ -88,6 +88,8 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 	stop := make(chan int)
 	e.attach(container, stop)
 	go e.stat(container, stop)
+	// 发现容器起来了马上就要检查下健康
+	go e.checkNewContainerHealth(c)
 }
 
 func (e *Engine) handleContainerDie(event eventtypes.Message) {

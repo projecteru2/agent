@@ -9,12 +9,17 @@ import (
 	log "github.com/Sirupsen/logrus"
 	enginetypes "github.com/docker/engine-api/types"
 	enginefilters "github.com/docker/engine-api/types/filters"
-	"gitlab.ricebook.net/platform/agent/common"
 	"golang.org/x/net/context"
 	"golang.org/x/net/context/ctxhttp"
 )
 
-const timeout = 5 * time.Second
+const (
+	timeout            = 5 * time.Second
+	HEALTH_NOT_RUNNING = 0
+	HEALTH_NOT_FOUND   = 1
+	HEALTH_GOOD        = 2
+	HEALTH_BAD         = 3
+)
 
 func (e *Engine) healthCheck() {
 	// 默认用一分钟
@@ -43,41 +48,83 @@ func (e *Engine) checkAllContainers() {
 		return
 	}
 
-	for _, container := range containers {
-		if getStatus(container.Status) != common.STATUS_START {
-			continue
-		}
-
-		// 拿下检查方法, 暂时只支持tcp和http
-		checkMethod, ok := container.Labels["healthcheck"]
-		if !(ok && (checkMethod == "tcp" || checkMethod == "http")) {
-			continue
-		}
-
-		// 拿老的数据出来
-		c, err := e.store.GetContainer(container.ID)
+	for _, c := range containers {
+		// 我只想 fuck docker
+		// ContainerList 返回 enginetypes.Container
+		// ContainerInspect 返回 enginetypes.ContainerJSON
+		// 是不是有毛病啊, 不能返回一样的数据结构么我真是日了狗了... 艹他妹妹...
+		container, err := e.docker.ContainerInspect(context.Background(), c.ID)
 		if err != nil {
-			log.Errorf("Error when retrieving data from etcd, Container ID: %s, error: %s", container.ID, err.Error())
+			log.Errorf("Error when inspect container %q in check container health", c.ID)
 			continue
 		}
+		e.checkOneContainer(container)
+	}
+}
 
-		// 检查现在是不是还健康
-		// 如果健康并且之前是挂了, 那么修改成健康
-		// 如果挂了并且之前是健康, 那么修改成挂了
-		status := checkSingleContainer(container, checkMethod)
-		if status && !c.Alive {
-			c.Alive = true
-			e.store.UpdateContainer(c)
-			log.Infof("Container %s resurges", container.ID)
-		} else if !status && c.Alive {
-			c.Alive = false
-			e.store.UpdateContainer(c)
-			log.Infof("Container %s dies", container.ID)
+// 检查新上线的容器, 目前是检查10分钟, 10秒钟一次.
+// 也就是一共检查最多60次.
+// 在容器健康后或者10分钟时间到停止.
+func (e *Engine) checkNewContainerHealth(container enginetypes.ContainerJSON) {
+	tick := time.NewTicker(10 * time.Second)
+	defer tick.Stop()
+	timeout := time.After(10 * time.Minute)
+	for {
+		select {
+		case <-timeout:
+			log.Infof("Timeout when check new container %q", container.ID)
+			return
+		case <-tick.C:
+			r := e.checkOneContainer(container)
+			if r == HEALTH_GOOD || r == HEALTH_NOT_FOUND {
+				log.Infof("Check new container %q health stop", container.ID)
+				return
+			}
 		}
 	}
 }
 
-func checkSingleContainer(container enginetypes.Container, checkMethod string) bool {
+// 检查一个容器
+func (e *Engine) checkOneContainer(container enginetypes.ContainerJSON) int {
+	// 不是running就不检查, 也没办法检查啊...
+	if !container.State.Running {
+		return HEALTH_NOT_RUNNING
+	}
+	// 拿下检查方法, 暂时只支持tcp和http
+	checkMethod, ok := container.Config.Labels["healthcheck"]
+	if !(ok && (checkMethod == "tcp" || checkMethod == "http")) {
+		return HEALTH_NOT_FOUND
+	}
+
+	// 拿老的数据出来
+	c, err := e.store.GetContainer(container.ID)
+	if err != nil {
+		log.Errorf("Error when retrieving data from etcd, Container ID: %s, error: %s", container.ID, err.Error())
+		return HEALTH_NOT_FOUND
+	}
+
+	// 检查现在是不是还健康
+	healthy := checkSingleContainerHealthy(container, checkMethod)
+	if healthy {
+		// 如果健康并且之前是挂了, 那么修改成健康
+		if !c.Alive {
+			c.Alive = true
+			e.store.UpdateContainer(c)
+			log.Infof("Container %s resurges", container.ID)
+		}
+		return HEALTH_GOOD
+	} else {
+		// 如果挂了并且之前是健康, 那么修改成挂了
+		if c.Alive {
+			c.Alive = false
+			e.store.UpdateContainer(c)
+			log.Infof("Container %s dies", container.ID)
+		}
+		return HEALTH_BAD
+	}
+}
+
+func checkSingleContainerHealthy(container enginetypes.ContainerJSON, checkMethod string) bool {
 	if checkMethod == "tcp" {
 		return checkTCP(container)
 	} else if checkMethod == "http" {
@@ -88,7 +135,7 @@ func checkSingleContainer(container enginetypes.Container, checkMethod string) b
 
 // 检查一个容器的所有URL
 // 事实上一般也就一个
-func checkHTTP(container enginetypes.Container) bool {
+func checkHTTP(container enginetypes.ContainerJSON) bool {
 	backends := getContainerBackends(container)
 	for _, backend := range backends {
 		url := fmt.Sprintf("http://%s/healthcheck", backend)
@@ -100,7 +147,7 @@ func checkHTTP(container enginetypes.Container) bool {
 }
 
 // 检查一个TCP
-func checkTCP(container enginetypes.Container) bool {
+func checkTCP(container enginetypes.ContainerJSON) bool {
 	backends := getContainerBackends(container)
 	for _, backend := range backends {
 		_, err := net.DialTimeout("tcp", backend, timeout)
@@ -113,12 +160,12 @@ func checkTCP(container enginetypes.Container) bool {
 
 // 获取一个容器的全部后端
 // 其实就是IP跟端口笛卡儿积, 然后IP拿一个就够了
-func getContainerBackends(container enginetypes.Container) []string {
+func getContainerBackends(container enginetypes.ContainerJSON) []string {
 	backends := []string{}
 
 	// 拿端口的 label
 	// 没有的话就算了
-	portsLabel, ok := container.Labels["ports"]
+	portsLabel, ok := container.Config.Labels["ports"]
 	if !ok {
 		log.Warnf("Container %s has no ports defined, ignore", container.ID)
 		return backends
@@ -151,7 +198,7 @@ func getContainerBackends(container enginetypes.Container) []string {
 
 // 应用应该都是绑定到 0.0.0.0 的
 // 所以拿哪个 IP 其实无所谓.
-func getIPForContainer(container enginetypes.Container) string {
+func getIPForContainer(container enginetypes.ContainerJSON) string {
 	for _, endpoint := range container.NetworkSettings.Networks {
 		return endpoint.IPAddress
 	}
