@@ -55,7 +55,7 @@ func (e *Engine) checkAllContainers() {
 		// 是不是有毛病啊, 不能返回一样的数据结构么我真是日了狗了... 艹他妹妹...
 		container, err := e.docker.ContainerInspect(context.Background(), c.ID)
 		if err != nil {
-			log.Errorf("Error when inspect container %q in check container health", c.ID)
+			log.Errorf("Error when inspect container %s in check container health", c.ID)
 			continue
 		}
 		e.checkOneContainer(container)
@@ -72,12 +72,12 @@ func (e *Engine) checkNewContainerHealth(container enginetypes.ContainerJSON) {
 	for {
 		select {
 		case <-timeout:
-			log.Infof("Timeout when check new container %q", container.ID)
+			log.Infof("Timeout when check new container %s", container.ID)
 			return
 		case <-tick.C:
 			r := e.checkOneContainer(container)
 			if r == HEALTH_GOOD || r == HEALTH_NOT_FOUND {
-				log.Infof("Check new container %q health stop", container.ID)
+				log.Infof("Check new container %s health stop", container.ID)
 				return
 			}
 		}
