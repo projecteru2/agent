@@ -5,10 +5,8 @@ stages:
 build:
   stage: build
   script:
-    - "echo 'start building'"
     - "ln -s $CI_PROJECT_DIR $GOPATH/src/gitlab.ricebook.net/platform/agent"
     - go build -ldflags "-s -w" -a -tags netgo -installsuffix netgo
-    - "echo 'build done'"
   artifacts:
     paths:
       - "agent"
@@ -16,9 +14,7 @@ build:
 rpm:
   stage: rpm
   script:
-    - "echo 'start make rpm'"
     - "./make-rpm"
-    - "echo 'make rpm done'"
   dependencies:
     - "build"
   artifacts:
