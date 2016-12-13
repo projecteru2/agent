@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -146,9 +147,25 @@ func checkSingleContainerHealthy(container enginetypes.ContainerJSON, checkMetho
 // 事实上一般也就一个
 func checkHTTP(container enginetypes.ContainerJSON) bool {
 	backends := getContainerBackends(container)
+	expected_code_str, ok := container.Config.Labels["healthcheck_expected_code"]
+	if !ok {
+		expected_code_str = "0"
+	}
+	expected_code, err := strconv.Atoi(expected_code_str)
+	if err != nil {
+		expected_code = 0
+	}
+	healthcheck_url, ok := container.Config.Labels["healthcheck_url"]
+	if !ok {
+		healthcheck_url = "/healthcheck"
+	}
+	if !strings.HasPrefix(healthcheck_url, "/") {
+		healthcheck_url = "/" + healthcheck_url
+	}
+
 	for _, backend := range backends {
-		url := fmt.Sprintf("http://%s/healthcheck", backend)
-		if !checkOneURL(url) {
+		url := fmt.Sprintf("http://%s%s", backend, healthcheck_url)
+		if !checkOneURL(url, expected_code) {
 			return false
 		}
 	}
@@ -215,7 +232,7 @@ func getIPForContainer(container enginetypes.ContainerJSON) string {
 }
 
 // 就先定义 [200, 500) 这个区间的 code 都算是成功吧
-func checkOneURL(url string) bool {
+func checkOneURL(url string, expected_code int) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -224,6 +241,8 @@ func checkOneURL(url string) bool {
 		log.Errorf("Error when checking %s, %s", url, err.Error())
 		return false
 	}
-
-	return resp.StatusCode < 500 && resp.StatusCode >= 200
+	if expected_code == 0 {
+		return resp.StatusCode < 500 && resp.StatusCode >= 200
+	}
+	return resp.StatusCode == expected_code
 }
