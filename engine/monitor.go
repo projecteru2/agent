@@ -6,6 +6,7 @@ import (
 	eventtypes "github.com/docker/engine-api/types/events"
 	filtertypes "github.com/docker/engine-api/types/filters"
 	"golang.org/x/net/context"
+	"os"
 
 	"github.com/coreos/etcd/client"
 	"gitlab.ricebook.net/platform/agent/common"
@@ -111,11 +112,12 @@ func (e *Engine) handleContainerDestroy(event eventtypes.Message) {
 	log.Debugf("container %s destroy", event.ID[:7])
 	_, err := e.store.GetContainer(event.ID)
 	if err != nil {
-		log.Error(err)
-		return
+		hostname := os.Getenv("HOSTNAME")
+		log.Errorf("while geting container from etcd, %s occured err: %v", hostname, err)
 	}
 	if err := e.store.RemoveContainer(event.ID); err != nil {
-		log.Error(err)
+		hostname := os.Getenv("HOSTNAME")
+		log.Errorf("while removing container, %s occured err: %v", hostname, err)
 	}
 	log.Debugf("container %s data removed", event.ID[:7])
 }
