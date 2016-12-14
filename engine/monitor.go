@@ -112,7 +112,6 @@ func (e *Engine) handleContainerDestroy(event eventtypes.Message) {
 	_, err := e.store.GetContainer(event.ID)
 	if err != nil {
 		log.Error(err)
-		return
 	}
 	if err := e.store.RemoveContainer(event.ID); err != nil {
 		log.Error(err)
