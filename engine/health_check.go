@@ -23,16 +23,16 @@ const (
 )
 
 func (e *Engine) healthCheck() {
-	// 默认用一分钟
+	// 默认用一秒
 	interval := e.config.HealthCheckInterval
 	if interval == 0 {
-		interval = 60
+		interval = 1
 	}
 
 	tick := time.NewTicker(time.Duration(interval) * time.Second)
 	defer tick.Stop()
 	for ; ; <-tick.C {
-		log.Debugf("Start to check all containers...")
+		log.Debugf("Start to check health on all containers...")
 		go e.checkAllContainers()
 	}
 }
@@ -60,28 +60,6 @@ func (e *Engine) checkAllContainers() {
 			continue
 		}
 		e.checkOneContainer(container)
-	}
-}
-
-// 检查新上线的容器, 目前是检查10分钟, 10秒钟一次.
-// 也就是一共检查最多60次.
-// 在容器健康后或者10分钟时间到停止.
-func (e *Engine) checkNewContainerHealth(container enginetypes.ContainerJSON) {
-	tick := time.NewTicker(10 * time.Second)
-	defer tick.Stop()
-	timeout := time.After(10 * time.Minute)
-	for {
-		select {
-		case <-timeout:
-			log.Infof("Timeout when check new container %s", container.ID)
-			return
-		case <-tick.C:
-			r := e.checkOneContainer(container)
-			if r == HEALTH_GOOD || r == HEALTH_NOT_FOUND {
-				log.Infof("Check new container %s health stop", container.ID)
-				return
-			}
-		}
 	}
 }
 
