@@ -165,6 +165,7 @@ func checkHTTP(container enginetypes.ContainerJSON) bool {
 
 	for _, backend := range backends {
 		url := fmt.Sprintf("http://%s%s", backend, healthcheck_url)
+		log.Infof("Check health via http: container %s, url %s, expect code %d", container.ID, url, expected_code)
 		if !checkOneURL(url, expected_code) {
 			return false
 		}
@@ -176,6 +177,7 @@ func checkHTTP(container enginetypes.ContainerJSON) bool {
 func checkTCP(container enginetypes.ContainerJSON) bool {
 	backends := getContainerBackends(container)
 	for _, backend := range backends {
+		log.Infof("Check health via tcp: container %s, backend %s", container.ID, backend)
 		_, err := net.DialTimeout("tcp", backend, timeout)
 		if err != nil {
 			return false
