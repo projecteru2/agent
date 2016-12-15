@@ -200,13 +200,11 @@ func getContainerBackends(container enginetypes.ContainerJSON) []string {
 	}
 
 	// 拿端口列表
-	// 现在只检测 tcp 的端口
 	ports := []string{}
 	for _, part := range strings.Split(portsLabel, ",") {
 		// 必须是 port/protocol 的格式, 不是就不管
-		// protocol 不是 tcp 也不管
 		ps := strings.SplitN(part, "/", 2)
-		if len(ps) != 2 || ps[1] != "tcp" {
+		if len(ps) != 2 {
 			continue
 		}
 		ports = append(ports, ps[0])
