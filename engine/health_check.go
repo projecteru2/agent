@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	timeout            = 5 * time.Second
+	timeout            = 1 * time.Second
 	HEALTH_NOT_RUNNING = 0
 	HEALTH_NOT_FOUND   = 1
 	HEALTH_GOOD        = 2
@@ -59,7 +59,7 @@ func (e *Engine) checkAllContainers() {
 			log.Errorf("Error when inspect container %s in check container health", c.ID)
 			continue
 		}
-		e.checkOneContainer(container)
+		go e.checkOneContainer(container)
 	}
 }
 
