@@ -31,6 +31,7 @@ type Config struct {
 	PidFile             string `yaml:"pid"`
 	HostName            string
 	HealthCheckInterval int `yaml:"health_check_interval"`
+	HealthCheckTimeout  int `yaml:"health_check_timeout"`
 
 	Docker  DockerConfig
 	Etcd    ETCDConfig

@@ -15,7 +15,6 @@ import (
 )
 
 const (
-	timeout            = 1 * time.Second
 	HEALTH_NOT_RUNNING = 0
 	HEALTH_NOT_FOUND   = 1
 	HEALTH_GOOD        = 2
@@ -23,16 +22,14 @@ const (
 )
 
 func (e *Engine) healthCheck() {
-	// 默认用一秒
 	interval := e.config.HealthCheckInterval
 	if interval == 0 {
-		interval = 1
+		interval = 3
 	}
 
 	tick := time.NewTicker(time.Duration(interval) * time.Second)
 	defer tick.Stop()
 	for ; ; <-tick.C {
-		log.Debugf("Start to check health on all containers...")
 		go e.checkAllContainers()
 	}
 }
@@ -41,6 +38,10 @@ func (e *Engine) healthCheck() {
 // 这些容器是被ERU标记管理的
 // 似乎是高版本的docker才能用, 但是看起来1.11.2已经有了
 func (e *Engine) checkAllContainers() {
+	timeout := e.config.HealthCheckTimeout
+	if timeout == 0 {
+		timeout = 3
+	}
 	f := enginefilters.NewArgs()
 	f.Add("label", "ERU=1")
 	containers, err := e.docker.ContainerList(context.Background(), enginetypes.ContainerListOptions{Filter: f})
@@ -59,7 +60,7 @@ func (e *Engine) checkAllContainers() {
 			log.Errorf("Error when inspect container %s in check container health", c.ID)
 			continue
 		}
-		go e.checkOneContainer(container)
+		go e.checkOneContainer(container, time.Duration(timeout)*time.Second)
 	}
 }
 
@@ -73,7 +74,7 @@ func (e *Engine) judgeContainerHealth(container enginetypes.ContainerJSON) bool 
 }
 
 // 检查一个容器
-func (e *Engine) checkOneContainer(container enginetypes.ContainerJSON) int {
+func (e *Engine) checkOneContainer(container enginetypes.ContainerJSON, timeout time.Duration) int {
 	// 不是running就不检查, 也没办法检查啊...
 	if !container.State.Running {
 		return HEALTH_NOT_RUNNING
@@ -92,7 +93,7 @@ func (e *Engine) checkOneContainer(container enginetypes.ContainerJSON) int {
 	}
 
 	// 检查现在是不是还健康
-	healthy := checkSingleContainerHealthy(container, checkMethod)
+	healthy := checkSingleContainerHealthy(container, checkMethod, timeout)
 	if healthy {
 		// 如果健康并且之前是挂了, 那么修改成健康
 		if !c.Healthy {
@@ -112,18 +113,18 @@ func (e *Engine) checkOneContainer(container enginetypes.ContainerJSON) int {
 	}
 }
 
-func checkSingleContainerHealthy(container enginetypes.ContainerJSON, checkMethod string) bool {
+func checkSingleContainerHealthy(container enginetypes.ContainerJSON, checkMethod string, timeout time.Duration) bool {
 	if checkMethod == "tcp" {
-		return checkTCP(container)
+		return checkTCP(container, timeout)
 	} else if checkMethod == "http" {
-		return checkHTTP(container)
+		return checkHTTP(container, timeout)
 	}
 	return false
 }
 
 // 检查一个容器的所有URL
 // 事实上一般也就一个
-func checkHTTP(container enginetypes.ContainerJSON) bool {
+func checkHTTP(container enginetypes.ContainerJSON, timeout time.Duration) bool {
 	backends := getContainerBackends(container)
 	expected_code_str, ok := container.Config.Labels["healthcheck_expected_code"]
 	if !ok {
@@ -144,7 +145,7 @@ func checkHTTP(container enginetypes.ContainerJSON) bool {
 	for _, backend := range backends {
 		url := fmt.Sprintf("http://%s%s", backend, healthcheck_url)
 		log.Infof("Check health via http: container %s, url %s, expect code %d", container.ID, url, expected_code)
-		if !checkOneURL(url, expected_code) {
+		if !checkOneURL(url, expected_code, timeout) {
 			return false
 		}
 	}
@@ -152,7 +153,7 @@ func checkHTTP(container enginetypes.ContainerJSON) bool {
 }
 
 // 检查一个TCP
-func checkTCP(container enginetypes.ContainerJSON) bool {
+func checkTCP(container enginetypes.ContainerJSON, timeout time.Duration) bool {
 	backends := getContainerBackends(container)
 	for _, backend := range backends {
 		log.Infof("Check health via tcp: container %s, backend %s", container.ID, backend)
@@ -210,7 +211,7 @@ func getIPForContainer(container enginetypes.ContainerJSON) string {
 }
 
 // 就先定义 [200, 500) 这个区间的 code 都算是成功吧
-func checkOneURL(url string, expected_code int) bool {
+func checkOneURL(url string, expected_code int, timeout time.Duration) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
