@@ -12,7 +12,7 @@ import (
 
 func (e *Engine) stat(container *types.Container, stop chan int) {
 	s := metric.NewStats(container)
-	t, c, _, n, err := getStats(s)
+	totalJiffies1, tsReadingTotalJiffies1, cpuStats1, _, networkStats1, err := getStats(s)
 	if err != nil {
 		log.Errorf("get stats failed %s", err)
 		return
@@ -34,22 +34,22 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 		select {
 		case <-tick.C:
 			go func() {
-				t2, c2, m, n2, err := getStats(s)
+				totalJiffies2, tsReadingTotalJiffies2, cpuStats2, memoryStats, networkStats2, err := getStats(s)
 				if err != nil {
 					log.Errorf("stat %s container %s failed %s", container.Name, container.ID[:7], err)
 					return
 				}
 				result := map[string]float64{}
-				deltaT := float64(t2 - t)
-				result["cpu_usage_rate"] = float64(c2.UsageInUserMode-c.UsageInUserMode) / deltaT
-				result["cpu_system_rate"] = float64(c2.UsageInSystemMode-c.UsageInSystemMode) / deltaT
-				result["mem_usage"] = float64(m.Usage)
-				result["mem_max_usage"] = float64(m.MaxUsage)
-				result["mem_rss"] = float64(m.Detail["rss"])
-				for k, v := range n2 {
-					result[k+".rate"] = float64(v-n[k]) / float64(e.config.Metrics.Step)
+				cpu_usage_rate, cpu_system_rate := e.calCPUrate(cpuStats1, cpuStats2, totalJiffies1, totalJiffies2, tsReadingTotalJiffies1, tsReadingTotalJiffies2)
+				result["cpu_usage_rate"] = cpu_usage_rate
+				result["cpu_system_rate"] = cpu_system_rate
+				result["mem_usage"] = float64(memoryStats.Usage)
+				result["mem_max_usage"] = float64(memoryStats.MaxUsage)
+				result["mem_rss"] = float64(memoryStats.Detail["rss"])
+				for k, v := range networkStats2 {
+					result[k+".rate"] = float64(v-networkStats1[k]) / float64(e.config.Metrics.Step)
 				}
-				t, c, n = t2, c2, n2
+				totalJiffies1, cpuStats1, networkStats1 = totalJiffies2, cpuStats2, networkStats2
 				statsd.Send(result, endpoint, tagString)
 			}()
 		case <-stop:
@@ -59,22 +59,35 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 	}
 }
 
-func getStats(s *metric.Stats) (uint64, *types.CPUStats, *types.MemoryStats, map[string]uint64, error) {
-	total, err := s.GetTotalJiffies()
+func (e *Engine) calCPUrate(preCPUStat, postCPUStat *types.CPUStats, preTotal, postTotal, preTS, postTS uint64) (float64, float64) {
+	deltaTimePre := (preCPUStat.ReadingTS - preTS) * 100 // sysconf(_SC_CLK_TCK):100
+	log.Debugf("deltaTimePre: %d, preCPUStatTS: %d, preTS: %d", deltaTimePre, preCPUStat.ReadingTS, preTS)
+	deltaTimePost := (postCPUStat.ReadingTS - postTS) * 100
+	log.Debugf("deltaTimePost: %d, postCPUstatTs: %d, postTS: %d", deltaTimePost, postCPUStat.ReadingTS, postTS)
+	deltaTotal := float64(postTotal - preTotal)
+	log.Debugf("deltaTotal: %f", deltaTotal)
+	cpu_usage_rate := e.cpuCore * float64(postCPUStat.UsageInUserMode-preCPUStat.UsageInUserMode) / deltaTotal
+	cpu_system_rate := e.cpuCore * float64(postCPUStat.UsageInSystemMode-preCPUStat.UsageInSystemMode) / deltaTotal
+	log.Debugf("cpu_usage_rate: %f, cpu_system_rate: %f", cpu_usage_rate, cpu_system_rate)
+	return cpu_usage_rate, cpu_system_rate
+}
+
+func getStats(s *metric.Stats) (uint64, uint64, *types.CPUStats, *types.MemoryStats, map[string]uint64, error) {
+	total, ts, err := s.GetTotalJiffies()
 	if err != nil {
-		return 0, nil, nil, nil, err
+		return 0, 0, nil, nil, nil, err
 	}
 	cpu, err := s.GetCPUStats()
 	if err != nil {
-		return 0, nil, nil, nil, err
+		return 0, 0, nil, nil, nil, err
 	}
 	memory, err := s.GetMemoryStats()
 	if err != nil {
-		return 0, nil, nil, nil, err
+		return 0, 0, nil, nil, nil, err
 	}
 	network, err := s.GetNetworkStats()
 	if err != nil {
-		return 0, nil, nil, nil, err
+		return 0, 0, nil, nil, nil, err
 	}
-	return total, cpu, memory, network, nil
+	return total, ts, cpu, memory, network, nil
 }

@@ -3,6 +3,7 @@ package engine
 import (
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	"golang.org/x/net/context"
@@ -20,6 +21,7 @@ type Engine struct {
 	config  types.Config
 	docker  *engineapi.Client
 	errChan chan error
+	cpuCore float64 // 因为到时候要乘以 float64 所以就直接转换成 float64 吧
 
 	transfers *utils.HashBackends
 	forwards  *utils.HashBackends
@@ -40,6 +42,7 @@ func NewEngine(config types.Config) (*Engine, error) {
 	engine.store = store
 	engine.docker = docker
 	engine.errChan = make(chan error)
+	engine.cpuCore = float64(runtime.NumCPU())
 	engine.transfers = utils.NewHashBackends(config.Metrics.Transfers)
 	engine.forwards = utils.NewHashBackends(config.Log.Forwards)
 	engine.physical = utils.NewHashBackends(config.NIC.Physical)
