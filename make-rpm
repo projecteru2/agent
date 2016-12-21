@@ -1,13 +1,19 @@
 #!/bin/bash
 
+set -e
 ROOT="`pwd`/build"
 BIN="$ROOT/usr/bin"
 CONF="$ROOT/etc/eru-agent"
 SERVICE="$ROOT/usr/lib/systemd/system"
+after_install_script="$ROOT/after_install.sh"
 
 mkdir -p $BIN
 mkdir -p $CONF
 mkdir -p $SERVICE
+
+cat > $after_install_script << EOF
+systemctl daemon-reload
+EOF
 
 mv agent $BIN/eru-agent
 mv agent.yaml.sample $CONF
@@ -17,6 +23,6 @@ OUTPUT=($($BIN/eru-agent -v 2>&1))
 VERSION=${OUTPUT[-1]%\"}
 echo $VERSION rpm build begin
 
-fpm -f -s dir -t rpm -n eru-agent --epoch 0 -v $VERSION --iteration 1.el7 -C $ROOT -p $PWD --verbose --category 'Development/App' --description 'docker eru agent' --url 'http://github.com/projecteru/eru-agent' --license 'BSD'  --no-rpm-sign usr etc
+fpm -f -s dir -t rpm -n eru-agent --epoch 0 -v $VERSION --iteration 1.el7 -C $ROOT -p $PWD --after-install $after_install_script --verbose --category 'Development/App' --description 'docker eru agent' --url 'http://gitlab.ricebook.net/platform/agent/' --license 'BSD'  --no-rpm-sign usr etc
 
 rm -rf $ROOT
