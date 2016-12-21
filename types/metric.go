@@ -3,6 +3,7 @@ package types
 type CPUStats struct {
 	UsageInUserMode   uint64
 	UsageInSystemMode uint64
+	ReadingTS         uint64
 }
 
 type MemoryStats struct {

@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"gitlab.ricebook.net/platform/agent/types"
 )
@@ -14,6 +15,8 @@ import (
 func (s *Stats) GetCPUStats() (*types.CPUStats, error) {
 	var line string
 	cpuStats := &types.CPUStats{}
+	cpuStats.ReadingTS = uint64(time.Now().Unix())
+
 	f, err := os.Open(s.cpuPath)
 	if err != nil {
 		return nil, err
