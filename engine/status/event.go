@@ -1,11 +1,10 @@
 package status
 
 import (
-	"encoding/json"
-	"io"
 	"sync"
 
-	eventtypes "github.com/docker/engine-api/types/events"
+	log "github.com/Sirupsen/logrus"
+	eventtypes "github.com/docker/docker/api/types/events"
 )
 
 type EventHandler struct {
@@ -24,8 +23,9 @@ func (e *EventHandler) Handle(action string, h func(eventtypes.Message)) {
 }
 
 func (e *EventHandler) Watch(c <-chan eventtypes.Message) {
+	log.Infof("enter Watch")
 	for ev := range c {
-		//		log.Debugf("cid %s action %s", ev.ID[:7], ev.Action)
+		log.Infof("cid %s action %s", ev.ID[:7], ev.Action)
 		e.Lock()
 		h, exists := e.handlers[ev.Action]
 		e.Unlock()
@@ -34,19 +34,5 @@ func (e *EventHandler) Watch(c <-chan eventtypes.Message) {
 		}
 		go h(ev)
 	}
-}
-
-func DecodeEvents(input io.Reader, c chan eventtypes.Message) error {
-	dec := json.NewDecoder(input)
-	for {
-		var event eventtypes.Message
-		if err := dec.Decode(&event); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		c <- event
-	}
-	return nil
+	log.Infof("exit Watch")
 }

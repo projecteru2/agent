@@ -8,8 +8,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	enginetypes "github.com/docker/engine-api/types"
-	enginefilters "github.com/docker/engine-api/types/filters"
+	enginetypes "github.com/docker/docker/api/types"
+	enginefilters "github.com/docker/docker/api/types/filters"
 	"golang.org/x/net/context"
 	"golang.org/x/net/context/ctxhttp"
 )
@@ -44,7 +44,7 @@ func (e *Engine) checkAllContainers() {
 	}
 	f := enginefilters.NewArgs()
 	f.Add("label", "ERU=1")
-	containers, err := e.docker.ContainerList(context.Background(), enginetypes.ContainerListOptions{Filter: f})
+	containers, err := e.docker.ContainerList(context.Background(), enginetypes.ContainerListOptions{Filters: f})
 	if err != nil {
 		log.Errorf("Error when list all containers with label \"ERU=1\": %s", err.Error())
 		return
