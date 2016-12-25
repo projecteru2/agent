@@ -6,10 +6,8 @@ import (
 	"runtime"
 	"syscall"
 
-	"golang.org/x/net/context"
-
 	log "github.com/Sirupsen/logrus"
-	engineapi "github.com/docker/engine-api/client"
+	engineapi "github.com/docker/docker/client"
 	"gitlab.ricebook.net/platform/agent/store"
 	"gitlab.ricebook.net/platform/agent/store/etcd"
 	"gitlab.ricebook.net/platform/agent/types"
@@ -20,7 +18,6 @@ type Engine struct {
 	store   store.Store
 	config  types.Config
 	docker  *engineapi.Client
-	errChan chan error
 	cpuCore float64 // 因为到时候要乘以 float64 所以就直接转换成 float64 吧
 
 	transfers *utils.HashBackends
@@ -41,7 +38,6 @@ func NewEngine(config types.Config) (*Engine, error) {
 	engine.config = config
 	engine.store = store
 	engine.docker = docker
-	engine.errChan = make(chan error)
 	engine.cpuCore = float64(runtime.NumCPU())
 	engine.transfers = utils.NewHashBackends(config.Metrics.Transfers)
 	engine.forwards = utils.NewHashBackends(config.Log.Forwards)
@@ -50,20 +46,15 @@ func NewEngine(config types.Config) (*Engine, error) {
 }
 
 func (e *Engine) Run() error {
-	// check docker alive
-	_, err := e.docker.Info(context.Background())
-	if err != nil {
-		log.Errorf("Docker down %s", err)
-		return err
-	}
-
 	// load container
 	if err := e.load(); err != nil {
 		log.Errorf("Eru Agent load failed %s", err)
 		return err
 	}
 	// start status watcher
-	go e.monitor()
+	// eventChan, errChan := e.initMonitor()
+	// go e.monitor(eventChan, errChan)
+	e.initMonitor()
 
 	// start health check
 	go e.healthCheck()
@@ -78,13 +69,8 @@ func (e *Engine) Run() error {
 	// wait for signal
 	var c = make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGQUIT)
-	select {
-	case s := <-c:
-		log.Infof("Eru Agent Catch %s", s)
-		return nil
-	case err := <-e.errChan:
-		e.store.Crash()
-		log.Errorf("Eru Agent Error %s", err)
-		return err
-	}
+
+	s := <-c
+	log.Infof("Eru Agent Catch %s", s)
+	return nil
 }
