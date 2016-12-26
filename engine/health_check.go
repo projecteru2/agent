@@ -8,8 +8,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	enginetypes "github.com/docker/engine-api/types"
-	enginefilters "github.com/docker/engine-api/types/filters"
+	enginetypes "github.com/docker/docker/api/types"
+	enginefilters "github.com/docker/docker/api/types/filters"
 	"golang.org/x/net/context"
 	"golang.org/x/net/context/ctxhttp"
 )
@@ -44,7 +44,7 @@ func (e *Engine) checkAllContainers() {
 	}
 	f := enginefilters.NewArgs()
 	f.Add("label", "ERU=1")
-	containers, err := e.docker.ContainerList(context.Background(), enginetypes.ContainerListOptions{Filter: f})
+	containers, err := e.docker.ContainerList(context.Background(), enginetypes.ContainerListOptions{Filters: f})
 	if err != nil {
 		log.Errorf("Error when list all containers with label \"ERU=1\": %s", err.Error())
 		return
@@ -144,8 +144,9 @@ func checkHTTP(container enginetypes.ContainerJSON, timeout time.Duration) bool 
 
 	for _, backend := range backends {
 		url := fmt.Sprintf("http://%s%s", backend, healthcheck_url)
-		log.Infof("Check health via http: container %s, url %s, expect code %d", container.ID, url, expected_code)
+		log.Debugf("Check health via http: container %s, url %s, expect code %d", container.ID, url, expected_code)
 		if !checkOneURL(url, expected_code, timeout) {
+			log.Infof("Check health failed via http: container %s, url %s, expect code %d", container.ID, url, expected_code)
 			return false
 		}
 	}
@@ -156,7 +157,7 @@ func checkHTTP(container enginetypes.ContainerJSON, timeout time.Duration) bool 
 func checkTCP(container enginetypes.ContainerJSON, timeout time.Duration) bool {
 	backends := getContainerBackends(container)
 	for _, backend := range backends {
-		log.Infof("Check health via tcp: container %s, backend %s", container.ID, backend)
+		log.Debugf("Check health via tcp: container %s, backend %s", container.ID, backend)
 		_, err := net.DialTimeout("tcp", backend, timeout)
 		if err != nil {
 			return false
