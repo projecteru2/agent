@@ -48,7 +48,6 @@ func NewEngine(config types.Config) (*Engine, error) {
 func (e *Engine) Run() error {
 	// load container
 	if err := e.load(); err != nil {
-		log.Errorf("Eru Agent load failed %s", err)
 		return err
 	}
 	// start status watcher
@@ -60,7 +59,6 @@ func (e *Engine) Run() error {
 
 	// tell core this node is ready
 	if err := e.store.RegisterNode(&types.Node{Alive: true}); err != nil {
-		log.Errorf("register node failed %s", err)
 		return err
 	}
 	log.Info("Node activated")
@@ -70,11 +68,10 @@ func (e *Engine) Run() error {
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGQUIT)
 	select {
 	case s := <-c:
-		log.Infof("Eru Agent Catch %s", s)
+		log.Infof("Agent caught %s", s)
 		return nil
 	case err := <-errChan:
 		e.store.Crash()
-		log.Errorf("Eru Agent Error %s", err)
 		return err
 	}
 }
