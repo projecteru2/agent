@@ -32,15 +32,15 @@ func (e *Engine) load() error {
 			log.Warnf("%s container %s down", c.Name, c.ID[:7])
 			c.Alive = false
 			c.Healthy = false
-			if err := e.bind(c); err != nil {
-				log.Errorf("bind container info failed %s", err)
-			}
-			continue
 		}
-
-		stop := make(chan int)
-		e.attach(c, stop)
-		go e.stat(c, stop)
+		if err := e.bind(c); err != nil {
+			log.Errorf("bind container info failed %s", err)
+		}
+		if status == common.STATUS_START {
+			stop := make(chan int)
+			e.attach(c, stop)
+			go e.stat(c, stop)
+		}
 	}
 	return nil
 }
