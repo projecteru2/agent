@@ -1,4 +1,4 @@
-image: "hub.ricebook.net/base/centos:onbuild-eru-agent-2016.12.22"
+image: "hub.ricebook.net/base/centos:onbuild-eru-agent-2016.11.28"
 stages:
   - build
   - rpm
@@ -21,3 +21,4 @@ rpm:
     paths:
       - "eru-agent*.rpm"
     expire_in: 1 week
+
