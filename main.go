@@ -3,7 +3,6 @@ package main
 import (
 	"io/ioutil"
 	"os"
-	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"gitlab.ricebook.net/platform/agent/api"
@@ -80,14 +79,8 @@ func serve() error {
 
 	go api.Serve(config.API.Addr)
 
-	for {
-		err := agent.Run()
-		if err == nil {
-			break
-		}
-		log.Errorf("Agent caught error %s", err)
-		log.Infof("Restarting...")
-		time.Sleep(3 * time.Second)
+	if err := agent.Run(); err != nil {
+		log.Fatalf("Agent caught error %s", err)
 	}
 	return nil
 }
