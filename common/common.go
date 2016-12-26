@@ -2,7 +2,7 @@ package common
 
 const (
 	DEFAULT_ETCD_PREFIX = "eru"
-	ERU_AGENT_VERSION   = "2.0.7f"
+	ERU_AGENT_VERSION   = "2.0.7e"
 	DOCKER_CLI_VERSION  = "v1.23"
 
 	STATUS_DIE     = "die"

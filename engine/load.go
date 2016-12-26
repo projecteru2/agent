@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
-	enginetypes "github.com/docker/docker/api/types"
+	enginetypes "github.com/docker/engine-api/types"
 	"gitlab.ricebook.net/platform/agent/common"
 	"gitlab.ricebook.net/platform/agent/types"
 	"gitlab.ricebook.net/platform/agent/utils"

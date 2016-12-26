@@ -12,7 +12,6 @@ import (
 
 func (e *Engine) stat(container *types.Container, stop chan int) {
 	s := metric.NewStats(container)
-	log.Debugf("container.CPUQuota: %d", container.CPUQuota)
 	totalJiffies1, tsReadingTotalJiffies1, cpuStats1, _, networkStats1, err := getStats(s)
 	if err != nil {
 		log.Errorf("get stats failed %s", err)

@@ -9,6 +9,5 @@ type Container struct {
 	EntryPoint string
 	Ident      string
 	Version    string
-	CPUQuota   int64
 	Extend     map[string]string
 }

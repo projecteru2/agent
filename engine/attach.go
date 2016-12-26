@@ -11,7 +11,7 @@ import (
 	"golang.org/x/net/context"
 
 	log "github.com/Sirupsen/logrus"
-	dockertypes "github.com/docker/docker/api/types"
+	dockertypes "github.com/docker/engine-api/types"
 
 	"gitlab.ricebook.net/platform/agent/common"
 	"gitlab.ricebook.net/platform/agent/engine/logs"

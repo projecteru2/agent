@@ -1,14 +1,12 @@
 package engine
 
 import (
-	"os"
-	"time"
-
 	log "github.com/Sirupsen/logrus"
-	types "github.com/docker/docker/api/types"
-	eventtypes "github.com/docker/docker/api/types/events"
-	filtertypes "github.com/docker/docker/api/types/filters"
+	types "github.com/docker/engine-api/types"
+	eventtypes "github.com/docker/engine-api/types/events"
+	filtertypes "github.com/docker/engine-api/types/filters"
 	"golang.org/x/net/context"
+	"os"
 
 	"github.com/coreos/etcd/client"
 	"gitlab.ricebook.net/platform/agent/common"
@@ -17,29 +15,34 @@ import (
 
 var eventHandler = status.NewEventHandler()
 
-func (e *Engine) initMonitor() {
+func (e *Engine) monitor() {
 	eventHandler.Handle(common.STATUS_START, e.handleContainerStart)
 	eventHandler.Handle(common.STATUS_DIE, e.handleContainerDie)
 	eventHandler.Handle(common.STATUS_DESTROY, e.handleContainerDestroy)
 
-	e.monitor()
+	var eventChan = make(chan eventtypes.Message)
+	go eventHandler.Watch(eventChan)
+	e.monitorContainerEvents(eventChan)
+	close(eventChan)
 }
 
-func (e *Engine) monitor() {
+func (e *Engine) monitorContainerEvents(c chan eventtypes.Message) {
 	ctx := context.Background()
 	f := filtertypes.NewArgs()
 	f.Add("type", "container")
 	options := types.EventsOptions{Filters: f}
+	resBody, err := e.docker.Events(ctx, options)
+	// Whether we successfully subscribed to events or not, we can now
+	// unblock the main goroutine.
+	if err != nil {
+		e.errChan <- err
+		return
+	}
+	log.Info("Status watch start")
+	defer resBody.Close()
 
-	tick := time.NewTicker(time.Duration(10) * time.Second)
-	for ; ; <-tick.C {
-		log.Infof("e.docker.Events")
-		eventChan, errChan := e.docker.Events(ctx, options)
-		log.Infof("watch events")
-		go eventHandler.Watch(eventChan)
-		log.Infof("watch errChan")
-		err := <-errChan
-		log.Infof("errChan: %v", err)
+	if err := status.DecodeEvents(resBody, c); err != nil {
+		e.errChan <- err
 	}
 }
 
@@ -71,17 +74,14 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 
 	c, err := e.docker.ContainerInspect(context.Background(), event.ID)
 	if err != nil {
-		log.Errorf("e.docker.ContainerInspect: %v", err)
+		log.Error(err)
 		return
 	}
 
-	log.Debugf("e.docker.ContainerInspect: %v", c)
 	container.Pid = c.State.Pid
 	container.Alive = true
 	container.Healthy = e.judgeContainerHealth(c)
-	container.CPUQuota = c.HostConfig.Resources.CPUQuota
-	log.Debugf("container.CPUQuota: %d", container.CPUQuota)
-
+	log.Debug(container)
 	if err := e.bind(container); err != nil {
 		log.Error(err)
 		return
@@ -104,7 +104,6 @@ func (e *Engine) handleContainerDie(event eventtypes.Message) {
 	if err := e.store.UpdateContainer(container); err != nil {
 		log.Error(err)
 	}
-	log.Infof("Monitor: container %s data updated", event.ID[:7])
 }
 
 func (e *Engine) handleContainerDestroy(event eventtypes.Message) {
@@ -118,5 +117,5 @@ func (e *Engine) handleContainerDestroy(event eventtypes.Message) {
 		hostname := os.Getenv("HOSTNAME")
 		log.Errorf("while removing container, %s occured err: %v", hostname, err)
 	}
-	log.Infof("Monitor: container %s data removed", event.ID[:7])
+	log.Debugf("container %s data removed", event.ID[:7])
 }
