@@ -70,8 +70,10 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 	container.Alive = true
 	container.Healthy = e.judgeContainerHealth(c)
 	container.CPUQuota = c.HostConfig.Resources.CPUQuota
+	container.CPUPeriod = c.HostConfig.Resources.CPUPeriod
 	log.Debugf("container.CPUQuota: %d", container.CPUQuota)
-	log.Debug(container)
+	log.Debugf("container.CPUPeriod: %d", container.CPUPeriod)
+
 	if err := e.bind(container); err != nil {
 		log.Error(err)
 		return

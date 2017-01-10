@@ -23,6 +23,7 @@ type Stats struct {
 	memoryUsagePath    string
 	memoryMaxUsagePath string
 	memoryDetailPath   string
+	cpuQuotaRate       float64
 }
 
 func NewStats(container *types.Container) *Stats {

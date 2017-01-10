@@ -12,6 +12,8 @@ import (
 
 func (e *Engine) stat(container *types.Container, stop chan int) {
 	s := metric.NewStats(container)
+	cpuQuotaRate := float64(container.CPUQuota) / float64(container.CPUPeriod) / e.cpuCore
+	log.Debugf("CPUQuota: %d, CPUPeriod: %d, cpuQuotaRate: %f", container.CPUQuota, container.CPUPeriod, cpuQuotaRate)
 	totalJiffies1, tsReadingTotalJiffies1, cpuStats1, _, networkStats1, err := getStats(s)
 	if err != nil {
 		log.Errorf("get stats failed %s", err)
@@ -40,9 +42,11 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 					return
 				}
 				result := map[string]float64{}
-				cpu_usage_rate, cpu_system_rate := e.calCPUrate(cpuStats1, cpuStats2, totalJiffies1, totalJiffies2, tsReadingTotalJiffies1, tsReadingTotalJiffies2)
-				result["cpu_usage_rate"] = cpu_usage_rate
-				result["cpu_system_rate"] = cpu_system_rate
+				cpuUsageRateServer, cpuSystemRateServer, cpuUsageRateContainer, cpuSystemRateContainer := e.calCPUrate(cpuStats1, cpuStats2, totalJiffies1, totalJiffies2, tsReadingTotalJiffies1, tsReadingTotalJiffies2, cpuQuotaRate)
+				result["cpu_usage_rate_container"] = cpuUsageRateContainer
+				result["cpu_system_rate_container"] = cpuSystemRateContainer
+				result["cpu_usage_rate_system"] = cpuUsageRateServer
+				result["cpu_system_rate_system"] = cpuSystemRateServer
 				result["mem_usage"] = float64(memoryStats.Usage)
 				result["mem_max_usage"] = float64(memoryStats.MaxUsage)
 				result["mem_rss"] = float64(memoryStats.Detail["rss"])
@@ -59,17 +63,20 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 	}
 }
 
-func (e *Engine) calCPUrate(preCPUStat, postCPUStat *types.CPUStats, preTotal, postTotal, preTS, postTS uint64) (float64, float64) {
+func (e *Engine) calCPUrate(preCPUStat, postCPUStat *types.CPUStats, preTotal, postTotal, preTS, postTS uint64, quotaRate float64) (float64, float64, float64, float64) {
 	deltaTimePre := (preCPUStat.ReadingTS - preTS) * 100 // sysconf(_SC_CLK_TCK):100
 	log.Debugf("deltaTimePre: %d, preCPUStatTS: %d, preTS: %d", deltaTimePre, preCPUStat.ReadingTS, preTS)
 	deltaTimePost := (postCPUStat.ReadingTS - postTS) * 100
 	log.Debugf("deltaTimePost: %d, postCPUstatTs: %d, postTS: %d", deltaTimePost, postCPUStat.ReadingTS, postTS)
 	deltaTotal := float64(postTotal - preTotal)
 	log.Debugf("deltaTotal: %f", deltaTotal)
-	cpu_usage_rate := e.cpuCore * float64(postCPUStat.UsageInUserMode-preCPUStat.UsageInUserMode) / deltaTotal
-	cpu_system_rate := e.cpuCore * float64(postCPUStat.UsageInSystemMode-preCPUStat.UsageInSystemMode) / deltaTotal
-	log.Debugf("cpu_usage_rate: %f, cpu_system_rate: %f", cpu_usage_rate, cpu_system_rate)
-	return cpu_usage_rate, cpu_system_rate
+	cpuUsageRateServer := float64(postCPUStat.UsageInUserMode-preCPUStat.UsageInUserMode) / deltaTotal
+	cpuSystemRateServer := float64(postCPUStat.UsageInSystemMode-preCPUStat.UsageInSystemMode) / deltaTotal
+	cpuUsageRateContainer := cpuUsageRateServer / quotaRate
+	cpuSystemRateContainer := cpuSystemRateServer / quotaRate
+	log.Debugf("cpuUsageRateContainer: %f, cpuSystemRateContainer: %f", cpuUsageRateContainer, cpuSystemRateContainer)
+	log.Debugf("cpuUsageRateServer: %f, cpuSystemRateServer: %f", cpuUsageRateServer, cpuSystemRateServer)
+	return cpuUsageRateServer, cpuSystemRateServer, cpuUsageRateContainer, cpuSystemRateContainer
 }
 
 func getStats(s *metric.Stats) (uint64, uint64, *types.CPUStats, *types.MemoryStats, map[string]uint64, error) {
