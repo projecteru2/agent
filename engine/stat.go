@@ -45,8 +45,8 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 				cpuUsageRateServer, cpuSystemRateServer, cpuUsageRateContainer, cpuSystemRateContainer := e.calCPUrate(cpuStats1, cpuStats2, totalJiffies1, totalJiffies2, tsReadingTotalJiffies1, tsReadingTotalJiffies2, cpuQuotaRate)
 				result["cpu_usage_rate_container"] = cpuUsageRateContainer
 				result["cpu_system_rate_container"] = cpuSystemRateContainer
-				result["cpu_usage_rate_system"] = cpuUsageRateServer
-				result["cpu_system_rate_system"] = cpuSystemRateServer
+				result["cpu_usage_rate_server"] = cpuUsageRateServer
+				result["cpu_system_rate_server"] = cpuSystemRateServer
 				result["mem_usage"] = float64(memoryStats.Usage)
 				result["mem_max_usage"] = float64(memoryStats.MaxUsage)
 				result["mem_rss"] = float64(memoryStats.Detail["rss"])
