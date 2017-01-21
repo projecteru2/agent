@@ -30,8 +30,9 @@ type NICConfig struct {
 type Config struct {
 	PidFile             string `yaml:"pid"`
 	HostName            string
-	HealthCheckInterval int `yaml:"health_check_interval"`
-	HealthCheckTimeout  int `yaml:"health_check_timeout"`
+	Zone                string `yaml:"zone"`
+	HealthCheckInterval int    `yaml:"health_check_interval"`
+	HealthCheckTimeout  int    `yaml:"health_check_timeout"`
 
 	Docker  DockerConfig
 	Etcd    ETCDConfig

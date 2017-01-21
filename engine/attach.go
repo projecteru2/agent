@@ -73,6 +73,7 @@ func (e *Engine) attach(container *types.Container, stop chan int) {
 				Ident:      container.Ident,
 				Data:       data,
 				Datetime:   time.Now().Format(common.DATETIME_FORMAT),
+				Zone:       e.config.Zone,
 			}
 			watcher.LogMonitor.LogC <- l
 			if err := writer.Write(l); err != nil {
