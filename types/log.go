@@ -13,6 +13,7 @@ type Log struct {
 	Ident      string `json:"ident"`
 	Data       string `json:"data"`
 	Datetime   string `json:"datetime"`
+	Zone       string `json:"zone"`
 }
 
 type LogConsumer struct {
