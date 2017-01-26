@@ -1,6 +1,6 @@
 [Unit]
 Description=Eru Agent
-Wants=docker.service
+After=docker.service
 After=network.target
 
 [Service]
