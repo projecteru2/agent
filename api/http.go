@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"runtime/pprof"
+	"strings"
 
 	_ "net/http/pprof"
 
@@ -63,6 +64,88 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// URL /setvip/
+func (h *Handler) setVip(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	vip := req.FormValue("vip")
+	if vip == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	inter := req.FormValue("interface")
+	if inter == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err := utils.SetVip(vip, inter)
+	if err != nil {
+		log.Errorf("Error occurs while setting vip: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	return
+}
+
+// URL /delvip/
+func (h *Handler) delVip(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	vip := req.FormValue("vip")
+	if vip == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	inter := req.FormValue("interface")
+	if inter == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err := utils.DelVip(vip, inter)
+	if err != nil {
+		log.Errorf("Error occurs while deleting vip: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	return
+
+}
+
+// URL /checkvip/
+func (h *Handler) checkVip(w http.ResponseWriter, req *http.Request) {
+	r := JSON{}
+	w.Header().Set("Content-Type", "application/json")
+	vip := req.URL.Query().Get("vip")
+	if vip == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	inter := req.URL.Query().Get("interface")
+	if inter == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	msg, err := utils.CheckVip(inter)
+	if err != nil {
+		log.Errorf("Error occurs while checking vip: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	r["status"] = "VipNotExists"
+	if strings.Contains(msg, vip) {
+		r["status"] = "VipExists"
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(r)
+}
+
 func Serve(addr string) {
 	if addr == "" {
 		return
@@ -72,9 +155,14 @@ func Serve(addr string) {
 	restfulAPIServer := pat.New()
 	handlers := map[string]map[string]func(http.ResponseWriter, *http.Request){
 		"GET": {
-			"/profile/": h.profile,
-			"/version/": h.version,
-			"/log/":     h.log,
+			"/profile/":  h.profile,
+			"/version/":  h.version,
+			"/log/":      h.log,
+			"/checkvip/": h.checkVip,
+		},
+		"POST": {
+			"/setvip/": h.setVip,
+			"/delvip/": h.delVip,
 		},
 	}
 
