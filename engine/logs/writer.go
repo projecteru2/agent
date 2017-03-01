@@ -2,6 +2,7 @@ package logs
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/url"
@@ -27,22 +28,35 @@ func NewWriter(addr string, stdout bool) (*Writer, error) {
 	}
 	writer := &Writer{addr: u.Host, scheme: u.Scheme}
 	writer.stdout = stdout
-	switch {
-	case u.Scheme == "udp":
-		err = writer.createUDPConn()
-		return writer, err
-	case u.Scheme == "tcp":
-		err = writer.createTCPConn()
-		return writer, err
+	err = writer.CreateConn()
+	if err != nil {
+		return nil, err
 	}
-	return nil, nil
+	return writer, nil
+}
+
+func (w *Writer) CreateConn() error {
+	switch {
+	case w.scheme == "udp":
+		err := w.createUDPConn()
+		return err
+	case w.scheme == "tcp":
+		err := w.createTCPConn()
+		return err
+	}
+	return fmt.Errorf("Invalid scheme: %s", w.scheme)
 }
 
 func (w *Writer) Write(logline *types.Log) error {
 	if w.stdout {
 		log.Info(logline)
 	}
-	return w.encoder.Encode(logline)
+	err := w.encoder.Encode(logline)
+	if err != nil {
+		w.Close()
+		w.CreateConn()
+	}
+	return err
 }
 
 func (w *Writer) createUDPConn() error {
