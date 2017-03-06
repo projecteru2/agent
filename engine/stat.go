@@ -51,8 +51,10 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 				result["mem_max_usage"] = float64(memoryStats.MaxUsage)
 				result["mem_rss"] = float64(memoryStats.Detail["rss"])
 				result["maxmemory"] = 0.0
+
+				log.Debugf("container.Memory: %d", container.Memory)
 				if container.Memory > 0 {
-					result["maxmemory"] = result["mem_usage"] / float64(container.Memory)
+					result["mem_usage_rate"] = result["mem_usage"] / float64(container.Memory)
 				}
 				for k, v := range networkStats2 {
 					result[k+".rate"] = float64(v-networkStats1[k]) / float64(e.config.Metrics.Step)
