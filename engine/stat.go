@@ -28,7 +28,8 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 
 	tagString = fmt.Sprintf("%s.%s", host, container.ID[:7])
 
-	endpoint := fmt.Sprintf("%s.%s.%s", container.Name, container.Version, container.EntryPoint)
+	version := strings.Replace(container.Version, ".", "-", -1) // redis 的版本号带了 '.' 导致监控数据格式不一致
+	endpoint := fmt.Sprintf("%s.%s.%s", container.Name, version, container.EntryPoint)
 	defer log.Infof("container %s %s metric report stop", container.Name, container.ID[:7])
 	log.Infof("container %s %s metric report start", container.Name, container.ID[:7])
 
