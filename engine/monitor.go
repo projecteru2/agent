@@ -71,6 +71,7 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 	container.Healthy = e.judgeContainerHealth(c)
 	container.CPUQuota = c.HostConfig.Resources.CPUQuota
 	container.CPUPeriod = c.HostConfig.Resources.CPUPeriod
+	container.CPUShares = c.HostConfig.Resources.CPUShares
 	container.Memory = c.HostConfig.Resources.Memory
 	log.Debugf("container.CPUQuota: %d", container.CPUQuota)
 	log.Debugf("container.CPUPeriod: %d", container.CPUPeriod)
