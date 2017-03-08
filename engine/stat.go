@@ -12,7 +12,14 @@ import (
 
 func (e *Engine) stat(container *types.Container, stop chan int) {
 	s := metric.NewStats(container)
-	cpuQuotaRate := float64(container.CPUQuota) / float64(container.CPUPeriod) / e.cpuCore
+	cpuQuotaRate := 0.0
+	if container.CPUQuota == 0 {
+		cpuQuotaRate = float64(container.CPUQuota) / float64(container.CPUPeriod) / e.cpuCore
+	} else {
+		// 使用 cpuset 分配的容器
+		cpuQuotaRate = float64(container.CPUShares) / 1024.0 / e.cpuCore
+	}
+
 	log.Debugf("CPUQuota: %d, CPUPeriod: %d, cpuQuotaRate: %f", container.CPUQuota, container.CPUPeriod, cpuQuotaRate)
 	totalJiffies1, tsReadingTotalJiffies1, cpuStats1, _, networkStats1, err := getStats(s)
 	if err != nil {

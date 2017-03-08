@@ -11,6 +11,7 @@ type Container struct {
 	Version    string
 	CPUQuota   int64
 	CPUPeriod  int64
+	CPUShares  int64
 	Memory     int64
 	Extend     map[string]string
 }
