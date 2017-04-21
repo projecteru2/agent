@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	HEALTH_NOT_RUNNING = 0
-	HEALTH_NOT_FOUND   = 1
-	HEALTH_GOOD        = 2
-	HEALTH_BAD         = 3
+	healthNotRunning = 0
+	healthNotFound   = 1
+	healthGood       = 2
+	healthBad        = 3
 )
 
 func (e *Engine) healthCheck() {
@@ -77,19 +77,19 @@ func (e *Engine) judgeContainerHealth(container enginetypes.ContainerJSON) bool 
 func (e *Engine) checkOneContainer(container enginetypes.ContainerJSON, timeout time.Duration) int {
 	// 不是running就不检查, 也没办法检查啊...
 	if !container.State.Running {
-		return HEALTH_NOT_RUNNING
+		return healthNotRunning
 	}
 	// 拿下检查方法, 暂时只支持tcp和http
 	checkMethod, ok := container.Config.Labels["healthcheck"]
 	if !(ok && (checkMethod == "tcp" || checkMethod == "http")) {
-		return HEALTH_NOT_FOUND
+		return healthNotFound
 	}
 
 	// 拿老的数据出来
 	c, err := e.store.GetContainer(container.ID)
 	if err != nil {
 		log.Errorf("Error when retrieving data from etcd, Container ID: %s, error: %s", container.ID, err.Error())
-		return HEALTH_NOT_FOUND
+		return healthNotFound
 	}
 
 	// 检查现在是不是还健康
@@ -101,16 +101,15 @@ func (e *Engine) checkOneContainer(container enginetypes.ContainerJSON, timeout 
 			e.store.UpdateContainer(c)
 			log.Infof("Container %s resurges", container.ID)
 		}
-		return HEALTH_GOOD
-	} else {
-		// 如果挂了并且之前是健康, 那么修改成挂了
-		if c.Healthy {
-			c.Healthy = false
-			e.store.UpdateContainer(c)
-			log.Infof("Container %s dies", container.ID)
-		}
-		return HEALTH_BAD
+		return healthGood
 	}
+	// 如果挂了并且之前是健康, 那么修改成挂了
+	if c.Healthy {
+		c.Healthy = false
+		e.store.UpdateContainer(c)
+		log.Infof("Container %s dies", container.ID)
+	}
+	return healthBad
 }
 
 func checkSingleContainerHealthy(container enginetypes.ContainerJSON, checkMethod string, timeout time.Duration) bool {
@@ -126,27 +125,27 @@ func checkSingleContainerHealthy(container enginetypes.ContainerJSON, checkMetho
 // 事实上一般也就一个
 func checkHTTP(container enginetypes.ContainerJSON, timeout time.Duration) bool {
 	backends := getContainerBackends(container)
-	expected_code_str, ok := container.Config.Labels["healthcheck_expected_code"]
+	expectedCodeStr, ok := container.Config.Labels["healthcheck_expected_code"]
 	if !ok {
-		expected_code_str = "0"
+		expectedCodeStr = "0"
 	}
-	expected_code, err := strconv.Atoi(expected_code_str)
+	expectedCode, err := strconv.Atoi(expectedCodeStr)
 	if err != nil {
-		expected_code = 0
+		expectedCode = 0
 	}
-	healthcheck_url, ok := container.Config.Labels["healthcheck_url"]
+	healthcheckURL, ok := container.Config.Labels["healthcheck_url"]
 	if !ok {
-		healthcheck_url = "/healthcheck"
+		healthcheckURL = "/healthcheck"
 	}
-	if !strings.HasPrefix(healthcheck_url, "/") {
-		healthcheck_url = "/" + healthcheck_url
+	if !strings.HasPrefix(healthcheckURL, "/") {
+		healthcheckURL = "/" + healthcheckURL
 	}
 
 	for _, backend := range backends {
-		url := fmt.Sprintf("http://%s%s", backend, healthcheck_url)
-		log.Debugf("Check health via http: container %s, url %s, expect code %d", container.ID, url, expected_code)
-		if !checkOneURL(url, expected_code, timeout) {
-			log.Infof("Check health failed via http: container %s, url %s, expect code %d", container.ID, url, expected_code)
+		url := fmt.Sprintf("http://%s%s", backend, healthcheckURL)
+		log.Debugf("Check health via http: container %s, url %s, expect code %d", container.ID, url, expectedCode)
+		if !checkOneURL(url, expectedCode, timeout) {
+			log.Infof("Check health failed via http: container %s, url %s, expect code %d", container.ID, url, expectedCode)
 			return false
 		}
 	}
@@ -212,7 +211,7 @@ func getIPForContainer(container enginetypes.ContainerJSON) string {
 }
 
 // 就先定义 [200, 500) 这个区间的 code 都算是成功吧
-func checkOneURL(url string, expected_code int, timeout time.Duration) bool {
+func checkOneURL(url string, expectedCode int, timeout time.Duration) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
@@ -221,8 +220,8 @@ func checkOneURL(url string, expected_code int, timeout time.Duration) bool {
 		log.Errorf("Error when checking %s, %s", url, err.Error())
 		return false
 	}
-	if expected_code == 0 {
+	if expectedCode == 0 {
 		return resp.StatusCode < 500 && resp.StatusCode >= 200
 	}
-	return resp.StatusCode == expected_code
+	return resp.StatusCode == expectedCode
 }
