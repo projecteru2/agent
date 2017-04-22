@@ -68,7 +68,7 @@ func (e *Engine) Run() error {
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGQUIT)
 	select {
 	case s := <-c:
-		log.Infof("Agent caught %s", s)
+		log.Infof("Agent caught system signal %s, exiting", s)
 		return nil
 	case err := <-errChan:
 		e.store.Crash()
