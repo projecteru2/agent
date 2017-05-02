@@ -14,13 +14,14 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 	s := metric.NewStats(container)
 	cpuQuotaRate := 0.0
 	if container.CPUQuota == 0 {
-		cpuQuotaRate = float64(container.CPUQuota) / float64(container.CPUPeriod) / e.cpuCore
-	} else {
 		// 使用 cpuset 分配的容器
 		cpuQuotaRate = float64(container.CPUShares) / 1024.0 / e.cpuCore
+	} else {
+		cpuQuotaRate = float64(container.CPUQuota) / float64(container.CPUPeriod) / e.cpuCore
 	}
 
 	log.Debugf("CPUQuota: %d, CPUPeriod: %d, cpuQuotaRate: %f", container.CPUQuota, container.CPUPeriod, cpuQuotaRate)
+	log.Debugf("CPUShares: %v", container.CPUShares)
 	totalJiffies1, tsReadingTotalJiffies1, cpuStats1, _, networkStats1, err := getStats(s)
 	if err != nil {
 		log.Errorf("get stats failed %s", err)
@@ -88,6 +89,7 @@ func (e *Engine) calCPUrate(preCPUStat, postCPUStat *types.CPUStats, preTotal, p
 	cpuSystemRateServer := float64(postCPUStat.UsageInSystemMode-preCPUStat.UsageInSystemMode) / deltaTotal
 	cpuUsageRateContainer := cpuUsageRateServer / quotaRate
 	cpuSystemRateContainer := cpuSystemRateServer / quotaRate
+	log.Debugf("quotaRate: %f", quotaRate)
 	log.Debugf("cpuUsageRateContainer: %f, cpuSystemRateContainer: %f", cpuUsageRateContainer, cpuSystemRateContainer)
 	log.Debugf("cpuUsageRateServer: %f, cpuSystemRateServer: %f", cpuUsageRateServer, cpuSystemRateServer)
 	return cpuUsageRateServer, cpuSystemRateServer, cpuUsageRateContainer, cpuSystemRateContainer
