@@ -53,30 +53,22 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 
 		// 找不到说明需要重新从 label 生成数据
 		log.Debug(event.Actor.Attributes)
-		container, err = status.GenerateContainerMeta(event.ID, event.Actor.Attributes)
+		cname := event.Actor.Attributes["name"]
+		version := "UNKNOWN"
+		if v, ok := event.Actor.Attributes["version"]; ok {
+			version = v
+		}
+		delete(event.Actor.Attributes, "name")
+		delete(event.Actor.Attributes, "version")
+
+		container, err = status.GenerateContainerMeta(event.ID, cname, version, event.Actor.Attributes)
 		if err != nil {
 			log.Error(err)
 			return
 		}
 	}
 
-	c, err := e.docker.ContainerInspect(context.Background(), event.ID)
-	if err != nil {
-		log.Errorf("e.docker.ContainerInspect: %v", err)
-		return
-	}
-
-	container.Pid = c.State.Pid
-	container.Alive = true
-	container.Healthy = e.judgeContainerHealth(c)
-	container.CPUQuota = c.HostConfig.Resources.CPUQuota
-	container.CPUPeriod = c.HostConfig.Resources.CPUPeriod
-	container.CPUShares = c.HostConfig.Resources.CPUShares
-	container.Memory = c.HostConfig.Resources.Memory
-	log.Debugf("container.CPUQuota: %d", container.CPUQuota)
-	log.Debugf("container.CPUPeriod: %d", container.CPUPeriod)
-
-	if err := e.bind(container); err != nil {
+	if err := e.bind(container, true); err != nil {
 		log.Error(err)
 		return
 	}
