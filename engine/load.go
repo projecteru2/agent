@@ -21,7 +21,7 @@ func (e *Engine) load() error {
 		return err
 	}
 
-	runningContainers := make(map[string]interface{}, 0)
+	eruContainers := map[string]interface{}{}
 	for _, container := range containers {
 		c, err := e.store.GetContainer(container.ID)
 		if err != nil {
@@ -47,7 +47,7 @@ func (e *Engine) load() error {
 				continue
 			}
 		}
-		runningContainers[container.ID] = new(interface{})
+		eruContainers[container.ID] = new(interface{})
 		status := getStatus(container.Status)
 		if err := e.bind(c, status); err != nil {
 			log.Errorf("bind container info failed %s", err)
@@ -68,12 +68,13 @@ func (e *Engine) load() error {
 			return
 		}
 		for _, id := range nodeAllContainers {
-			if _, ok := runningContainers[id]; !ok {
-				log.Warnf("Remove Unknown Container [%v] From Etcd.", id)
-				err = e.store.RemoveContainer(id)
-				if err != nil {
-					log.Errorf("Remove Container Error: [%v]", err)
-				}
+			if _, ok := eruContainers[id]; ok {
+				continue
+			}
+			log.Warnf("Remove Unknown Container [%v] From Etcd.", id)
+			err = e.store.RemoveContainer(id)
+			if err != nil {
+				log.Errorf("Remove Container Error: [%v]", err)
 			}
 		}
 	}()

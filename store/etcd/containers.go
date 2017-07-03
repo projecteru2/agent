@@ -46,8 +46,7 @@ func (c *Client) GetAllContainers() (containers []string, err error) {
 	}
 	for _, node := range resp.Node.Nodes {
 		t := strings.Split(node.Key, "/")
-		containerID := t[len(t)-1:][0]
-		containers = append(containers, containerID)
+		containers = append(containers, t[len(t)-1])
 	}
 	return containers, nil
 }
