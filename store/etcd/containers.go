@@ -3,6 +3,7 @@ package etcdstore
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/coreos/etcd/client"
 	"gitlab.ricebook.net/platform/agent/types"
@@ -36,4 +37,16 @@ func (c *Client) RemoveContainer(cid string) error {
 	path := fmt.Sprintf("%s/%s", c.containers, cid)
 	_, err := c.etcd.Delete(context.Background(), path, &client.DeleteOptions{})
 	return err
+}
+
+func (c *Client) GetAllContainers() (containers []string, err error) {
+	resp, err := c.etcd.Get(context.Background(), c.containers, &client.GetOptions{})
+	if err != nil {
+		return containers, err
+	}
+	for _, node := range resp.Node.Nodes {
+		t := strings.Split(node.Key, "/")
+		containers = append(containers, t[len(t)-1])
+	}
+	return containers, nil
 }
