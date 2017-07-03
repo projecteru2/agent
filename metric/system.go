@@ -43,7 +43,11 @@ func NewStats(container *types.Container) *Stats {
 func (s *Stats) GetTotalJiffies() (uint64, uint64, error) {
 	var line string
 	var tsReadingTotalJiffies = uint64(time.Now().Unix())
-	f, err := os.Open("/proc/stat")
+	statFile := "/proc/stat"
+	if os.Getenv("IN_DOCKER") != "" {
+		statFile = "/hostProc/stat"
+	}
+	f, err := os.Open(statFile)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -75,5 +79,5 @@ func (s *Stats) GetTotalJiffies() (uint64, uint64, error) {
 			return totalJiffies, tsReadingTotalJiffies, nil
 		}
 	}
-	return 0, tsReadingTotalJiffies, fmt.Errorf("invalid stat format. Error trying to parse the '/proc/stat' file")
+	return 0, tsReadingTotalJiffies, fmt.Errorf("invalid stat format. Error trying to parse statfile: [%v]", statFile)
 }
