@@ -11,4 +11,6 @@ type Store interface {
 
 	GetContainer(cid string) (*types.Container, error)
 	RemoveContainer(cid string) error
+
+	GetAllContainers() ([]string, error)
 }
