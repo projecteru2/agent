@@ -10,7 +10,11 @@ import (
 )
 
 func (s *Stats) GetNetworkStats() (map[string]uint64, error) {
-	f, err := os.Open(fmt.Sprintf("/proc/%d/net/dev", s.pid))
+	procDir := "/proc"
+	if os.Getenv("IN_DOCKER") != "" {
+		procDir = "/hostProc"
+	}
+	f, err := os.Open(fmt.Sprintf("%s/%d/net/dev", procDir, s.pid))
 	if err != nil {
 		return nil, err
 	}
