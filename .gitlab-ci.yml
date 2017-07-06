@@ -26,8 +26,8 @@ dockerized_agent:
   tags:
     - shell
   script:
-    - COMMIT=`git rev-parse HEAD | head -c 7`
-    - IMAGENAME=hub.ricebook.net/platform/eruagent:${COMMIT}
+    - VERSION=`./agent -v | sed -e 's/Eru-Agent\ version\ //'`
+    - IMAGENAME=hub.ricebook.net/eru/agent:${VERSION}
     - "docker build --no-cache -t $IMAGENAME ."
     - "docker push $IMAGENAME"
     - "docker rmi $IMAGENAME"
