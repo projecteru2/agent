@@ -1,0 +1,25 @@
+package: gitlab.ricebook.net/platform/agent
+import:
+- package: github.com/CMGS/statsd
+- package: github.com/Sirupsen/logrus
+  version: ^1.0.2
+- package: github.com/bmizerany/pat
+- package: github.com/coreos/etcd
+  version: ^3.2.4
+  subpackages:
+  - client
+- package: github.com/docker/docker
+  version: ^17.5.0-ce-rc3
+  subpackages:
+  - api/types
+  - api/types/events
+  - api/types/filters
+  - client
+  - pkg/stdcopy
+- package: golang.org/x/net
+  subpackages:
+  - context
+  - context/ctxhttp
+- package: gopkg.in/urfave/cli.v1
+  version: ^1.9.1
+- package: gopkg.in/yaml.v2

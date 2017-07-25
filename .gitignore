@@ -2,3 +2,4 @@ agent2
 agent
 local.yaml
 eru-agent
+vendor/*
