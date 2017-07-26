@@ -1,28 +1,31 @@
-image: "hub.ricebook.net/base/centos:onbuild-eru-agent-2017.04.21"
+image: "hub.ricebook.net/base/centos:onbuild-eru-agent-2017.07.27"
 stages:
   - test
   - build
-  - dockerized
+  - deploy
 test:
   stage: test
   tags:
     - docker
   script:
-    - "ln -s $CI_PROJECT_DIR $GOPATH/src/gitlab.ricebook.net/platform/agent"
+    - "cp -r $CI_PROJECT_DIR $GOPATH/src/gitlab.ricebook.net/platform/"
+    - "cd $GOPATH/src/gitlab.ricebook.net/platform/agent"
     - "make test"
 build:
   stage: build
   tags:
     - docker
   script:
-    - "ln -s $CI_PROJECT_DIR $GOPATH/src/gitlab.ricebook.net/platform/agent"
+    - "cp -r $CI_PROJECT_DIR $GOPATH/src/gitlab.ricebook.net/platform/"
+    - "cd $GOPATH/src/gitlab.ricebook.net/platform/agent"
     - "make build"
+    - "cp -r agent $CI_PROJECT_DIR"
   artifacts:
     paths:
       - "agent"
     expire_in: 1 week
 dockerized_agent:
-  stage: dockerized
+  stage: deploy
   tags:
     - shell
   script:
@@ -33,3 +36,16 @@ dockerized_agent:
     - "docker rmi $IMAGENAME"
   dependencies:
     - "build"
+rpm:
+  stage: deploy
+  tags:
+    - docker
+  script:
+    - "./make-rpm"
+  dependencies:
+    - "build"
+  artifacts:
+    paths:
+      - "eru-agent*.rpm"
+    expire_in: 1 week
+
