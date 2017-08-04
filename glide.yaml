@@ -16,6 +16,10 @@ import:
   - api/types/filters
   - client
   - pkg/stdcopy
+- package: golang.org/x/net
+  subpackages:
+  - context
+  - context/ctxhttp
 - package: gopkg.in/urfave/cli.v1
   version: ^1.9.1
 - package: gopkg.in/yaml.v2
