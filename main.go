@@ -81,9 +81,6 @@ func overrideConfigFromCli(c *cli.Context, config types.Config) types.Config {
 	if c.String("log-stdout") != "" {
 		config.Log.Stdout = c.String("log-stdout") == "yes"
 	}
-	if len(c.StringSlice("nic-physical")) > 0 {
-		config.NIC.Physical = c.StringSlice("nic-physical")
-	}
 	return config
 }
 
@@ -197,12 +194,6 @@ func main() {
 			Value:  "",
 			Usage:  "forward stdout out? yes/no",
 			EnvVar: "ERU_AGENT_LOG_STDOUT",
-		},
-		cli.StringSliceFlag{
-			Name:   "nic-physical",
-			Value:  &cli.StringSlice{},
-			Usage:  "NICs to use",
-			EnvVar: "ERU_AGENT_NIC_PHYSICALS",
 		},
 		cli.StringFlag{
 			Name:   "pidfile",
