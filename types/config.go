@@ -5,8 +5,8 @@ type DockerConfig struct {
 }
 
 type ETCDConfig struct {
-	Prefix       string   `yaml:"prefix"`
-	EtcdMachines []string `yaml:"etcd"`
+	Prefix   string   `yaml:"prefix"`
+	Machines []string `yaml:"etcd"`
 }
 
 type MetricsConfig struct {

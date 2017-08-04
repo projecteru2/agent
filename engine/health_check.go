@@ -1,8 +1,10 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"net"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -10,8 +12,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	enginetypes "github.com/docker/docker/api/types"
 	enginefilters "github.com/docker/docker/api/types/filters"
-	"golang.org/x/net/context"
-	"golang.org/x/net/context/ctxhttp"
 )
 
 const (
@@ -210,12 +210,35 @@ func getIPForContainer(container enginetypes.ContainerJSON) string {
 	return ""
 }
 
+// 偷来的函数
+// 谁要官方的context没有收录他 ¬ ¬
+func get(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
+	if client == nil {
+		client = http.DefaultClient
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Do(req.WithContext(ctx))
+	if err != nil {
+		select {
+		case <-ctx.Done():
+			err = ctx.Err()
+		default:
+		}
+	}
+	return resp, err
+}
+
 // 就先定义 [200, 500) 这个区间的 code 都算是成功吧
 func checkOneURL(url string, expectedCode int, timeout time.Duration) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	resp, err := ctxhttp.Get(ctx, nil, url)
+	resp, err := get(ctx, nil, url)
 	if err != nil {
 		log.Errorf("Error when checking %s, %s", url, err.Error())
 		return false

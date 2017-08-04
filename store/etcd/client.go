@@ -16,11 +16,11 @@ type Client struct {
 }
 
 func NewClient(config types.Config) (*Client, error) {
-	if len(config.Etcd.EtcdMachines) == 0 {
+	if len(config.Etcd.Machines) == 0 {
 		return nil, fmt.Errorf("ETCD must be set")
 	}
 
-	cli, err := client.New(client.Config{Endpoints: config.Etcd.EtcdMachines})
+	cli, err := client.New(client.Config{Endpoints: config.Etcd.Machines})
 	if err != nil {
 		return nil, err
 	}

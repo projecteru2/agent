@@ -2,13 +2,13 @@ package engine
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"net/http/httputil"
 	"strings"
 	"time"
 
 	"github.com/docker/docker/pkg/stdcopy"
-	"golang.org/x/net/context"
 
 	log "github.com/Sirupsen/logrus"
 	dockertypes "github.com/docker/docker/api/types"

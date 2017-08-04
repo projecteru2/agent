@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
@@ -8,7 +9,6 @@ import (
 	enginetypes "github.com/docker/docker/api/types"
 	"gitlab.ricebook.net/platform/agent/engine/status"
 	"gitlab.ricebook.net/platform/agent/types"
-	"golang.org/x/net/context"
 )
 
 func (e *Engine) load() error {
