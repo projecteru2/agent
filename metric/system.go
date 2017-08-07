@@ -23,6 +23,8 @@ type Stats struct {
 	memoryUsagePath    string
 	memoryMaxUsagePath string
 	memoryDetailPath   string
+	networkStatsPath   string
+	statFilePath       string
 	cpuQuotaRate       float64
 }
 
@@ -37,17 +39,23 @@ func NewStats(container *types.Container) *Stats {
 	s.memoryMaxUsagePath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.max_usage_in_bytes")
 	s.memoryDetailPath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.stat")
 
+	procDir := "/proc"
+	statFile := "/proc/stat"
+	if os.Getenv("IN_DOCKER") != "" {
+		procDir = "/hostProc"
+		statFile = "/hostProc/stat"
+	}
+	s.networkStatsPath = fmt.Sprintf("%s/%d/net/dev", procDir, s.pid)
+	s.statFilePath = statFile
+
 	return s
 }
 
 func (s *Stats) GetTotalJiffies() (uint64, uint64, error) {
 	var line string
 	var tsReadingTotalJiffies = uint64(time.Now().Unix())
-	statFile := "/proc/stat"
-	if os.Getenv("IN_DOCKER") != "" {
-		statFile = "/hostProc/stat"
-	}
-	f, err := os.Open(statFile)
+
+	f, err := os.Open(s.statFilePath)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -79,5 +87,5 @@ func (s *Stats) GetTotalJiffies() (uint64, uint64, error) {
 			return totalJiffies, tsReadingTotalJiffies, nil
 		}
 	}
-	return 0, tsReadingTotalJiffies, fmt.Errorf("invalid stat format. Error trying to parse statfile: [%v]", statFile)
+	return 0, tsReadingTotalJiffies, fmt.Errorf("invalid stat format. Error trying to parse statfile: [%v]", s.statFilePath)
 }

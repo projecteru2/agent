@@ -3,3 +3,4 @@ agent
 local.yaml
 eru-agent
 vendor/*
+debug.test
