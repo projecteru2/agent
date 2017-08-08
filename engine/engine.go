@@ -22,7 +22,6 @@ type Engine struct {
 
 	transfers *utils.HashBackends
 	forwards  *utils.HashBackends
-	physical  *utils.HashBackends
 }
 
 func NewEngine(config types.Config) (*Engine, error) {
@@ -41,7 +40,6 @@ func NewEngine(config types.Config) (*Engine, error) {
 	engine.cpuCore = float64(runtime.NumCPU())
 	engine.transfers = utils.NewHashBackends(config.Metrics.Transfers)
 	engine.forwards = utils.NewHashBackends(config.Log.Forwards)
-	engine.physical = utils.NewHashBackends(config.NIC.Physical)
 	return engine, nil
 }
 

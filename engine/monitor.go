@@ -1,13 +1,13 @@
 package engine
 
 import (
+	"context"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
 	types "github.com/docker/docker/api/types"
 	eventtypes "github.com/docker/docker/api/types/events"
 	filtertypes "github.com/docker/docker/api/types/filters"
-	"golang.org/x/net/context"
 
 	"github.com/coreos/etcd/client"
 	"gitlab.ricebook.net/platform/agent/common"

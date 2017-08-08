@@ -5,8 +5,8 @@ type DockerConfig struct {
 }
 
 type ETCDConfig struct {
-	Prefix       string   `yaml:"prefix"`
-	EtcdMachines []string `yaml:"etcd"`
+	Prefix   string   `yaml:"prefix"`
+	Machines []string `yaml:"etcd"`
 }
 
 type MetricsConfig struct {
@@ -23,10 +23,6 @@ type LogConfig struct {
 	Stdout   bool     `yaml:"stdout"`
 }
 
-type NICConfig struct {
-	Physical []string `yaml:"physical"`
-}
-
 type Config struct {
 	PidFile             string `yaml:"pid"`
 	HostName            string
@@ -39,5 +35,4 @@ type Config struct {
 	Metrics MetricsConfig
 	API     APIConfig
 	Log     LogConfig
-	NIC     NICConfig
 }

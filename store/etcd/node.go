@@ -1,12 +1,12 @@
 package etcdstore
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/coreos/etcd/client"
 	"gitlab.ricebook.net/platform/agent/types"
 	"gitlab.ricebook.net/platform/agent/utils"
-	"golang.org/x/net/context"
 )
 
 func (c *Client) UpdateStats(node *types.Node) error {

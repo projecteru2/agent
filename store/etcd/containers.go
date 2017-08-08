@@ -1,13 +1,13 @@
 package etcdstore
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/coreos/etcd/client"
 	"gitlab.ricebook.net/platform/agent/types"
-	"golang.org/x/net/context"
 )
 
 func (c *Client) UpdateContainer(container *types.Container) error {
