@@ -44,12 +44,3 @@ func GetAppInfo(containerName string) (name, entrypoint, ident string, err error
 	l := len(appinfo)
 	return strings.Join(appinfo[:l-2], "_"), appinfo[l-2], appinfo[l-1], nil
 }
-
-// Atoi 这个函数没有用到啊，需要砍掉么
-func Atoi(s string, def int) int {
-	if r, err := strconv.Atoi(s); err != nil {
-		return def
-	} else {
-		return r
-	}
-}

@@ -39,11 +39,9 @@ func NewStats(container *types.Container) *Stats {
 	s.memoryMaxUsagePath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.max_usage_in_bytes")
 	s.memoryDetailPath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.stat")
 
-	procDir := "/proc"
-	statFile := "/proc/stat"
+	procDir, statFile := "/proc", "/proc/stat"
 	if os.Getenv("IN_DOCKER") != "" {
-		procDir = "/hostProc"
-		statFile = "/hostProc/stat"
+		procDir, statFile = "/hostProc", "/hostProc/stat"
 	}
 	s.networkStatsPath = fmt.Sprintf("%s/%d/net/dev", procDir, s.pid)
 	s.statFilePath = statFile
