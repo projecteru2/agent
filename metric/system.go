@@ -34,17 +34,16 @@ func NewStats(container *types.Container) *Stats {
 		pid:       container.Pid,
 		bufReader: bufio.NewReaderSize(nil, 128),
 	}
-	s.cpuPath = fmt.Sprintf(common.CGROUP_BASE_PATH, "cpu,cpuacct", container.ID, "cpuacct.stat")
-	s.memoryUsagePath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.usage_in_bytes")
-	s.memoryMaxUsagePath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.max_usage_in_bytes")
-	s.memoryDetailPath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.stat")
-
 	procDir, statFile := "/proc", "/proc/stat"
 	if os.Getenv("IN_DOCKER") != "" {
 		procDir, statFile = "/hostProc", "/hostProc/stat"
 	}
-	s.networkStatsPath = fmt.Sprintf("%s/%d/net/dev", procDir, s.pid)
 	s.statFilePath = statFile
+	s.networkStatsPath = fmt.Sprintf("%s/%d/net/dev", procDir, s.pid)
+	s.cpuPath = fmt.Sprintf(common.CGROUP_BASE_PATH, "cpu,cpuacct", container.ID, "cpuacct.stat")
+	s.memoryUsagePath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.usage_in_bytes")
+	s.memoryMaxUsagePath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.max_usage_in_bytes")
+	s.memoryDetailPath = fmt.Sprintf(common.CGROUP_BASE_PATH, "memory", container.ID, "memory.stat")
 
 	return s
 }
