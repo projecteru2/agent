@@ -23,7 +23,7 @@ func (e *Engine) initMonitor() (<-chan eventtypes.Message, <-chan error) {
 
 	ctx := context.Background()
 	f := filtertypes.NewArgs()
-	f.Add("type", "container")
+	f.Add("type", eventtypes.ContainerEventType)
 	options := types.EventsOptions{Filters: f}
 	eventChan, errChan := e.docker.Events(ctx, options)
 	return eventChan, errChan

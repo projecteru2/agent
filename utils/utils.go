@@ -35,7 +35,7 @@ func WritePid(path string) {
 	}
 }
 
-func GetAppInfo(containerName string) (name string, entrypoint string, ident string, err error) {
+func GetAppInfo(containerName string) (name, entrypoint, ident string, err error) {
 	containerName = strings.TrimLeft(containerName, "/")
 	appinfo := strings.Split(containerName, "_")
 	if len(appinfo) < common.CNAME_NUM {
@@ -43,12 +43,4 @@ func GetAppInfo(containerName string) (name string, entrypoint string, ident str
 	}
 	l := len(appinfo)
 	return strings.Join(appinfo[:l-2], "_"), appinfo[l-2], appinfo[l-1], nil
-}
-
-func Atoi(s string, def int) int {
-	if r, err := strconv.Atoi(s); err != nil {
-		return def
-	} else {
-		return r
-	}
 }
