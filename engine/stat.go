@@ -6,8 +6,8 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"gitlab.ricebook.net/platform/agent/metric"
-	"gitlab.ricebook.net/platform/agent/types"
+	"github.com/projecteru2/agent/metric"
+	"github.com/projecteru2/agent/types"
 )
 
 func (e *Engine) stat(container *types.Container, stop chan int) {

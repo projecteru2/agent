@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"gitlab.ricebook.net/platform/agent/common"
+	"github.com/projecteru2/agent/common"
 )
 
 func (s *Stats) GetNetworkStats() (map[string]uint64, error) {

@@ -20,7 +20,3 @@ log:
   forwards:
     - udp://10.10.31.119:5144
   stdout: False
-
-nic:
-  physical:
-    - em1

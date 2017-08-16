@@ -8,10 +8,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/docker/client"
-	"gitlab.ricebook.net/platform/agent/store"
-	"gitlab.ricebook.net/platform/agent/store/etcd"
-	"gitlab.ricebook.net/platform/agent/types"
-	"gitlab.ricebook.net/platform/agent/utils"
+	"github.com/projecteru2/agent/store"
+	"github.com/projecteru2/agent/store/etcd"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 )
 
 type Engine struct {

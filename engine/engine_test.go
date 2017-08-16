@@ -21,9 +21,9 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/pkg/stringid"
+	"github.com/projecteru2/agent/store/mocks"
+	atypes "github.com/projecteru2/agent/types"
 	"github.com/stretchr/testify/assert"
-	"gitlab.ricebook.net/platform/agent/store/mocks"
-	atypes "gitlab.ricebook.net/platform/agent/types"
 )
 
 const (

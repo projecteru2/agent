@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.ricebook.net/platform/agent/types"
+	"github.com/projecteru2/agent/types"
 )
 
 func (s *Stats) GetCPUStats() (*types.CPUStats, error) {

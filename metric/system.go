@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.ricebook.net/platform/agent/common"
-	"gitlab.ricebook.net/platform/agent/types"
+	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/types"
 )
 
 type Stats struct {

@@ -13,10 +13,10 @@ import (
 	log "github.com/Sirupsen/logrus"
 	dockertypes "github.com/docker/docker/api/types"
 
-	"gitlab.ricebook.net/platform/agent/common"
-	"gitlab.ricebook.net/platform/agent/engine/logs"
-	"gitlab.ricebook.net/platform/agent/types"
-	"gitlab.ricebook.net/platform/agent/watcher"
+	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/engine/logs"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/watcher"
 )
 
 func (e *Engine) attach(container *types.Container, stop chan int) {

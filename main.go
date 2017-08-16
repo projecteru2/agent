@@ -5,12 +5,12 @@ import (
 	"os"
 
 	log "github.com/Sirupsen/logrus"
-	"gitlab.ricebook.net/platform/agent/api"
-	"gitlab.ricebook.net/platform/agent/common"
-	"gitlab.ricebook.net/platform/agent/engine"
-	"gitlab.ricebook.net/platform/agent/types"
-	"gitlab.ricebook.net/platform/agent/utils"
-	"gitlab.ricebook.net/platform/agent/watcher"
+	"github.com/projecteru2/agent/api"
+	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/engine"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
+	"github.com/projecteru2/agent/watcher"
 	"gopkg.in/urfave/cli.v1"
 	"gopkg.in/yaml.v2"
 )
