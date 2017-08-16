@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"gitlab.ricebook.net/platform/agent/types"
+	"github.com/projecteru2/agent/types"
 )
 
 func TestNewWriter(t *testing.T) {

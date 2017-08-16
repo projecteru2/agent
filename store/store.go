@@ -1,6 +1,6 @@
 package store
 
-import "gitlab.ricebook.net/platform/agent/types"
+import "github.com/projecteru2/agent/types"
 
 type Store interface {
 	Crash() error

@@ -1,8 +1,8 @@
 package status
 
 import (
-	"gitlab.ricebook.net/platform/agent/types"
-	"gitlab.ricebook.net/platform/agent/utils"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 )
 
 func GenerateContainerMeta(ID, cname, version string, attrs map[string]string) (*types.Container, error) {

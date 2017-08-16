@@ -7,10 +7,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/stringid"
+	"github.com/projecteru2/agent/types"
+	atypes "github.com/projecteru2/agent/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"gitlab.ricebook.net/platform/agent/types"
-	atypes "gitlab.ricebook.net/platform/agent/types"
 )
 
 func TestBind(t *testing.T) {

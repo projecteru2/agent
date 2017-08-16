@@ -8,7 +8,7 @@ import (
 	"net/url"
 
 	log "github.com/Sirupsen/logrus"
-	"gitlab.ricebook.net/platform/agent/types"
+	"github.com/projecteru2/agent/types"
 )
 
 type Writer struct {

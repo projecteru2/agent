@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 
 	"github.com/coreos/etcd/client"
-	"gitlab.ricebook.net/platform/agent/types"
-	"gitlab.ricebook.net/platform/agent/utils"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 )
 
 func (c *Client) UpdateStats(node *types.Node) error {

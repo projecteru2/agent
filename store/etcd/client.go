@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/coreos/etcd/client"
-	"gitlab.ricebook.net/platform/agent/types"
+	"github.com/projecteru2/agent/types"
 )
 
 type Client struct {

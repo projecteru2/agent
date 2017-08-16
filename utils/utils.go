@@ -11,8 +11,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/client"
 	engineapi "github.com/docker/docker/client"
-	"gitlab.ricebook.net/platform/agent/common"
-	"gitlab.ricebook.net/platform/agent/types"
+	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/types"
 )
 
 func CheckExistsError(err error) error {

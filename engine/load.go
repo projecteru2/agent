@@ -7,8 +7,8 @@ import (
 	log "github.com/Sirupsen/logrus"
 	etcd "github.com/coreos/etcd/client"
 	enginetypes "github.com/docker/docker/api/types"
-	"gitlab.ricebook.net/platform/agent/engine/status"
-	"gitlab.ricebook.net/platform/agent/types"
+	"github.com/projecteru2/agent/engine/status"
+	"github.com/projecteru2/agent/types"
 )
 
 func (e *Engine) load() error {

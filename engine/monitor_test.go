@@ -9,9 +9,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	// "github.com/docker/docker/api/types/network"
 
+	atypes "github.com/projecteru2/agent/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	atypes "gitlab.ricebook.net/platform/agent/types"
 )
 
 func TestInitMonitor(t *testing.T) {

@@ -10,8 +10,8 @@ import (
 	filtertypes "github.com/docker/docker/api/types/filters"
 
 	"github.com/coreos/etcd/client"
-	"gitlab.ricebook.net/platform/agent/common"
-	"gitlab.ricebook.net/platform/agent/engine/status"
+	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/engine/status"
 )
 
 var eventHandler = status.NewEventHandler()
