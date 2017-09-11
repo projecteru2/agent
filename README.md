@@ -47,11 +47,11 @@ Dockerized Agent
 =================
 
 ```shell
-docker run --rm --privileged -ti -e IN_DOCKER=1 \
+docker run -d --privileged -ti -e IN_DOCKER=1 \
   --name eru-agent --net host \
   -v /sys/fs/cgroup/:/sys/fs/cgroup/ \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /proc/:/hostProc/ \
   -v <HOST_CONFIG_PATH>:/etc/eru/agent.yaml \
-  agent
+  /usr/bin/eru-agent
 ```
