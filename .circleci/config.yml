@@ -6,8 +6,23 @@ jobs:
     working_directory: /.go/src/github.com/projecteru2/agent
     steps:
       - checkout
+      - setup_remote_docker:
+          version: 17.07.0-ce
+      - run: echo DOCKER_PASS
+      - run: echo $DOCKER_PASS
       - run: make test
       - run: make build
+      - run:
+          name: Build image
+          command: |
+            VERSION=$(cat VERSION)
+            cp agent .circleci
+            cp agent.yaml.sample .circleci
+            cd .circleci
+            docker build -t projecteru2/agent:$VERSION .
+            docker login -u $DOCKER_USER -p $DOCKER_PASS
+            docker push projecteru2/agent:$VERSION
+            cd ../
       - run: ./make-rpm
       - run:
           name: Create artifacts
