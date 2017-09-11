@@ -1,22 +1,22 @@
 pid: /tmp/agent.pid
 
 docker:
-  endpoint: tcp://10.10.192.213:2376
+  endpoint: unix:///var/run/docker.sock
 
 etcd:
   prefix: agent2
   etcd:
-    - http://10.10.158.89:2379
+    - http://127.0.0.1:2379
 
 metrics:
   step: 30
   transfers:
-    - 10.1.201.45:8125
+    - 127.0.0.1:8125
 
 api:
   addr: 0.0.0.0:12345
 
 log:
   forwards:
-    - udp://10.10.31.119:5144
+    - udp://127.0.0.1:5144
   stdout: False
