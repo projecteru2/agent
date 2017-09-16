@@ -35,7 +35,7 @@ func NewStats(container *types.Container) *Stats {
 		bufReader: bufio.NewReaderSize(nil, 128),
 	}
 	procDir, statFile := "/proc", "/proc/stat"
-	if os.Getenv("AGENT_IN_DOCKER") != "" {
+	if os.Getenv(common.DOCKERIZED) != "" {
 		procDir, statFile = "/hostProc", "/hostProc/stat"
 	}
 	s.statFilePath = statFile

@@ -2,11 +2,13 @@ package engine
 
 import (
 	"context"
+	"os"
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	etcd "github.com/coreos/etcd/client"
 	enginetypes "github.com/docker/docker/api/types"
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine/status"
 	"github.com/projecteru2/agent/types"
 )
@@ -57,8 +59,12 @@ func (e *Engine) load() error {
 			log.Warnf("%s container %s down", c.Name, c.ID[:7])
 			continue
 		}
+
 		stop := make(chan int)
-		e.attach(c, stop)
+		// 非 eru-agent in docker 就转发日志，防止日志循环输出
+		if _, ok := container.Labels["agent"]; !ok || os.Getenv(common.DOCKERIZED) == "" {
+			e.attach(c, stop)
+		}
 		go e.stat(c, stop)
 	}
 	go func() {

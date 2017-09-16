@@ -14,7 +14,7 @@ FROM alpine:3.6
 MAINTAINER CMGS <ilskdw@gmail.com>
 
 RUN mkdir /etc/eru/
-LABEL ERU=1 version=latest
+LABEL ERU=1 version=latest agent=1
 ENV AGENT_IN_DOCKER=1
 COPY --from=BUILD /go/src/github.com/projecteru2/agent/eru-agent /usr/bin/eru-agent
 COPY --from=BUILD /go/src/github.com/projecteru2/agent/agent.yaml.sample /etc/eru/agent.yaml.sample
