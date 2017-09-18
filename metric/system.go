@@ -28,14 +28,14 @@ type Stats struct {
 	cpuQuotaRate       float64
 }
 
-func NewStats(container *types.Container) *Stats {
+func NewStats(container *types.Container, dockerized bool) *Stats {
 	s := &Stats{
 		cid:       container.ID,
 		pid:       container.Pid,
 		bufReader: bufio.NewReaderSize(nil, 128),
 	}
 	procDir, statFile := "/proc", "/proc/stat"
-	if os.Getenv(common.DOCKERIZED) != "" {
+	if dockerized {
 		procDir, statFile = "/hostProc", "/hostProc/stat"
 	}
 	s.statFilePath = statFile

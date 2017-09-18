@@ -8,6 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	engineapi "github.com/docker/docker/client"
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/store"
 	"github.com/projecteru2/agent/store/etcd"
 	"github.com/projecteru2/agent/types"
@@ -22,6 +23,9 @@ type Engine struct {
 
 	transfers *utils.HashBackends
 	forwards  *utils.HashBackends
+
+	hostname   string
+	dockerized bool
 }
 
 func NewEngine(config types.Config) (*Engine, error) {
@@ -34,6 +38,8 @@ func NewEngine(config types.Config) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	engine.hostname = os.Getenv("HOSTNAME")
+	engine.dockerized = os.Getenv(common.DOCKERIZED) != ""
 	engine.config = config
 	engine.store = store
 	engine.docker = docker

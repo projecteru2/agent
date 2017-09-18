@@ -11,7 +11,7 @@ import (
 )
 
 func (e *Engine) stat(container *types.Container, stop chan int) {
-	s := metric.NewStats(container)
+	s := metric.NewStats(container, e.dockerized)
 	cpuQuotaRate := 0.0
 	if container.CPUQuota == 0 {
 		// 使用 cpuset 分配的容器

@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"os"
 
 	log "github.com/Sirupsen/logrus"
 	types "github.com/docker/docker/api/types"
@@ -95,14 +94,11 @@ func (e *Engine) handleContainerDie(event eventtypes.Message) {
 
 func (e *Engine) handleContainerDestroy(event eventtypes.Message) {
 	log.Debugf("container %s destroy", event.ID[:7])
-	_, err := e.store.GetContainer(event.ID)
-	if err != nil {
-		hostname := os.Getenv("HOSTNAME")
-		log.Errorf("while geting container from etcd, %s occured err: %v", hostname, err)
+	if _, err := e.store.GetContainer(event.ID); err != nil {
+		log.Errorf("while geting container from etcd, %s occured err: %v", e.hostname, err)
 	}
 	if err := e.store.RemoveContainer(event.ID); err != nil {
-		hostname := os.Getenv("HOSTNAME")
-		log.Errorf("while removing container, %s occured err: %v", hostname, err)
+		log.Errorf("while removing container, %s occured err: %v", e.hostname, err)
 	}
 	log.Infof("Monitor: container %s data removed", event.ID[:7])
 }
