@@ -4,11 +4,11 @@ import (
 	"context"
 
 	log "github.com/Sirupsen/logrus"
+	etcd "github.com/coreos/etcd/client"
 	types "github.com/docker/docker/api/types"
 	eventtypes "github.com/docker/docker/api/types/events"
 	filtertypes "github.com/docker/docker/api/types/filters"
 
-	"github.com/coreos/etcd/client"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine/status"
 )
@@ -36,6 +36,7 @@ func (e *Engine) monitor(eventChan <-chan eventtypes.Message) {
 func (e *Engine) handleContainerStart(event eventtypes.Message) {
 	log.Debugf("container %s start", event.ID[:7])
 	if _, ok := event.Actor.Attributes["ERU"]; !ok {
+		log.Debugf("container %s is not deployed by eru", event.ID)
 		return
 	}
 	//清理掉 ERU 标志
@@ -45,8 +46,8 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 	container, err := e.store.GetContainer(event.ID)
 	if err != nil {
 		// 看看是不是 etcd 的 KeyNotFound error, 我们只需要对这种做进一步处理
-		if etcdErr, ok := err.(client.Error); !ok || etcdErr.Code != client.ErrorCodeKeyNotFound {
-			log.Error(err)
+		if !etcd.IsKeyNotFound(err) {
+			log.Errorf("Load container stats failed %v", err)
 			return
 		}
 
@@ -81,7 +82,9 @@ func (e *Engine) handleContainerDie(event eventtypes.Message) {
 	log.Debugf("container %s die", event.ID[:7])
 	container, err := e.store.GetContainer(event.ID)
 	if err != nil {
-		log.Error(err)
+		if !etcd.IsKeyNotFound(err) {
+			log.Errorf("Load container stats failed %v", err)
+		}
 		return
 	}
 	container.Alive = false
@@ -95,7 +98,10 @@ func (e *Engine) handleContainerDie(event eventtypes.Message) {
 func (e *Engine) handleContainerDestroy(event eventtypes.Message) {
 	log.Debugf("container %s destroy", event.ID[:7])
 	if _, err := e.store.GetContainer(event.ID); err != nil {
-		log.Errorf("while geting container from etcd, %s occured err: %v", e.hostname, err)
+		if !etcd.IsKeyNotFound(err) {
+			log.Errorf("Load container stats failed %v", err)
+		}
+		return
 	}
 	if err := e.store.RemoveContainer(event.ID); err != nil {
 		log.Errorf("while removing container, %s occured err: %v", e.hostname, err)

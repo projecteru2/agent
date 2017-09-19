@@ -1,6 +1,7 @@
 package status
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 )
@@ -18,5 +19,6 @@ func GenerateContainerMeta(ID, cname, version string, attrs map[string]string) (
 	container.Ident = ident
 	container.Version = version
 	container.Extend = attrs
+	log.Debugf("Generate container meta %v", container)
 	return container, nil
 }
