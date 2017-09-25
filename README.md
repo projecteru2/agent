@@ -5,37 +5,28 @@ Agent
 
 Agent run on the node.
 
-Features
-========
+### Features
 
 * Forward log stream to remote
 * Generate container metrics
 * Bootstrap
 * Auto monitor or remove containers
 
-Build
-========
+### Build
 
-##### build binary
+#### build binary
 
-```shell
-make build
-```
+`make build`
 
 #### build rpm
 
-```shell
-./make-rpm
-```
+`./make-rpm`
 
 #### build docker
 
-```shell
-docker build -t agent .
-```
+`docker build -t agent .`
 
-Develop
-========
+### Develop
 
 ```shell
 go get github.com/projecteru2/agent.git
@@ -43,8 +34,7 @@ cd $GOPATH/src/get github.com/projecteru2/agent
 make deps
 ```
 
-Dockerized Agent
-=================
+### Dockerized Agent
 
 ```shell
 docker run -d --privileged \
