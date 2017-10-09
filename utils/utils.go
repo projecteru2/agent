@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/coreos/etcd/client"
@@ -36,6 +35,5 @@ func WritePid(path string) {
 }
 
 func GetAppInfo(containerName string) (name, entrypoint, ident string, err error) {
-	containerName = strings.TrimLeft(containerName, "/")
 	return coreutils.ParseContainerName(containerName)
 }
