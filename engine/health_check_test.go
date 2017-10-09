@@ -8,11 +8,32 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/pkg/stringid"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestcheckSingleContainerHealthy(t *testing.T) {
+	go http.ListenAndServe(":10236", http.NotFoundHandler())
+	time.Sleep(100 * time.Millisecond)
+	go http.ListenAndServe(":10237", http.NotFoundHandler())
+	time.Sleep(100 * time.Millisecond)
+	container := types.ContainerJSON{
+		ContainerJSONBase: &types.ContainerJSONBase{
+			ID: stringid.GenerateRandomID(),
+		},
+		NetworkSettings: &types.NetworkSettings{
+			Networks: map[string]*network.EndpointSettings{
+				"x": &network.EndpointSettings{
+					IPAddress: "127.0.0.1",
+				},
+			},
+		},
+	}
+	ports := []string{"10236/tcp", "10237/http"}
+	state := checkSingleContainerHealthy(container, ports, "/", 404, 3*time.Second)
+	assert.True(t, state)
+}
 
 func TestCheckAllContainers(t *testing.T) {
 	log.SetOutput(os.Stdout)
@@ -28,26 +49,10 @@ func TestCheckMethodTCP(t *testing.T) {
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.DebugLevel)
 
-	// checkTCP(container enginetypes.ContainerJSON, timeout time.Duration) bool
-	container := types.ContainerJSON{
-		ContainerJSONBase: &types.ContainerJSONBase{
-			ID: stringid.GenerateRandomID(),
-		},
-		Config: &container.Config{
-			Labels: map[string]string{
-				"ports": "10234/tcp",
-			},
-		},
-		NetworkSettings: &types.NetworkSettings{
-			Networks: map[string]*network.EndpointSettings{
-				"x": &network.EndpointSettings{
-					IPAddress: "192.168.233.233",
-				},
-			},
-		},
-	}
-
-	assert.False(t, checkTCP(container, 2*time.Second))
+	assert.False(t, checkTCP(stringid.GenerateRandomID(), []string{"192.168.233.233:10234"}, 2*time.Second))
+	go http.ListenAndServe(":10235", http.NotFoundHandler())
+	time.Sleep(100 * time.Millisecond)
+	assert.True(t, checkTCP(stringid.GenerateRandomID(), []string{"127.0.0.1:10235"}, 2*time.Second))
 }
 
 func TestCheckMethodHTTP(t *testing.T) {
@@ -57,25 +62,5 @@ func TestCheckMethodHTTP(t *testing.T) {
 	// server
 	go http.ListenAndServe(":10234", http.NotFoundHandler())
 	time.Sleep(100 * time.Millisecond)
-	// checkHTTP(container enginetypes.ContainerJSON, timeout time.Duration) bool
-	container := types.ContainerJSON{
-		ContainerJSONBase: &types.ContainerJSONBase{
-			ID: stringid.GenerateRandomID(),
-		},
-		Config: &container.Config{
-			Labels: map[string]string{
-				"ports":                     "10234/http",
-				"healthcheck_expected_code": "404",
-			},
-		},
-		NetworkSettings: &types.NetworkSettings{
-			Networks: map[string]*network.EndpointSettings{
-				"x": &network.EndpointSettings{
-					IPAddress: "127.0.0.1",
-				},
-			},
-		},
-	}
-
-	assert.True(t, checkHTTP(container, 5*time.Second))
+	assert.True(t, checkHTTP(stringid.GenerateRandomID(), []string{"http://127.0.0.1:10234/"}, 404, 5*time.Second))
 }

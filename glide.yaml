@@ -28,3 +28,4 @@ import:
   subpackages:
   - assert
   - mock
+- package: github.com/projecteru2/core

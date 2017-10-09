@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -13,6 +12,7 @@ import (
 	engineapi "github.com/docker/docker/client"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
+	coreutils "github.com/projecteru2/core/utils"
 )
 
 func CheckExistsError(err error) error {
@@ -37,10 +37,5 @@ func WritePid(path string) {
 
 func GetAppInfo(containerName string) (name, entrypoint, ident string, err error) {
 	containerName = strings.TrimLeft(containerName, "/")
-	appinfo := strings.Split(containerName, "_")
-	if len(appinfo) < common.CNAME_NUM {
-		return "", "", "", errors.New("container name is not eru pattern")
-	}
-	l := len(appinfo)
-	return strings.Join(appinfo[:l-2], "_"), appinfo[l-2], appinfo[l-1], nil
+	return coreutils.ParseContainerName(containerName)
 }

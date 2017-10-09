@@ -11,7 +11,9 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	enginetypes "github.com/docker/docker/api/types"
+	enginecontainer "github.com/docker/docker/api/types/container"
 	enginefilters "github.com/docker/docker/api/types/filters"
+	coretypes "github.com/projecteru2/core/types"
 )
 
 const (
@@ -69,8 +71,8 @@ func (e *Engine) checkAllContainers() {
 // 需要告诉第一次上的时候这个容器是健康的, 还是不是
 func (e *Engine) judgeContainerHealth(container enginetypes.ContainerJSON) bool {
 	// 如果找不到健康检查, 那么就认为不需要检查, 一直是健康的
-	checkMethod, ok := container.Config.Labels["healthcheck"]
-	return !(ok && (checkMethod == "tcp" || checkMethod == "http"))
+	portsStr, ok := container.Config.Labels["healthcheck_ports"]
+	return !(ok && portsStr != "")
 }
 
 // 检查一个容器
@@ -79,21 +81,29 @@ func (e *Engine) checkOneContainer(container enginetypes.ContainerJSON, timeout 
 	if !container.State.Running {
 		return healthNotRunning
 	}
-	// 拿下检查方法, 暂时只支持tcp和http
-	checkMethod, ok := container.Config.Labels["healthcheck"]
-	if !(ok && (checkMethod == "tcp" || checkMethod == "http")) {
+
+	portsStr, ok := container.Config.Labels["healthcheck_ports"]
+	if !ok {
 		return healthNotFound
 	}
+	ports := strings.Split(portsStr, ",")
 
 	// 拿老的数据出来
 	c, err := e.store.GetContainer(container.ID)
 	if err != nil {
-		log.Errorf("Error when retrieving data from etcd, Container ID: %s, error: %s", container.ID, err.Error())
+		log.Errorf("Error when retrieving data from etcd, Container ID: %s, error: %v", container.ID, err)
 		return healthNotFound
 	}
 
+	url := container.Config.Labels["healthcheck_url"]
+	code, err := strconv.Atoi(container.Config.Labels["healthcheck_expected_code"])
+	if err != nil {
+		log.Errorf("Error when getting http check code %v", err)
+		return healthNotFound
+	}
+
+	healthy := checkSingleContainerHealthy(container, ports, url, code, timeout)
 	// 检查现在是不是还健康
-	healthy := checkSingleContainerHealthy(container, checkMethod, timeout)
 	if healthy {
 		// 如果健康并且之前是挂了, 那么修改成健康
 		if !c.Healthy {
@@ -112,40 +122,37 @@ func (e *Engine) checkOneContainer(container enginetypes.ContainerJSON, timeout 
 	return healthBad
 }
 
-func checkSingleContainerHealthy(container enginetypes.ContainerJSON, checkMethod string, timeout time.Duration) bool {
-	if checkMethod == "tcp" {
-		return checkTCP(container, timeout)
-	} else if checkMethod == "http" {
-		return checkHTTP(container, timeout)
+func checkSingleContainerHealthy(container enginetypes.ContainerJSON, ports []string, url string, code int, timeout time.Duration) bool {
+	ip := getIPForContainer(container)
+	tcpChecker := []string{}
+	httpChecker := []string{}
+	for _, port := range ports {
+		p := coretypes.Port(port)
+		if p.Proto() == "http" {
+			httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", ip, p.Port(), url))
+		} else {
+			tcpChecker = append(tcpChecker, fmt.Sprintf("%s:%s", ip, p.Port()))
+		}
 	}
-	return false
+
+	f1, f2 := true, false
+	id := container.ID[:7]
+	if len(httpChecker) > 0 {
+		f1 = checkHTTP(id, httpChecker, code, timeout)
+	}
+	if len(tcpChecker) > 0 {
+		f2 = checkTCP(id, tcpChecker, timeout)
+	}
+	return f1 && f2
 }
 
 // 检查一个容器的所有URL
 // 事实上一般也就一个
-func checkHTTP(container enginetypes.ContainerJSON, timeout time.Duration) bool {
-	backends := getContainerBackends(container)
-	expectedCodeStr, ok := container.Config.Labels["healthcheck_expected_code"]
-	if !ok {
-		expectedCodeStr = "0"
-	}
-	expectedCode, err := strconv.Atoi(expectedCodeStr)
-	if err != nil {
-		expectedCode = 0
-	}
-	healthcheckURL, ok := container.Config.Labels["healthcheck_url"]
-	if !ok {
-		healthcheckURL = "/healthcheck"
-	}
-	if !strings.HasPrefix(healthcheckURL, "/") {
-		healthcheckURL = "/" + healthcheckURL
-	}
-
+func checkHTTP(ID string, backends []string, code int, timeout time.Duration) bool {
 	for _, backend := range backends {
-		url := fmt.Sprintf("http://%s%s", backend, healthcheckURL)
-		log.Debugf("Check health via http: container %s, url %s, expect code %d", container.ID, url, expectedCode)
-		if !checkOneURL(url, expectedCode, timeout) {
-			log.Infof("Check health failed via http: container %s, url %s, expect code %d", container.ID, url, expectedCode)
+		log.Debugf("Check health via http: container %s, url %s, expect code %d", ID, backend, code)
+		if !checkOneURL(backend, code, timeout) {
+			log.Infof("Check health failed via http: container %s, url %s, expect code %d", ID, backend, code)
 			return false
 		}
 	}
@@ -153,10 +160,9 @@ func checkHTTP(container enginetypes.ContainerJSON, timeout time.Duration) bool 
 }
 
 // 检查一个TCP
-func checkTCP(container enginetypes.ContainerJSON, timeout time.Duration) bool {
-	backends := getContainerBackends(container)
+func checkTCP(ID string, backends []string, timeout time.Duration) bool {
 	for _, backend := range backends {
-		log.Debugf("Check health via tcp: container %s, backend %s", container.ID, backend)
+		log.Debugf("Check health via tcp: container %s, backend %s", ID, backend)
 		_, err := net.DialTimeout("tcp", backend, timeout)
 		if err != nil {
 			return false
@@ -165,46 +171,14 @@ func checkTCP(container enginetypes.ContainerJSON, timeout time.Duration) bool {
 	return true
 }
 
-// 获取一个容器的全部后端
-// 其实就是IP跟端口笛卡儿积, 然后IP拿一个就够了
-func getContainerBackends(container enginetypes.ContainerJSON) []string {
-	backends := []string{}
-
-	// 拿端口的 label
-	// 没有的话就算了
-	portsLabel, ok := container.Config.Labels["ports"]
-	if !ok {
-		log.Warnf("Container %s has no ports defined, ignore", container.ID)
-		return backends
-	}
-
-	// 拿端口列表
-	ports := []string{}
-	for _, part := range strings.Split(portsLabel, ",") {
-		// 必须是 port/protocol 的格式, 不是就不管
-		ps := strings.SplitN(part, "/", 2)
-		if len(ps) != 2 {
-			continue
-		}
-		ports = append(ports, ps[0])
-	}
-
-	// 拿容器的IP, 没有分配IP就不检查了
-	ip := getIPForContainer(container)
-	if ip == "" {
-		return backends
-	}
-
-	for _, port := range ports {
-		backends = append(backends, net.JoinHostPort(ip, port))
-	}
-	return backends
-}
-
 // 应用应该都是绑定到 0.0.0.0 的
 // 所以拿哪个 IP 其实无所谓.
 func getIPForContainer(container enginetypes.ContainerJSON) string {
-	for _, endpoint := range container.NetworkSettings.Networks {
+	for name, endpoint := range container.NetworkSettings.Networks {
+		networkmode := enginecontainer.NetworkMode(name)
+		if !networkmode.IsUserDefined() {
+			return "127.0.0.1"
+		}
 		return endpoint.IPAddress
 	}
 	return ""
