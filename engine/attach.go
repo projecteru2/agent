@@ -19,7 +19,7 @@ import (
 	"github.com/projecteru2/agent/watcher"
 )
 
-func (e *Engine) attach(container *types.Container, stop chan int) {
+func (e *Engine) attach(container *types.Container) {
 	transfer := e.forwards.Get(container.ID, 0)
 	writer, err := logs.NewWriter(transfer, e.config.Log.Stdout)
 	if err != nil {
@@ -29,6 +29,7 @@ func (e *Engine) attach(container *types.Container, stop chan int) {
 
 	outr, outw := io.Pipe()
 	errr, errw := io.Pipe()
+	parentCtx, cancel := context.WithCancel(context.Background())
 	go func() {
 		ctx := context.Background()
 		options := dockertypes.ContainerAttachOptions{
@@ -47,12 +48,14 @@ func (e *Engine) attach(container *types.Container, stop chan int) {
 		defer errw.Close()
 		_, err = stdcopy.StdCopy(outw, errw, resp.Reader)
 		log.Infof("attach %s container %s finished", container.Name, container.ID[:7])
-		stop <- 1
+		cancel()
 		if err != nil {
 			log.Errorf("attach get stream failed %s", err)
 		}
 	}()
 	log.Infof("attach %s container %s success", container.Name, container.ID[:7])
+	// attach metrics
+	go e.stat(parentCtx, container)
 	pump := func(typ string, source io.Reader) {
 		buf := bufio.NewReader(source)
 		for {

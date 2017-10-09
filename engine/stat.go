@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -10,7 +11,7 @@ import (
 	"github.com/projecteru2/agent/types"
 )
 
-func (e *Engine) stat(container *types.Container, stop chan int) {
+func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	s := metric.NewStats(container, e.dockerized)
 	cpuQuotaRate := 0.0
 	if container.CPUQuota == 0 {
@@ -71,8 +72,7 @@ func (e *Engine) stat(container *types.Container, stop chan int) {
 				totalJiffies1, cpuStats1, networkStats1 = totalJiffies2, cpuStats2, networkStats2
 				statsd.Send(result, endpoint, tagString)
 			}()
-		case <-stop:
-			close(stop)
+		case <-parentCtx.Done():
 			return
 		}
 	}

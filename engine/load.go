@@ -58,12 +58,10 @@ func (e *Engine) load() error {
 			continue
 		}
 
-		stop := make(chan int)
 		// 非 eru-agent in docker 就转发日志，防止日志循环输出
 		if _, ok := container.Labels["agent"]; !ok || !e.dockerized {
-			e.attach(c, stop)
+			e.attach(c)
 		}
-		go e.stat(c, stop)
 	}
 	go func() {
 		nodeAllContainers, err := e.store.GetAllContainers()

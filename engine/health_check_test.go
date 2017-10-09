@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestcheckSingleContainerHealthy(t *testing.T) {
+func TestCheckSingleContainerHealthy(t *testing.T) {
 	go http.ListenAndServe(":10236", http.NotFoundHandler())
 	time.Sleep(100 * time.Millisecond)
 	go http.ListenAndServe(":10237", http.NotFoundHandler())
