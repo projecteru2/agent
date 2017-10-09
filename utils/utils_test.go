@@ -39,5 +39,5 @@ func TestGetAppInfo(t *testing.T) {
 	containerName = "api_EAXPcM"
 	_, _, _, err = GetAppInfo(containerName)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "container name is not eru pattern")
+	assert.Contains(t, err.Error(), "Bad containerName")
 }

@@ -4,7 +4,7 @@ var ERU_AGENT_VERSION = "unknown"
 
 const (
 	DEFAULT_ETCD_PREFIX = "eru"
-	DOCKER_CLI_VERSION  = "v1.23"
+	DOCKER_CLI_VERSION  = "1.25"
 
 	STATUS_DIE     = "die"
 	STATUS_START   = "start"
