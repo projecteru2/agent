@@ -12,7 +12,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	enginetypes "github.com/docker/docker/api/types"
 	enginecontainer "github.com/docker/docker/api/types/container"
-	enginefilters "github.com/docker/docker/api/types/filters"
 	coretypes "github.com/projecteru2/core/types"
 )
 
@@ -44,11 +43,9 @@ func (e *Engine) checkAllContainers() {
 	if timeout == 0 {
 		timeout = 3
 	}
-	f := enginefilters.NewArgs()
-	f.Add("label", "ERU=1")
-	containers, err := e.docker.ContainerList(context.Background(), enginetypes.ContainerListOptions{Filters: f})
+	containers, err := e.ListContainers(false)
 	if err != nil {
-		log.Errorf("Error when list all containers with label \"ERU=1\": %s", err.Error())
+		log.Errorf("Error when list all containers with label \"ERU=1\": %v", err)
 		return
 	}
 

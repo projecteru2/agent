@@ -1,0 +1,17 @@
+{
+	"files.exclude": {
+		".git": true,
+		".build": true,
+		"**/.DS_Store": true,
+        "vendor": true
+		}
+	},
+	"search.exclude": {
+		"**/node_modules": true,
+		"**/bower_components": true,
+		".build/**": true,
+		"out*/**": true,
+		"i18n/**": true,
+        "vendor/**": true
+	}
+}

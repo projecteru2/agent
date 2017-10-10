@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
@@ -12,7 +11,6 @@ import (
 	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/watcher"
 	"gopkg.in/urfave/cli.v1"
-	"gopkg.in/yaml.v2"
 )
 
 func setupLogLevel(l string) error {
@@ -24,69 +22,14 @@ func setupLogLevel(l string) error {
 	return nil
 }
 
-// 从config path指定的文件加载config
-// 失败就算了, 反正也要从cli覆写的
-func loadConfigFromFile(configPath string) types.Config {
-	config := types.Config{}
-
-	bytes, err := ioutil.ReadFile(configPath)
+func initConfig(c *cli.Context) *types.Config {
+	config := &types.Config{}
+	err := config.LoadConfigFromFile(c.String("config"))
 	if err != nil {
-		return config
+		log.Warnf("[main] load config failed %v", err)
 	}
-
-	if err := yaml.Unmarshal(bytes, &config); err != nil {
-		return config
-	}
+	config.PrepareConfig(c)
 	return config
-}
-
-// 从cli覆写
-func overrideConfigFromCli(c *cli.Context, config types.Config) types.Config {
-	if c.String("pidfile") != "" {
-		config.PidFile = c.String("pidfile")
-	}
-	if c.String("hostname") != "" {
-		config.HostName = c.String("hostname")
-	}
-	if c.String("zone") != "" {
-		config.Zone = c.String("zone")
-	}
-	if c.Int("health-check-interval") > 0 {
-		config.HealthCheckInterval = c.Int("health-check-interval")
-	}
-	if c.Int("health-check-timeout") > 0 {
-		config.HealthCheckTimeout = c.Int("health-check-timeout")
-	}
-	if c.String("docker-endpoint") != "" {
-		config.Docker.Endpoint = c.String("docker-endpoint")
-	}
-	if c.String("etcd-prefix") != "" {
-		config.Etcd.Prefix = c.String("etcd-prefix")
-	}
-	if len(c.StringSlice("etcd")) > 0 {
-		config.Etcd.Machines = c.StringSlice("etcd")
-	}
-	if c.Int64("metrics-step") > 0 {
-		config.Metrics.Step = c.Int64("metrics-step")
-	}
-	if len(c.StringSlice("metrics-transfers")) > 0 {
-		config.Metrics.Transfers = c.StringSlice("metrics-transfers")
-	}
-	if c.String("api-addr") != "" {
-		config.API.Addr = c.String("api-addr")
-	}
-	if len(c.StringSlice("log-forwards")) > 0 {
-		config.Log.Forwards = c.StringSlice("log-forwards")
-	}
-	if c.String("log-stdout") != "" {
-		config.Log.Stdout = c.String("log-stdout") == "yes"
-	}
-	return config
-}
-
-func initConfig(c *cli.Context) types.Config {
-	config := loadConfigFromFile(c.String("config"))
-	return overrideConfigFromCli(c, config)
 }
 
 func serve(c *cli.Context) error {
@@ -95,20 +38,6 @@ func serve(c *cli.Context) error {
 	}
 
 	config := initConfig(c)
-	if hostname, err := os.Hostname(); err != nil {
-		log.Fatal(err)
-	} else {
-		config.HostName = hostname
-	}
-
-	if config.Etcd.Prefix == "" {
-		config.Etcd.Prefix = common.DEFAULT_ETCD_PREFIX
-	}
-
-	if config.PidFile == "" {
-		log.Fatal("need to set pidfile")
-	}
-
 	log.Debugf("config: %v", config)
 	utils.WritePid(config.PidFile)
 	defer os.Remove(config.PidFile)
@@ -148,22 +77,16 @@ func main() {
 			EnvVar: "ERU_AGENT_LOG_LEVEL",
 		},
 		cli.StringFlag{
+			Name:   "core-endpoint",
+			Value:  "",
+			Usage:  "core endpoint",
+			EnvVar: "ERU_AGENT_CORE_ENDPOINT",
+		},
+		cli.StringFlag{
 			Name:   "docker-endpoint",
 			Value:  "",
 			Usage:  "docker endpoint",
 			EnvVar: "ERU_AGENT_DOCKER_ENDPOINT",
-		},
-		cli.StringFlag{
-			Name:   "etcd-prefix",
-			Value:  "",
-			Usage:  "namespace for agent in etcd storage",
-			EnvVar: "ERU_AGENT_ETCD_PREFIX",
-		},
-		cli.StringSliceFlag{
-			Name:   "etcd",
-			Value:  &cli.StringSlice{},
-			Usage:  "etcd machines, multiple will be ok",
-			EnvVar: "ERU_AGENT_ETCD_MACHINES",
 		},
 		cli.Int64Flag{
 			Name:   "metrics-step",
@@ -201,18 +124,6 @@ func main() {
 			Usage:  "pidfile to save",
 			EnvVar: "ERU_AGENT_PIDFILE",
 		},
-		cli.StringFlag{
-			Name:   "hostname",
-			Value:  "",
-			Usage:  "hostname of agent's host",
-			EnvVar: "ERU_AGENT_HOSTNAME",
-		},
-		cli.StringFlag{
-			Name:   "zone",
-			Value:  "",
-			Usage:  "agent's zone",
-			EnvVar: "ERU_AGENT_ZONE",
-		},
 		cli.IntFlag{
 			Name:   "health-check-interval",
 			Value:  0,
@@ -226,9 +137,6 @@ func main() {
 			EnvVar: "ERU_AGENT_HEALTH_CHECK_TIMEOUT",
 		},
 	}
-	app.Action = func(c *cli.Context) error {
-		return serve(c)
-	}
-
+	app.Action = serve
 	app.Run(os.Args)
 }

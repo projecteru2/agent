@@ -3,7 +3,6 @@ package types
 type Container struct {
 	ID         string
 	Pid        int
-	Alive      bool
 	Healthy    bool
 	Name       string
 	EntryPoint string
