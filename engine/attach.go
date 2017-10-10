@@ -23,7 +23,7 @@ func (e *Engine) attach(container *types.Container) {
 	transfer := e.forwards.Get(container.ID, 0)
 	writer, err := logs.NewWriter(transfer, e.config.Log.Stdout)
 	if err != nil {
-		log.Errorf("Create log forward failed %s", err)
+		log.Errorf("[attach] Create log forward failed %s", err)
 		return
 	}
 
@@ -40,20 +40,20 @@ func (e *Engine) attach(container *types.Container) {
 		}
 		resp, err := e.docker.ContainerAttach(ctx, container.ID, options)
 		if err != nil && err != httputil.ErrPersistEOF {
-			log.Errorf("attach %s container %s failed %s", container.Name, container.ID[:7], err)
+			log.Errorf("[attach] attach %s container %s failed %s", container.Name, container.ID[:common.SHORTID], err)
 			return
 		}
 		defer resp.Close()
 		defer outw.Close()
 		defer errw.Close()
 		_, err = stdcopy.StdCopy(outw, errw, resp.Reader)
-		log.Infof("attach %s container %s finished", container.Name, container.ID[:7])
+		log.Infof("[attach] attach %s container %s finished", container.Name, container.ID[:common.SHORTID])
 		cancel()
 		if err != nil {
-			log.Errorf("attach get stream failed %s", err)
+			log.Errorf("[attach] attach get stream failed %s", err)
 		}
 	}()
-	log.Infof("attach %s container %s success", container.Name, container.ID[:7])
+	log.Infof("[attach] attach %s container %s success", container.Name, container.ID[:common.SHORTID])
 	// attach metrics
 	go e.stat(parentCtx, container)
 	pump := func(typ string, source io.Reader) {
@@ -62,7 +62,7 @@ func (e *Engine) attach(container *types.Container) {
 			data, err := buf.ReadString('\n')
 			if err != nil {
 				if err != io.EOF {
-					log.Errorf("attach pump %s %s %s %s", container.Name, container.ID[:7], typ, err)
+					log.Errorf("[attach] attach pump %s %s %s %s", container.Name, container.ID[:common.SHORTID], typ, err)
 				}
 				return
 			}
@@ -81,7 +81,7 @@ func (e *Engine) attach(container *types.Container) {
 			}
 			watcher.LogMonitor.LogC <- l
 			if err := writer.Write(l); err != nil {
-				log.Errorf("%s container %s write failed %s", container.Name, container.ID[:7], err)
+				log.Errorf("[attach] %s container %s write failed %s", container.Name, container.ID[:common.SHORTID], err)
 				log.Error(data)
 			}
 		}

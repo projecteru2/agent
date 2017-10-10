@@ -85,7 +85,7 @@ func Serve(addr string) {
 	}
 
 	http.Handle("/", restfulAPIServer)
-	log.Infof("http api started %s", addr)
+	log.Infof("[apiServe] http api started %s", addr)
 	go func() {
 		err := http.ListenAndServe(addr, nil)
 		if err != nil {

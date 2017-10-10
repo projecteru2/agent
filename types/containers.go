@@ -1,8 +1,11 @@
 package types
 
+import "github.com/docker/docker/api/types/network"
+
 type Container struct {
 	ID         string
 	Pid        int
+	Running    bool
 	Healthy    bool
 	Name       string
 	EntryPoint string
@@ -13,4 +16,6 @@ type Container struct {
 	CPUShares  int64
 	Memory     int64
 	Extend     map[string]string
+	Publish    map[string]string
+	Networks   map[string]*network.EndpointSettings `json:"-"`
 }

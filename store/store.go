@@ -1,12 +1,13 @@
 package store
 
-import "github.com/projecteru2/core/types"
+import (
+	"github.com/projecteru2/agent/types"
+	coretypes "github.com/projecteru2/core/types"
+)
 
 type Store interface {
-	Crash(node *types.Node) error
-	GetNode(nodename string) (*types.Node, error)
-	UpdateNode(node *types.Node) error
+	GetNode(nodename string) (*coretypes.Node, error)
+	UpdateNode(node *coretypes.Node) error
 
-	GetContainer(cid string) (*types.Container, error)
-	UpdateContainer(container *types.Container) error
+	DeployContainer(container *types.Container, node *coretypes.Node) error
 }

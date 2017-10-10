@@ -25,7 +25,7 @@ func InitMonitor() {
 }
 
 func (w *Watcher) Serve() {
-	logrus.Info("Log monitor started")
+	logrus.Info("[logServe] Log monitor started")
 	for {
 		select {
 		case log := <-w.LogC:
