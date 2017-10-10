@@ -4,16 +4,17 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
+	coretypes "github.com/projecteru2/core/types"
 )
 
-func GenerateContainerMeta(ID, cname, version string, attrs map[string]string) (*types.Container, error) {
-	name, entrypoint, ident, err := utils.GetAppInfo(cname)
+func GenerateContainerMeta(c *coretypes.Container, version string, attrs map[string]string) (*types.Container, error) {
+	name, entrypoint, ident, err := utils.GetAppInfo(c.Name)
 	if err != nil {
 		return nil, err
 	}
 
 	container := &types.Container{}
-	container.ID = ID
+	container.ID = c.ID
 	container.Name = name
 	container.EntryPoint = entrypoint
 	container.Ident = ident

@@ -29,3 +29,5 @@ import:
   - assert
   - mock
 - package: github.com/projecteru2/core
+- package: google.golang.org/grpc
+  version: v1.6.0

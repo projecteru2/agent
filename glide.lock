@@ -1,5 +1,5 @@
-hash: c1b597f02e233bae3d4a2b26b27f4c2f6a43a752b1ff0b43029c911421f7c9e1
-updated: 2017-10-09T17:14:52.03372859+08:00
+hash: b8af42dfb5efa4bf1a869ad01814eca31eec0eebe64da6783302a3df1fe06fc1
+updated: 2017-10-10T15:47:13.683909269+08:00
 imports:
 - name: github.com/bmizerany/pat
   version: c068ca2f0aacee5ac3681d68e4d0a003b7d1fd2c
@@ -62,6 +62,15 @@ imports:
   version: 0dadbb0345b35ec7ef35e228dabb8de89a65bf52
 - name: github.com/docker/libtrust
   version: aabc10ec26b754e797f9028f4589c5b7bd90dc20
+- name: github.com/golang/protobuf
+  version: 4bd1920723d7b7c925de087aa32e2187708897f7
+  subpackages:
+  - jsonpb
+  - proto
+  - ptypes
+  - ptypes/any
+  - ptypes/duration
+  - ptypes/timestamp
 - name: github.com/Microsoft/go-winio
   version: 7ff89941bcb93df2e962467fb073c6e997b13cf0
 - name: github.com/opencontainers/go-digest
@@ -74,6 +83,10 @@ imports:
   - difflib
 - name: github.com/projecteru2/core
   version: c25f3b8a8294f1028150de3b391aa0b9c6fb922f
+  subpackages:
+  - rpc/gen
+  - types
+  - utils
 - name: github.com/Sirupsen/logrus
   version: f006c2ac4710855cf0f916dd6b77acf6b048dc6e
 - name: github.com/stretchr/objx
@@ -87,6 +100,8 @@ imports:
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
   - codec
+- name: github.com/urfave/cli
+  version: 2997500ba5f393daa5d76c18544c6367b2c48d16
 - name: golang.org/x/crypto
   version: b176d7def5d71bdd214203491f89843ed217f420
   subpackages:
@@ -96,14 +111,48 @@ imports:
   subpackages:
   - context
   - context/ctxhttp
+  - http2
+  - http2/hpack
+  - idna
+  - internal/timeseries
+  - lex/httplex
   - proxy
+  - trace
 - name: golang.org/x/sys
   version: e48874b42435b4347fc52bdee0424a52abc974d7
   subpackages:
   - unix
   - windows
+- name: golang.org/x/text
+  version: 836efe42bb4aa16aaa17b9c155d8813d336ed720
+  subpackages:
+  - secure/bidirule
+  - transform
+  - unicode/bidi
+  - unicode/norm
+- name: google.golang.org/genproto
+  version: b0a3dcfcd1a9bd48e63634bd8802960804cf8315
+  subpackages:
+  - googleapis/rpc/status
+- name: google.golang.org/grpc
+  version: f92cdcd7dcdc69e81b2d7b338479a19a8723cfa3
+  subpackages:
+  - codes
+  - connectivity
+  - credentials
+  - grpclb/grpc_lb_v1/messages
+  - grpclog
+  - internal
+  - keepalive
+  - metadata
+  - naming
+  - peer
+  - stats
+  - status
+  - tap
+  - transport
 - name: gopkg.in/urfave/cli.v1
   version: cfb38830724cc34fedffe9a2a29fb54fa9169cd1
 - name: gopkg.in/yaml.v2
-  version: 25c4ec802a7d637f88d584ab26798e94ad14c13b
+  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports: []
