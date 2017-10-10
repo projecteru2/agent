@@ -7,6 +7,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/metric"
 	"github.com/projecteru2/agent/types"
 )
@@ -21,8 +22,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 		cpuQuotaRate = float64(container.CPUQuota) / float64(container.CPUPeriod) / e.cpuCore
 	}
 
-	log.Debugf("CPUQuota: %d, CPUPeriod: %d, cpuQuotaRate: %f", container.CPUQuota, container.CPUPeriod, cpuQuotaRate)
-	log.Debugf("CPUShares: %v", container.CPUShares)
+	log.Debugf("[stat] CPUShares: %v, CPUQuota: %d, CPUPeriod: %d, cpuQuotaRate: %f", container.CPUShares, container.CPUQuota, container.CPUPeriod, cpuQuotaRate)
 	totalJiffies1, tsReadingTotalJiffies1, cpuStats1, _, networkStats1, err := getStats(s)
 	if err != nil {
 		log.Errorf("get stats failed %s", err)
@@ -35,12 +35,12 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	var tagString string
 	host := strings.Replace(e.config.HostName, ".", "-", -1)
 
-	tagString = fmt.Sprintf("%s.%s", host, container.ID[:7])
+	tagString = fmt.Sprintf("%s.%s", host, container.ID[:common.SHORTID])
 
 	version := strings.Replace(container.Version, ".", "-", -1) // redis 的版本号带了 '.' 导致监控数据格式不一致
 	endpoint := fmt.Sprintf("%s.%s.%s", container.Name, version, container.EntryPoint)
-	defer log.Infof("container %s %s metric report stop", container.Name, container.ID[:7])
-	log.Infof("container %s %s metric report start", container.Name, container.ID[:7])
+	defer log.Infof("[stat] container %s %s metric report stop", container.Name, container.ID[:common.SHORTID])
+	log.Infof("[stat] container %s %s metric report start", container.Name, container.ID[:common.SHORTID])
 
 	for {
 		select {
@@ -48,7 +48,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 			go func() {
 				totalJiffies2, tsReadingTotalJiffies2, cpuStats2, memoryStats, networkStats2, err := getStats(s)
 				if err != nil {
-					log.Errorf("stat %s container %s failed %s", container.Name, container.ID[:7], err)
+					log.Errorf("stat %s container %s failed %s", container.Name, container.ID[:common.SHORTID], err)
 					return
 				}
 				result := map[string]float64{}

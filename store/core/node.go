@@ -32,10 +32,3 @@ func (c *Client) UpdateNode(node *types.Node) error {
 	_, err := client.SetNodeAvailable(context.Background(), opts)
 	return err
 }
-
-//Crash update node and it's containers status
-func (c *Client) Crash(node *types.Node) error {
-	//TODO 标记所有管辖的容器 health 和 alive
-	node.Available = false
-	return c.UpdateNode(node)
-}

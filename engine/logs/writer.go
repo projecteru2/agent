@@ -23,7 +23,6 @@ type Writer struct {
 func NewWriter(addr string, stdout bool) (*Writer, error) {
 	u, err := url.Parse(addr)
 	if err != nil {
-		log.Errorf("Parse forward addr failed %s", err)
 		return nil, err
 	}
 	writer := &Writer{addr: u.Host, scheme: u.Scheme}
@@ -62,12 +61,10 @@ func (w *Writer) Write(logline *types.Log) error {
 func (w *Writer) createUDPConn() error {
 	udpAddr, err := net.ResolveUDPAddr("udp", w.addr)
 	if err != nil {
-		log.Errorf("Resolve %s failed %s", w.addr, err)
 		return err
 	}
 	conn, err := net.DialUDP("udp", nil, udpAddr)
 	if err != nil {
-		log.Errorf("Connect backend failed %s", err)
 		return err
 	}
 	w.conn = conn
@@ -79,12 +76,10 @@ func (w *Writer) createUDPConn() error {
 func (w *Writer) createTCPConn() error {
 	tcpAddr, err := net.ResolveTCPAddr("tcp", w.addr)
 	if err != nil {
-		log.Errorf("Resolve %s failed %s", w.addr, err)
 		return err
 	}
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
-		log.Errorf("Connect backend failed %s", err)
 		return err
 	}
 	w.conn = conn

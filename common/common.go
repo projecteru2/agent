@@ -15,4 +15,7 @@ const (
 	VLAN_PREFIX = "cali0"
 	DEFAULT_BR  = "eth0"
 	DOCKERIZED  = "AGENT_IN_DOCKER"
+
+	SHORTID  = 7
+	ERU_MARK = "ERU"
 )

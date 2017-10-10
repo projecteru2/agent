@@ -16,6 +16,7 @@ import (
 	coretypes "github.com/projecteru2/core/types"
 )
 
+//Engine is agent
 type Engine struct {
 	store   store.Store
 	config  *types.Config
@@ -29,6 +30,7 @@ type Engine struct {
 	dockerized bool
 }
 
+//NewEngine make a engine instance
 func NewEngine(config *types.Config) (*Engine, error) {
 	engine := &Engine{}
 	docker, err := utils.MakeDockerClient(config)
@@ -41,9 +43,16 @@ func NewEngine(config *types.Config) (*Engine, error) {
 		return nil, err
 	}
 
+	// get self
+	node, err := store.GetNode(config.HostName)
+	if err != nil {
+		return nil, err
+	}
+
 	engine.config = config
 	engine.store = store
 	engine.docker = docker
+	engine.node = node
 	engine.dockerized = os.Getenv(common.DOCKERIZED) != ""
 	engine.cpuCore = float64(runtime.NumCPU())
 	engine.transfers = utils.NewHashBackends(config.Metrics.Transfers)
@@ -51,13 +60,8 @@ func NewEngine(config *types.Config) (*Engine, error) {
 	return engine, nil
 }
 
+//Run will start agent
 func (e *Engine) Run() error {
-	// get self
-	node, err := e.store.GetNode(e.config.HostName)
-	if err != nil {
-		return err
-	}
-
 	// load container
 	if err := e.load(); err != nil {
 		return err
@@ -70,8 +74,7 @@ func (e *Engine) Run() error {
 	go e.healthCheck()
 
 	// tell core this node is ready
-	node.Available = true
-	if err := e.store.UpdateNode(node); err != nil {
+	if err := e.activated(true); err != nil {
 		return err
 	}
 	log.Info("[Engine] Node activated")
@@ -81,10 +84,10 @@ func (e *Engine) Run() error {
 	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGQUIT)
 	select {
 	case s := <-c:
-		log.Infof("Agent caught system signal %s, exiting", s)
+		log.Infof("[Engine] Agent caught system signal %s, exiting", s)
 		return nil
 	case err := <-errChan:
-		e.store.Crash(node)
+		e.crash()
 		return err
 	}
 }
