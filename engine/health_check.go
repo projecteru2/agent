@@ -59,8 +59,8 @@ func (e *Engine) checkAllContainers() {
 		container, err := e.detectContainer(c.ID, c.Labels)
 		if err != nil {
 			log.Errorf("[checkAllContainers] detect container failed %v", err)
-			continue
 		}
+
 		go e.checkOneContainer(container, time.Duration(timeout)*time.Second)
 	}
 }
@@ -68,10 +68,7 @@ func (e *Engine) checkAllContainers() {
 // 检查一个容器
 func (e *Engine) checkOneContainer(container *types.Container, timeout time.Duration) int {
 	// 不是running就不检查, 也没办法检查啊...
-	if !container.Running {
-		return healthNotRunning
-	}
-
+	// 理论上这里都是 running 的容器，因为 listContainers 标记为 all=false 了
 	portsStr, ok := container.Extend["healthcheck_ports"]
 	if !ok {
 		return healthNotFound
@@ -88,7 +85,9 @@ func (e *Engine) checkOneContainer(container *types.Container, timeout time.Dura
 
 	// 检查现在是不是还健康
 	healthy := checkSingleContainerHealthy(container, ports, url, code, timeout)
-	if healthy && !container.Healthy {
+	prevHealthy := e.checker.Get(container.ID)
+	defer e.checker.Set(container.ID, healthy)
+	if healthy && !prevHealthy {
 		// 如果健康并且之前是挂了, 那么修改成健康
 		container.Healthy = true
 		if err := e.store.DeployContainer(container, e.node); err != nil {
@@ -96,13 +95,13 @@ func (e *Engine) checkOneContainer(container *types.Container, timeout time.Dura
 		}
 		log.Infof("[checkOneContainer] Container %s resurges", container.ID[:common.SHORTID])
 		return healthGood
-	} else if !healthy && container.Healthy {
+	} else if !healthy && prevHealthy {
 		// 如果挂了并且之前是健康, 那么修改成挂了
 		container.Healthy = false
 		if err := e.store.DeployContainer(container, e.node); err != nil {
 			log.Errorf("[checkOneContainer] update deploy status failed %v", err)
 		}
-		log.Infof("[checkOneContainer] Container %s dies", container.ID[:common.SHORTID])
+		log.Infof("[continerDie] Container %s dies", container.ID[:common.SHORTID])
 		return healthBad
 	}
 	return healthNotFound

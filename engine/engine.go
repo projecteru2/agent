@@ -26,6 +26,7 @@ type Engine struct {
 
 	transfers *utils.HashBackends
 	forwards  *utils.HashBackends
+	checker   *types.PrevCheck
 
 	dockerized bool
 }
@@ -53,6 +54,7 @@ func NewEngine(config *types.Config) (*Engine, error) {
 	engine.store = store
 	engine.docker = docker
 	engine.node = node
+	engine.checker = types.NewPrevCheck()
 	engine.dockerized = os.Getenv(common.DOCKERIZED) != ""
 	engine.cpuCore = float64(runtime.NumCPU())
 	engine.transfers = utils.NewHashBackends(config.Metrics.Transfers)

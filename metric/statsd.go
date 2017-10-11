@@ -24,7 +24,7 @@ func (self *StatsDClient) Close() error {
 func (self *StatsDClient) Send(data map[string]float64, endpoint, tag string) error {
 	remote, err := statsdlib.New(self.Addr)
 	if err != nil {
-		log.Errorf("Connect statsd failed: %v", err)
+		log.Errorf("[statsd] Connect statsd failed: %v", err)
 		return err
 	}
 	defer remote.Close()

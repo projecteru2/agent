@@ -38,7 +38,7 @@ func serve(c *cli.Context) error {
 	}
 
 	config := initConfig(c)
-	log.Debugf("config: %v", config)
+	log.Debugf("[config] %v", config)
 	utils.WritePid(config.PidFile)
 	defer os.Remove(config.PidFile)
 

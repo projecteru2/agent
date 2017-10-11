@@ -51,7 +51,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 	if hijack, ok := w.(http.Hijacker); ok {
 		conn, buf, err := hijack.Hijack()
 		if err != nil {
-			log.Error(err)
+			log.Errorf("[apiLog] connect failed %v", err)
 			return
 		}
 		logConsumer := &types.LogConsumer{
@@ -59,7 +59,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 			App: app, Conn: conn, Buf: buf,
 		}
 		watcher.LogMonitor.ConsumerC <- logConsumer
-		log.Infof("%s %s log attached", app, logConsumer.ID)
+		log.Infof("[apiLog] %s %s log attached", app, logConsumer.ID)
 	}
 }
 
