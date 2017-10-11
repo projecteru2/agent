@@ -93,3 +93,23 @@ func (e *Engine) Run() error {
 		return err
 	}
 }
+
+func (e *Engine) crash() error {
+	log.Info("[crash] mark all containers unhealthy")
+	containers, err := e.listContainers(false, nil)
+	if err != nil {
+		return err
+	}
+	for _, c := range containers {
+		container, err := e.detectContainer(c.ID, c.Labels)
+		if err != nil {
+			return err
+		}
+		container.Healthy = false
+		if err := e.store.DeployContainer(container, e.node); err != nil {
+			return err
+		}
+		log.Infof("[crash] mark %s unhealthy", container.ID[:common.SHORTID])
+	}
+	return e.activated(false)
+}

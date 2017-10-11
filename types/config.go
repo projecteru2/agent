@@ -93,4 +93,10 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 	if config.PidFile == "" {
 		log.Fatal("need to set pidfile")
 	}
+	if config.HealthCheckTimeout == 0 {
+		config.HealthCheckTimeout = 3
+	}
+	if config.HealthCheckInterval == 0 {
+		config.HealthCheckInterval = 10
+	}
 }

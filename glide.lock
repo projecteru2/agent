@@ -82,7 +82,7 @@ imports:
   subpackages:
   - difflib
 - name: github.com/projecteru2/core
-  version: c25f3b8a8294f1028150de3b391aa0b9c6fb922f
+  version: a035b336bb78d750400cc25710ebfe438da43cc9
   subpackages:
   - rpc/gen
   - types

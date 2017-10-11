@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -25,10 +23,6 @@ const (
 
 func (e *Engine) healthCheck() {
 	interval := e.config.HealthCheckInterval
-	if interval == 0 {
-		interval = 3
-	}
-
 	tick := time.NewTicker(time.Duration(interval) * time.Second)
 	defer tick.Stop()
 	for ; ; <-tick.C {
@@ -36,16 +30,14 @@ func (e *Engine) healthCheck() {
 	}
 }
 
-// 检查全部label为ERU=1的容器
-// 这些容器是被ERU标记管理的
-// 似乎是高版本的docker才能用, 但是看起来1.11.2已经有了
+// 检查全部 label 为ERU=1的容器
+// 这里需要 list all，原因是 monitor 检测到 die 的时候已经标记为 false 了
+// 但是这时候 health check 刚返回 true 回来并写入 core
+// 为了保证最终数据一致性这里也要检测
 func (e *Engine) checkAllContainers() {
-	log.Info("[checkAllContainers] health check begin")
+	log.Debug("[checkAllContainers] health check begin")
 	timeout := e.config.HealthCheckTimeout
-	if timeout == 0 {
-		timeout = 3
-	}
-	containers, err := e.listContainers(false)
+	containers, err := e.listContainers(true, map[string]string{"label": "healthcheck_ports"})
 	if err != nil {
 		log.Errorf("[checkAllContainers] Error when list all containers with label \"ERU=1\": %v", err)
 		return
@@ -67,24 +59,15 @@ func (e *Engine) checkAllContainers() {
 
 // 检查一个容器
 func (e *Engine) checkOneContainer(container *types.Container, timeout time.Duration) int {
-	// 不是running就不检查, 也没办法检查啊...
 	// 理论上这里都是 running 的容器，因为 listContainers 标记为 all=false 了
-	portsStr, ok := container.Extend["healthcheck_ports"]
-	if !ok {
-		return healthNotFound
-	}
-	ports := strings.Split(portsStr, ",")
-
-	// 拿老的数据出来
-	url := container.Extend["healthcheck_url"]
-	code, err := strconv.Atoi(container.Extend["healthcheck_expected_code"])
-	if err != nil {
-		log.Errorf("[checkOneContainer] Error when getting http check code %v", err)
-		return healthNotFound
-	}
-
+	// 并且都有 healthcheck 标记
 	// 检查现在是不是还健康
-	healthy := checkSingleContainerHealthy(container, ports, url, code, timeout)
+	// for safe
+	if container.HealthCheck == nil {
+		return healthNotFound
+	}
+
+	healthy := checkSingleContainerHealthy(container, timeout)
 	prevHealthy := e.checker.Get(container.ID)
 	defer e.checker.Set(container.ID, healthy)
 	if healthy && !prevHealthy {
@@ -107,14 +90,14 @@ func (e *Engine) checkOneContainer(container *types.Container, timeout time.Dura
 	return healthNotFound
 }
 
-func checkSingleContainerHealthy(container *types.Container, ports []string, url string, code int, timeout time.Duration) bool {
+func checkSingleContainerHealthy(container *types.Container, timeout time.Duration) bool {
 	ip := getIPForContainer(container)
 	tcpChecker := []string{}
 	httpChecker := []string{}
-	for _, port := range ports {
+	for _, port := range container.HealthCheck.Ports {
 		p := coretypes.Port(port)
 		if p.Proto() == "http" {
-			httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", ip, p.Port(), url))
+			httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", ip, p.Port(), container.HealthCheck.URL))
 		} else {
 			tcpChecker = append(tcpChecker, fmt.Sprintf("%s:%s", ip, p.Port()))
 		}
@@ -123,7 +106,7 @@ func checkSingleContainerHealthy(container *types.Container, ports []string, url
 	f1, f2 := true, false
 	id := container.ID[:common.SHORTID]
 	if len(httpChecker) > 0 {
-		f1 = checkHTTP(id, httpChecker, code, timeout)
+		f1 = checkHTTP(id, httpChecker, container.HealthCheck.Code, timeout)
 	}
 	if len(tcpChecker) > 0 {
 		f2 = checkTCP(id, tcpChecker, timeout)
