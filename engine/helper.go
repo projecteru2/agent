@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
 	enginetypes "github.com/docker/docker/api/types"
 	enginecontainer "github.com/docker/docker/api/types/container"
 	enginefilters "github.com/docker/docker/api/types/filters"
@@ -14,14 +13,17 @@ import (
 	"github.com/projecteru2/agent/types"
 )
 
-func getFilter() enginefilters.Args {
+func getFilter(extend map[string]string) enginefilters.Args {
 	f := enginefilters.NewArgs()
 	f.Add("label", fmt.Sprintf("%s=1", common.ERU_MARK))
+	for k, v := range extend {
+		f.Add(k, v)
+	}
 	return f
 }
 
-func (e *Engine) listContainers(all bool) ([]enginetypes.Container, error) {
-	f := getFilter()
+func (e *Engine) listContainers(all bool, extend map[string]string) ([]enginetypes.Container, error) {
+	f := getFilter(extend)
 	opts := enginetypes.ContainerListOptions{Filters: f, All: all}
 	return e.docker.ContainerList(context.Background(), opts)
 }
@@ -31,28 +33,7 @@ func (e *Engine) activated(f bool) error {
 	return e.store.UpdateNode(e.node)
 }
 
-func (e *Engine) crash() error {
-	log.Info("[crash] mark all containers unhealthy")
-	containers, err := e.listContainers(false)
-	if err != nil {
-		return err
-	}
-	for _, c := range containers {
-		container, err := e.detectContainer(c.ID, c.Labels)
-		if err != nil {
-			return err
-		}
-		container.Healthy = false
-		if err := e.store.DeployContainer(container, e.node); err != nil {
-			return err
-		}
-		log.Infof("[crash] mark %s unhealthy", container.ID[:common.SHORTID])
-	}
-	return e.activated(false)
-}
-
 func (e *Engine) detectContainer(ID string, label map[string]string) (*types.Container, error) {
-	log.Debugf("[detectContainer] container label %v", label)
 	if _, ok := label[common.ERU_MARK]; !ok {
 		return nil, fmt.Errorf("not a eru container %s", ID[:common.SHORTID])
 	}
@@ -70,18 +51,18 @@ func (e *Engine) detectContainer(ID string, label map[string]string) (*types.Con
 		return nil, err
 	}
 
-	publish := map[string]string{}
-	if v, ok := label["publish"]; ok {
-		publish = e.makeContainerPublishInfo(c, strings.Split(v, ","))
-		delete(label, "publish")
-	}
+	pubStr, _ := label["publish"]
+	delete(label, "publish")
 
 	// 是否符合 eru pattern，如果一个容器又有 ERU_MARK 又是三段式的 name，那它就是个 ERU 容器
 	container, err := status.GenerateContainerMeta(c, version, label)
 	if err != nil {
 		return container, err
 	}
-	container.Publish = publish
+	// 活着才有发布必要
+	if container.Running && pubStr != "" {
+		container.Publish = e.makeContainerPublishInfo(c, strings.Split(pubStr, ","))
+	}
 	container.Networks = c.NetworkSettings.Networks
 
 	return container, nil

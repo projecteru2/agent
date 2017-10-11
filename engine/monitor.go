@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"time"
 
 	log "github.com/Sirupsen/logrus"
 	types "github.com/docker/docker/api/types"
@@ -16,11 +17,9 @@ var eventHandler = status.NewEventHandler()
 func (e *Engine) initMonitor() (<-chan eventtypes.Message, <-chan error) {
 	eventHandler.Handle(common.STATUS_START, e.handleContainerStart)
 	eventHandler.Handle(common.STATUS_DIE, e.handleContainerDie)
-	eventHandler.Handle(common.STATUS_DESTROY, e.handleContainerDestory)
 
 	ctx := context.Background()
-	f := getFilter()
-	f.Add("type", eventtypes.ContainerEventType)
+	f := getFilter(map[string]string{"type": eventtypes.ContainerEventType})
 	options := types.EventsOptions{Filters: f}
 	eventChan, errChan := e.docker.Events(ctx, options)
 	return eventChan, errChan
@@ -44,8 +43,13 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 		e.attach(container)
 	}
 
-	if err := e.store.DeployContainer(container, e.node); err != nil {
-		log.Errorf("[handleContainerStart] update deploy status failed %v", err)
+	// 发现需要 health check 立刻执行
+	if container.Healthy {
+		if err := e.store.DeployContainer(container, e.node); err != nil {
+			log.Errorf("[handleContainerStart] update deploy status failed %v", err)
+		}
+	} else {
+		go e.checkOneContainer(container, time.Duration(e.config.HealthCheckTimeout)*time.Second)
 	}
 }
 
@@ -59,9 +63,7 @@ func (e *Engine) handleContainerDie(event eventtypes.Message) {
 	if err := e.store.DeployContainer(container, e.node); err != nil {
 		log.Errorf("[handleContainerDie] update deploy status failed %v", err)
 	}
+	e.checker.Del(event.ID)
 }
 
 //Destroy by core, data removed by core
-func (e *Engine) handleContainerDestory(event eventtypes.Message) {
-	e.checker.Del(event.ID)
-}

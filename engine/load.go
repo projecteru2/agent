@@ -7,7 +7,7 @@ import (
 
 func (e *Engine) load() error {
 	log.Info("[load] Load containers")
-	containers, err := e.listContainers(true)
+	containers, err := e.listContainers(true, nil)
 	if err != nil {
 		return err
 	}
