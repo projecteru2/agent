@@ -17,12 +17,13 @@ func (e *Engine) load() error {
 		c, err := e.detectContainer(container.ID, container.Labels)
 		if err != nil {
 			log.Errorf("[load] detect container failed %v", err)
-			continue
 		}
 
-		// 非 eru-agent in docker 就转发日志，防止日志循环输出
-		if _, ok := container.Labels["agent"]; !ok || !e.dockerized {
+		if c.Running {
+			//TODO 这里应该用文档说明你丫的远端得有东西
+			//if _, ok := container.Labels["agent"]; !ok || !e.dockerized {
 			e.attach(c)
+			//}
 		}
 
 		if err := e.store.DeployContainer(c, e.node); err != nil {

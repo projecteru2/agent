@@ -16,6 +16,7 @@ var eventHandler = status.NewEventHandler()
 func (e *Engine) initMonitor() (<-chan eventtypes.Message, <-chan error) {
 	eventHandler.Handle(common.STATUS_START, e.handleContainerStart)
 	eventHandler.Handle(common.STATUS_DIE, e.handleContainerDie)
+	eventHandler.Handle(common.STATUS_DESTROY, e.handleContainerDestory)
 
 	ctx := context.Background()
 	f := getFilter()
@@ -37,8 +38,11 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 		log.Errorf("[handleContainerStart] detect container failed %v", err)
 		return
 	}
-	// 这货会自动退出
-	e.attach(container)
+
+	if container.Running {
+		// 这货会自动退出
+		e.attach(container)
+	}
 
 	if err := e.store.DeployContainer(container, e.node); err != nil {
 		log.Errorf("[handleContainerStart] update deploy status failed %v", err)
@@ -46,17 +50,18 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 }
 
 func (e *Engine) handleContainerDie(event eventtypes.Message) {
-	log.Debugf("container %s die", event.ID[:common.SHORTID])
+	log.Debugf("[handleContainerDie] container %s die", event.ID[:common.SHORTID])
 	container, err := e.detectContainer(event.ID, event.Actor.Attributes)
 	if err != nil {
 		log.Errorf("[handleContainerDie] detect container failed %v", err)
-		return
 	}
 
-	container.Healthy = false
 	if err := e.store.DeployContainer(container, e.node); err != nil {
 		log.Errorf("[handleContainerDie] update deploy status failed %v", err)
 	}
 }
 
 //Destroy by core, data removed by core
+func (e *Engine) handleContainerDestory(event eventtypes.Message) {
+	e.checker.Del(event.ID)
+}

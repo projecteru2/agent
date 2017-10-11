@@ -79,7 +79,7 @@ func (e *Engine) detectContainer(ID string, label map[string]string) (*types.Con
 	// 是否符合 eru pattern，如果一个容器又有 ERU_MARK 又是三段式的 name，那它就是个 ERU 容器
 	container, err := status.GenerateContainerMeta(c, version, label)
 	if err != nil {
-		return nil, err
+		return container, err
 	}
 	container.Publish = publish
 	container.Networks = c.NetworkSettings.Networks

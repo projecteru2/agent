@@ -1,24 +1,30 @@
 package status
 
 import (
-	"fmt"
-
 	log "github.com/Sirupsen/logrus"
 	enginetypes "github.com/docker/docker/api/types"
-	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 )
 
 //GenerateContainerMeta make meta obj
 func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend map[string]string) (*types.Container, error) {
-	if !c.State.Running {
-		return nil, fmt.Errorf("container %s [%s] not running", c.Name, c.ID[:common.SHORTID])
-	}
-
 	name, entrypoint, ident, err := utils.GetAppInfo(c.Name)
 	if err != nil {
 		return nil, err
+	}
+
+	if !c.State.Running {
+		return &types.Container{
+			ID:         c.ID,
+			Name:       name,
+			EntryPoint: entrypoint,
+			Ident:      ident,
+			Version:    version,
+			Healthy:    false,
+			Running:    false,
+			Extend:     extend,
+		}, nil
 	}
 
 	// 第一次上的容器可能没有设置health check

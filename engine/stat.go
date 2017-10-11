@@ -25,7 +25,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	log.Debugf("[stat] CPUShares: %v, CPUQuota: %d, CPUPeriod: %d, cpuQuotaRate: %f", container.CPUShares, container.CPUQuota, container.CPUPeriod, cpuQuotaRate)
 	totalJiffies1, tsReadingTotalJiffies1, cpuStats1, _, networkStats1, err := getStats(s)
 	if err != nil {
-		log.Errorf("get stats failed %s", err)
+		log.Errorf("[stat] get stats failed %s", err)
 		return
 	}
 

@@ -1,6 +1,10 @@
 package types
 
-import "github.com/docker/docker/api/types/network"
+import (
+	"sync"
+
+	"github.com/docker/docker/api/types/network"
+)
 
 type Container struct {
 	ID         string
@@ -18,4 +22,38 @@ type Container struct {
 	Extend     map[string]string
 	Publish    map[string]string
 	Networks   map[string]*network.EndpointSettings `json:"-"`
+}
+
+type PrevCheck struct {
+	sync.Mutex
+	data map[string]bool
+}
+
+func (p *PrevCheck) Set(ID string, f bool) {
+	p.Lock()
+	defer p.Unlock()
+	p.data[ID] = f
+}
+
+func (p *PrevCheck) Get(ID string) bool {
+	p.Lock()
+	defer p.Unlock()
+	v, ok := p.data[ID]
+	if !ok {
+		return false
+	}
+	return v
+}
+
+func (p *PrevCheck) Del(ID string) {
+	p.Lock()
+	defer p.Unlock()
+	delete(p.data, ID)
+}
+
+func NewPrevCheck() *PrevCheck {
+	return &PrevCheck{
+		sync.Mutex{},
+		map[string]bool{},
+	}
 }
