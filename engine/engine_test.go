@@ -22,7 +22,7 @@ import (
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/pkg/stringid"
 	"github.com/projecteru2/agent/store/mocks"
-	atypes "github.com/projecteru2/agent/types"
+	agenttypes "github.com/projecteru2/agent/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -263,14 +263,12 @@ func mockNewEngine() *Engine {
 	engine := new(Engine)
 	mockStore = new(mocks.Store)
 
-	docker, err := client.NewClient("http://127.0.0.1", "v1.29", mockDockerHTTPClient(), nil)
+	docker, err := client.NewClient("http://127.0.0.1", "1.25", mockDockerHTTPClient(), nil)
 	if err != nil {
 		panic(err)
 	}
 
-	engine.config = atypes.Config{
-		HealthCheckTimeout: 1,
-	}
+	engine.config = &agenttypes.Config{}
 	engine.store = mockStore
 	engine.docker = docker
 	engine.cpuCore = float64(runtime.NumCPU())
@@ -285,7 +283,7 @@ func TestPing(t *testing.T) {
 }
 
 func TestEvents(t *testing.T) {
-	docker, err := client.NewClient("http://10.0.0.1", "v1.29", mockDockerHTTPClient(), nil)
+	docker, err := client.NewClient("http://10.0.0.1", "1.25", mockDockerHTTPClient(), nil)
 	if err != nil {
 		panic(err)
 	}

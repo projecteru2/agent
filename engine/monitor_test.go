@@ -9,7 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	// "github.com/docker/docker/api/types/network"
 
-	atypes "github.com/projecteru2/agent/types"
+	coretypes "github.com/projecteru2/core/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -43,10 +43,10 @@ func TestMonitor(t *testing.T) {
 	e := mockNewEngine()
 	eventChan, _ := e.initMonitor()
 
-	c := new(atypes.Container)
-	mockStore.On("GetContainer", mock.AnythingOfType("string")).Return(c, nil)
-	mockStore.On("UpdateContainer", mock.Anything).Return(nil)
-	mockStore.On("RemoveContainer", mock.Anything).Return(nil)
+	n := new(coretypes.Node)
+	mockStore.On("GetNode", mock.AnythingOfType("string")).Return(n, nil)
+	mockStore.On("UpdateNode", mock.Anything).Return(nil)
+	mockStore.On("DeployContainer", mock.Anything).Return(nil)
 
 	go e.monitor(eventChan)
 	time.Sleep(3 * time.Second)
