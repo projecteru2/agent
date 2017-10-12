@@ -36,7 +36,7 @@ func (e *Engine) healthCheck() {
 // 为了保证最终数据一致性这里也要检测
 func (e *Engine) checkAllContainers() {
 	log.Debug("[checkAllContainers] health check begin")
-	timeout := e.config.HealthCheckTimeout
+	timeout := time.Duration(e.config.HealthCheckTimeout) * time.Second
 	containers, err := e.listContainers(true, map[string]string{"label": "healthcheck_ports"})
 	if err != nil {
 		log.Errorf("[checkAllContainers] Error when list all containers with label \"ERU=1\": %v", err)
@@ -51,9 +51,10 @@ func (e *Engine) checkAllContainers() {
 		container, err := e.detectContainer(c.ID, c.Labels)
 		if err != nil {
 			log.Errorf("[checkAllContainers] detect container failed %v", err)
+			continue
 		}
 
-		go e.checkOneContainer(container, time.Duration(timeout)*time.Second)
+		go e.checkOneContainer(container, timeout)
 	}
 }
 

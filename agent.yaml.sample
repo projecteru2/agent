@@ -1,22 +1,17 @@
 pid: /tmp/agent.pid
+health_check_interval: 5
+health_check_timeout: 10
+core: 127.0.0.1:5001
 
 docker:
   endpoint: unix:///var/run/docker.sock
-
-etcd:
-  prefix: eru-agent
-  etcd:
-    - http://127.0.0.1:2379
-
 metrics:
   step: 30
   transfers:
     - 127.0.0.1:8125
-
 api:
   addr: 127.0.0.1:12345
-
 log:
   forwards:
-    - udp://127.0.0.1:5144
+    - tcp://127.0.0.1:5144
   stdout: False

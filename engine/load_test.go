@@ -6,24 +6,10 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/docker/docker/pkg/stringid"
-	"github.com/projecteru2/agent/types"
-	atypes "github.com/projecteru2/agent/types"
+	coretypes "github.com/projecteru2/core/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-func TestBind(t *testing.T) {
-	e := mockNewEngine()
-	mockStore.On("UpdateContainer", mock.Anything).Return(nil)
-
-	container := &types.Container{
-		ID: stringid.GenerateRandomID(),
-	}
-
-	err := e.bind(container, true)
-	assert.NoError(t, err)
-}
 
 func TestLoad(t *testing.T) {
 	log.SetOutput(os.Stdout)
@@ -31,12 +17,10 @@ func TestLoad(t *testing.T) {
 
 	e := mockNewEngine()
 
-	c := new(atypes.Container)
-	c.ID = stringid.GenerateRandomID()
-	mockStore.On("GetContainer", mock.AnythingOfType("string")).Return(c, nil)
-	mockStore.On("UpdateContainer", mock.Anything).Return(nil)
-	mockStore.On("RemoveContainer", mock.Anything).Return(nil)
-	mockStore.On("GetAllContainers").Return([]string{c.ID}, nil)
+	n := new(coretypes.Node)
+	mockStore.On("GetNode", mock.AnythingOfType("string")).Return(n, nil)
+	mockStore.On("UpdateNode", mock.Anything).Return(nil)
+	mockStore.On("DeployContainer", mock.Anything, mock.Anything).Return(nil)
 
 	err := e.load()
 	assert.NoError(t, err)

@@ -22,12 +22,13 @@ import (
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/pkg/stringid"
 	"github.com/projecteru2/agent/store/mocks"
-	atypes "github.com/projecteru2/agent/types"
+	agenttypes "github.com/projecteru2/agent/types"
+	agentutils "github.com/projecteru2/agent/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 const (
-	apiVersion = "v1.29"
+	apiVersion = "v1.25"
 	mockID     = "f1f9da344e8f8f90f73899ddad02da6cdf2218bbe52413af2bcfef4fba2d22de"
 )
 
@@ -165,7 +166,7 @@ func mockDockerDoer(r *http.Request) (*http.Response, error) {
 			ContainerJSONBase: &types.ContainerJSONBase{
 				ID:    containerID,
 				Image: "image:latest",
-				Name:  "name",
+				Name:  "name_entry_ident",
 				State: &types.ContainerState{
 					Running: true,
 				},
@@ -180,7 +181,10 @@ func mockDockerDoer(r *http.Request) (*http.Response, error) {
 			},
 			Config: &container.Config{
 				Labels: map[string]string{
-					"ERU": "1",
+					"ERU":                       "1",
+					"healthcheck_ports":         "80/http",
+					"healthcheck_expected_code": "404",
+					"healthcheck_url":           "/",
 				},
 				Image: "image:latest",
 			},
@@ -205,10 +209,11 @@ func mockDockerDoer(r *http.Request) (*http.Response, error) {
 		b, _ = json.Marshal([]types.Container{
 			{
 				ID:      stringid.GenerateRandomID(),
-				Names:   []string{"hello docker"},
+				Names:   []string{"hello_docker_ident"},
 				Image:   "test:image",
 				ImageID: stringid.GenerateNonCryptoID(),
 				Command: "top",
+				Labels:  map[string]string{"ERU": "1"},
 			},
 		})
 	default:
@@ -263,17 +268,18 @@ func mockNewEngine() *Engine {
 	engine := new(Engine)
 	mockStore = new(mocks.Store)
 
-	docker, err := client.NewClient("http://127.0.0.1", "v1.29", mockDockerHTTPClient(), nil)
+	docker, err := client.NewClient("http://127.0.0.1", "1.25", mockDockerHTTPClient(), nil)
 	if err != nil {
 		panic(err)
 	}
 
-	engine.config = atypes.Config{
-		HealthCheckTimeout: 1,
-	}
+	engine.checker = agenttypes.NewPrevCheck()
+	engine.config = &agenttypes.Config{}
 	engine.store = mockStore
 	engine.docker = docker
 	engine.cpuCore = float64(runtime.NumCPU())
+	engine.transfers = agentutils.NewHashBackends([]string{"127.0.0.1:8125"})
+	engine.forwards = agentutils.NewHashBackends([]string{"udp://127.0.0.1:5144"})
 
 	return engine
 }
@@ -285,7 +291,7 @@ func TestPing(t *testing.T) {
 }
 
 func TestEvents(t *testing.T) {
-	docker, err := client.NewClient("http://10.0.0.1", "v1.29", mockDockerHTTPClient(), nil)
+	docker, err := client.NewClient("http://10.0.0.1", "1.25", mockDockerHTTPClient(), nil)
 	if err != nil {
 		panic(err)
 	}
