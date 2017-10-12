@@ -37,6 +37,14 @@ func (e *Engine) detectContainer(ID string, label map[string]string) (*types.Con
 	if _, ok := label[common.ERU_MARK]; !ok {
 		return nil, fmt.Errorf("not a eru container %s", ID[:common.SHORTID])
 	}
+
+	// 标准化为 inspect 的数据
+	c, err := e.docker.ContainerInspect(context.Background(), ID)
+	if err != nil {
+		return nil, err
+	}
+	label = c.Config.Labels
+
 	// 生成基准 meta
 	delete(label, common.ERU_MARK)
 	version := "UNKNOWN"
@@ -45,11 +53,6 @@ func (e *Engine) detectContainer(ID string, label map[string]string) (*types.Con
 	}
 	delete(label, "version")
 	delete(label, "name")
-
-	c, err := e.docker.ContainerInspect(context.Background(), ID)
-	if err != nil {
-		return nil, err
-	}
 
 	pubStr, _ := label["publish"]
 	delete(label, "publish")
