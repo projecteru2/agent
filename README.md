@@ -10,7 +10,7 @@ Agent run on the node.
 * Forward log stream to remote
 * Generate container metrics
 * Bootstrap
-* Auto monitor or remove containers
+* Auto update containers' status and publish it by [core's](https://github.com/projecteru2/core) api.
 
 ### Build
 
@@ -22,7 +22,7 @@ Agent run on the node.
 
 `./make-rpm`
 
-#### build docker
+#### build image
 
 `docker build -t agent .`
 
@@ -34,7 +34,7 @@ cd $GOPATH/src/get github.com/projecteru2/agent
 make deps
 ```
 
-### Dockerized Agent
+### Dockerized Agent manually
 
 ```shell
 docker run -d --privileged \

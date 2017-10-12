@@ -60,18 +60,20 @@ func (e *Engine) detectContainer(ID string, label map[string]string) (*types.Con
 		return container, err
 	}
 	// 活着才有发布必要
-	if container.Running && pubStr != "" {
-		container.Publish = e.makeContainerPublishInfo(c, strings.Split(pubStr, ","))
+	if c.NetworkSettings != nil {
+		if container.Running && pubStr != "" {
+			container.Publish = e.makeContainerPublishInfo(c.NetworkSettings, strings.Split(pubStr, ","))
+		}
+		container.Networks = c.NetworkSettings.Networks
 	}
-	container.Networks = c.NetworkSettings.Networks
 
 	return container, nil
 }
 
-func (e *Engine) makeContainerPublishInfo(c enginetypes.ContainerJSON, ports []string) map[string]string {
+func (e *Engine) makeContainerPublishInfo(nss *enginetypes.NetworkSettings, ports []string) map[string]string {
 	result := map[string]string{}
 	hostIP := e.node.GetIP()
-	for nn, ns := range c.NetworkSettings.Networks {
+	for nn, ns := range nss.Networks {
 		ip := ns.IPAddress
 		if enginecontainer.NetworkMode(nn).IsHost() {
 			ip = hostIP
