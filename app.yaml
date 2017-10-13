@@ -1,0 +1,46 @@
+appname: "eru"
+entrypoints:
+  agent:
+    cmd: "/usr/bin/eru-agent"
+    restart: always
+    publish:
+      - "12345"
+    healthcheck:
+      ports:
+        - "12345/tcp"
+    privileged: true
+    log_config: "journald"
+volumes:
+  - "<HOST_CONFIG_DIR_PATH>:/etc/eru"
+  - "/sys/fs/cgroup/:/sys/fs/cgroup/"
+  - "/var/run/docker.sock:/var/run/docker.sock"
+  - "/proc/:/hostProc/"
+stages:
+  - build
+  - pack
+builds:
+  build:
+    base: "projecteru2/footstone:latest"
+    # only support ssh protocol
+    repo: "git@github.com:projecteru2/agent.git"
+    version: "HEAD"
+    dir: /.go/src/github.com/projecteru2/agent
+    commands:
+      - make test
+      - make binary
+    cache:
+      /.go/src/github.com/projecteru2/agent/eru-agent: /usr/bin/eru-agent
+      /.go/src/github.com/projecteru2/agent/agent.yaml.sample: /etc/eru/agent.yaml.sample
+    # envs:
+    #   HTTP_PROXY: <HTTP_PROXY>
+    #   HTTPS_PROXY: <HTTPS_PROXY>
+  pack:
+    base: alpine:3.6
+    labels:
+      ERU: 1
+      version: latest
+      agent: 1
+    envs:
+      AGENT_IN_DOCKER: 1
+    commands:
+      - mkdir -p /etc/eru/

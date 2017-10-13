@@ -1,4 +1,4 @@
-.PHONY: deps build test
+.PHONY: deps build test binary
 
 REPO_PATH := github.com/projecteru2/agent
 VERSION := $(shell cat VERSION)
@@ -9,8 +9,10 @@ deps:
 	rm -rf ./vendor/github.com/docker/docker/vendor
 	rm -rf ./vendor/github.com/docker/distribution/vendor
 
-build: deps
+binary:
 	go build -ldflags "$(GO_LDFLAGS)" -a -tags netgo -installsuffix netgo -o eru-agent
+
+build: deps binary
 
 test: deps
 	# fix mock docker client bug, see https://github.com/moby/moby/pull/34383 [docker 17.05.0-ce]

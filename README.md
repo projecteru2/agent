@@ -48,3 +48,23 @@ docker run -d --privileged \
   projecteru2/agent \
   /usr/bin/eru-agent
 ```
+
+### Build and Deploy by Eru itself
+
+After we implemented bootstrap in eru2, now you can build and deploy agent with [cli](https://github.com/projecteru2/cli) tool.
+
+1. Test source code and build image
+
+```shell
+<cli_execute_path> --name <image_name> https://goo.gl/3K3GHb
+```
+
+Make sure you can clone code by ssh protocol because libgit2 ask for it. So you need configure core with github certs. After the fresh image was named and tagged, it will be auto pushed to the remote registry which was defined in core.
+
+2. Deploy agent by eru with specific resource.
+
+```shell
+<cli_execute_path> --pod <pod_name> --entry agent --network <network_name> --image <projecteru2/agent>|<your_own_image> --count <equal_to_nodes_num> [--cpu 0.3 | --mem 1024000000] https://goo.gl/3K3GHb
+```
+
+Now you will find agent was started in each node, and monitor containers status include itself.
