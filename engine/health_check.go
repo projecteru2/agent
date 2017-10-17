@@ -104,14 +104,9 @@ func checkSingleContainerHealthy(container *types.Container, timeout time.Durati
 		}
 	}
 
-	f1, f2 := true, false
 	id := container.ID[:common.SHORTID]
-	if len(httpChecker) > 0 {
-		f1 = checkHTTP(id, httpChecker, container.HealthCheck.Code, timeout)
-	}
-	if len(tcpChecker) > 0 {
-		f2 = checkTCP(id, tcpChecker, timeout)
-	}
+	f1 := checkHTTP(id, httpChecker, container.HealthCheck.Code, timeout)
+	f2 := checkTCP(id, tcpChecker, timeout)
 	return f1 && f2
 }
 

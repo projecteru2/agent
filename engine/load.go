@@ -17,6 +17,7 @@ func (e *Engine) load() error {
 		c, err := e.detectContainer(container.ID, container.Labels)
 		if err != nil {
 			log.Errorf("[load] detect container failed %v", err)
+			continue
 		}
 
 		if c.Running {

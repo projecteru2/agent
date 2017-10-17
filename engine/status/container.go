@@ -67,6 +67,6 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 		}
 		container.HealthCheck = healthCheck
 	}
-	log.Debugf("[GenerateContainerMeta] Generate container meta %v", container.Name)
+	log.Debugf("[GenerateContainerMeta] Generate container meta %v %v", container.Name, container.EntryPoint)
 	return container, nil
 }
