@@ -16,6 +16,7 @@ func (c *Client) GetNode(nodename string) (*types.Node, error) {
 	node := &types.Node{
 		Name:      resp.Name,
 		Podname:   resp.Podname,
+		Endpoint:  resp.Endpoint,
 		Available: resp.Available,
 	}
 	return node, nil
