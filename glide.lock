@@ -1,8 +1,8 @@
-hash: b8af42dfb5efa4bf1a869ad01814eca31eec0eebe64da6783302a3df1fe06fc1
-updated: 2017-10-10T15:47:13.683909269+08:00
+hash: d345bd853ee74ca15bb6d61e79b43c9a165b1b5ab90ba843a985e9fdce736a97
+updated: 2017-10-18T17:34:11.98849218+08:00
 imports:
 - name: github.com/bmizerany/pat
-  version: c068ca2f0aacee5ac3681d68e4d0a003b7d1fd2c
+  version: 6226ea591a40176dd3ff9cd8eff81ed6ca721a00
 - name: github.com/CMGS/statsd
   version: 48c421b3c1abfbb4e290c7f26cd93f014d686180
 - name: github.com/coreos/etcd
@@ -65,7 +65,6 @@ imports:
 - name: github.com/golang/protobuf
   version: 4bd1920723d7b7c925de087aa32e2187708897f7
   subpackages:
-  - jsonpb
   - proto
   - ptypes
   - ptypes/any
@@ -82,7 +81,7 @@ imports:
   subpackages:
   - difflib
 - name: github.com/projecteru2/core
-  version: 7ea5d6f30b1d7a08ffa6bd7aabf9af65ebd7aeee
+  version: 11766857b0d08949724a2847c40f4e0cb0a77e68
   subpackages:
   - rpc/gen
   - types
@@ -100,8 +99,6 @@ imports:
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
   - codec
-- name: github.com/urfave/cli
-  version: 2997500ba5f393daa5d76c18544c6367b2c48d16
 - name: golang.org/x/crypto
   version: b176d7def5d71bdd214203491f89843ed217f420
   subpackages:
@@ -151,8 +148,8 @@ imports:
   - status
   - tap
   - transport
-- name: gopkg.in/urfave/cli.v1
-  version: cfb38830724cc34fedffe9a2a29fb54fa9169cd1
+- name: gopkg.in/urfave/cli.v2
+  version: 50a0fdeea6330854c7b05371cce1fac8c7e636d2
 - name: gopkg.in/yaml.v2
-  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
+  version: 25c4ec802a7d637f88d584ab26798e94ad14c13b
 testImports: []
