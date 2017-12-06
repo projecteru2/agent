@@ -29,7 +29,7 @@ Agent run on the node.
 ### Develop
 
 ```shell
-go get github.com/projecteru2/agent.git
+go get github.com/projecteru2/agent
 cd $GOPATH/src/get github.com/projecteru2/agent
 make deps
 ```
