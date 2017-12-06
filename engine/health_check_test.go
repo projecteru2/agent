@@ -10,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/pkg/stringid"
 	"github.com/projecteru2/agent/types"
+	coretypes "github.com/projecteru2/core/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,10 +30,11 @@ func TestCheckSingleContainerHealthy(t *testing.T) {
 				IPAddress: "127.0.0.1",
 			},
 		},
-		HealthCheck: &types.HealthCheck{
-			Ports: []string{"10236/tcp", "10237/http"},
-			Code:  404,
-			URL:   "/",
+		HealthCheck: &coretypes.HealthCheck{
+			TCPPorts: []string{"10236"},
+			HTTPPort: "10237",
+			HTTPURL:  "/",
+			HTTPCode: 404,
 		},
 	}
 	state := checkSingleContainerHealthy(container, 3*time.Second)

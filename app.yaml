@@ -6,8 +6,8 @@ entrypoints:
     publish:
       - "12345"
     healthcheck:
-      ports:
-        - "12345/tcp"
+      tcp_ports:
+        - "12345"
     privileged: true
     log_config: "journald"
 volumes:

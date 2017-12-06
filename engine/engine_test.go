@@ -181,10 +181,11 @@ func mockDockerDoer(r *http.Request) (*http.Response, error) {
 			},
 			Config: &container.Config{
 				Labels: map[string]string{
-					"ERU":                       "1",
-					"healthcheck_ports":         "80/http",
-					"healthcheck_expected_code": "404",
-					"healthcheck_url":           "/",
+					"ERU":              "1",
+					"healthcheck":      "1",
+					"healthcheck_http": "80",
+					"healthcheck_code": "404",
+					"healthcheck_url":  "/",
 				},
 				Image: "image:latest",
 			},

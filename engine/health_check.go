@@ -11,7 +11,6 @@ import (
 	enginecontainer "github.com/docker/docker/api/types/container"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
-	coretypes "github.com/projecteru2/core/types"
 )
 
 const (
@@ -37,7 +36,7 @@ func (e *Engine) healthCheck() {
 func (e *Engine) checkAllContainers() {
 	log.Debug("[checkAllContainers] health check begin")
 	timeout := time.Duration(e.config.HealthCheckTimeout) * time.Second
-	containers, err := e.listContainers(true, map[string]string{"label": "healthcheck_ports"})
+	containers, err := e.listContainers(true, map[string]string{"label": "healthcheck"})
 	if err != nil {
 		log.Errorf("[checkAllContainers] Error when list all containers with label \"ERU=1\": %v", err)
 		return
@@ -95,17 +94,16 @@ func checkSingleContainerHealthy(container *types.Container, timeout time.Durati
 	ip := getIPForContainer(container)
 	tcpChecker := []string{}
 	httpChecker := []string{}
-	for _, port := range container.HealthCheck.Ports {
-		p := coretypes.Port(port)
-		if p.Proto() == "http" {
-			httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", ip, p.Port(), container.HealthCheck.URL))
-		} else {
-			tcpChecker = append(tcpChecker, fmt.Sprintf("%s:%s", ip, p.Port()))
-		}
+
+	for _, port := range container.HealthCheck.TCPPorts {
+		tcpChecker = append(tcpChecker, fmt.Sprintf("%s:%s", ip, port))
+	}
+	if container.HealthCheck.HTTPPort != "" {
+		httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", ip, container.HealthCheck.HTTPPort, container.HealthCheck.HTTPURL))
 	}
 
 	id := container.ID[:common.SHORTID]
-	f1 := checkHTTP(id, httpChecker, container.HealthCheck.Code, timeout)
+	f1 := checkHTTP(id, httpChecker, container.HealthCheck.HTTPCode, timeout)
 	f2 := checkTCP(id, tcpChecker, timeout)
 	return f1 && f2
 }

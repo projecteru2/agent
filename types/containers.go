@@ -4,13 +4,8 @@ import (
 	"sync"
 
 	"github.com/docker/docker/api/types/network"
+	coretypes "github.com/projecteru2/core/types"
 )
-
-type HealthCheck struct {
-	Ports []string
-	Code  int
-	URL   string
-}
 
 type Container struct {
 	ID          string
@@ -28,7 +23,7 @@ type Container struct {
 	Extend      map[string]string
 	Publish     map[string]string
 	Networks    map[string]*network.EndpointSettings `json:"-"`
-	HealthCheck *HealthCheck                         `json:"-"`
+	HealthCheck *coretypes.HealthCheck
 }
 
 type PrevCheck struct {

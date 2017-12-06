@@ -8,6 +8,7 @@ import (
 	enginetypes "github.com/docker/docker/api/types"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
+	coretypes "github.com/projecteru2/core/types"
 )
 
 //GenerateContainerMeta make meta obj
@@ -33,8 +34,7 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 	// 第一次上的容器可能没有设置health check
 	// 那么我们认为这个容器一直是健康的, 并且不做检查
 	// 需要告诉第一次上的时候这个容器是健康的, 还是不是
-	portsStr, ok := c.Config.Labels["healthcheck_ports"]
-	checker := ok && portsStr != ""
+	_, checker := c.Config.Labels["healthcheck"]
 	container := &types.Container{
 		ID:          c.ID,
 		Pid:         c.State.Pid,
@@ -52,18 +52,21 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 		HealthCheck: nil,
 	}
 	if checker {
-		var code int
-		if codeStr, ok := c.Config.Labels["healthcheck_expected_code"]; ok {
-			code, err = strconv.Atoi(codeStr)
+		tcpPorts, _ := c.Config.Labels["healthcheck_tcp"]
+		httpPort, _ := c.Config.Labels["healthcheck_http"]
+		httpURL, _ := c.Config.Labels["healthcheck_url"]
+		var httpCode int
+		if codeStr, ok := c.Config.Labels["healthcheck_code"]; ok {
+			httpCode, err = strconv.Atoi(codeStr)
 			if err != nil {
 				log.Warnf("[GenerateContainerMeta] code invaild %s", codeStr)
 			}
 		}
-		url, _ := c.Config.Labels["healthcheck_url"]
-		healthCheck := &types.HealthCheck{
-			Ports: strings.Split(portsStr, ","),
-			Code:  code,
-			URL:   url,
+		healthCheck := &coretypes.HealthCheck{
+			TCPPorts: strings.Split(tcpPorts, ","),
+			HTTPPort: httpPort,
+			HTTPURL:  httpURL,
+			HTTPCode: httpCode,
 		}
 		container.HealthCheck = healthCheck
 	}
