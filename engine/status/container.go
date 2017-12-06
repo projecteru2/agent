@@ -48,10 +48,10 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 		CPUPeriod:   c.HostConfig.Resources.CPUPeriod,
 		CPUShares:   c.HostConfig.Resources.CPUShares,
 		Memory:      c.HostConfig.Resources.Memory,
-		Extend:      extend,
 		HealthCheck: nil,
 	}
 	if checker {
+		delete(extend, "healthcheck")
 		tcpPorts, _ := c.Config.Labels["healthcheck_tcp"]
 		httpPort, _ := c.Config.Labels["healthcheck_http"]
 		httpURL, _ := c.Config.Labels["healthcheck_url"]
@@ -70,6 +70,7 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 		}
 		container.HealthCheck = healthCheck
 	}
+	container.Extend = extend
 	log.Debugf("[GenerateContainerMeta] Generate container meta %v %v", container.Name, container.EntryPoint)
 	return container, nil
 }
