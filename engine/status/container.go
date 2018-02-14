@@ -52,7 +52,11 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 	}
 	if checker {
 		delete(extend, "healthcheck")
-		tcpPorts, _ := c.Config.Labels["healthcheck_tcp"]
+		tcpPortsStr, _ := c.Config.Labels["healthcheck_tcp"]
+		tcpPorts := []string{}
+		if tcpPortsStr != "" {
+			tcpPorts = strings.Split(tcpPortsStr, ",")
+		}
 		httpPort, _ := c.Config.Labels["healthcheck_http"]
 		httpURL, _ := c.Config.Labels["healthcheck_url"]
 		var httpCode int
@@ -63,7 +67,7 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 			}
 		}
 		healthCheck := &coretypes.HealthCheck{
-			TCPPorts: strings.Split(tcpPorts, ","),
+			TCPPorts: tcpPorts,
 			HTTPPort: httpPort,
 			HTTPURL:  httpURL,
 			HTTPCode: httpCode,

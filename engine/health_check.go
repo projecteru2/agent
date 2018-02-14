@@ -176,11 +176,14 @@ func checkOneURL(url string, expectedCode int, timeout time.Duration) bool {
 
 	resp, err := get(ctx, nil, url)
 	if err != nil {
-		log.Errorf("[checkOneURL] Error when checking %s, %s", url, err.Error())
+		log.Warnf("[checkOneURL] Error when checking %s, %s", url, err.Error())
 		return false
 	}
 	if expectedCode == 0 {
 		return resp.StatusCode < 500 && resp.StatusCode >= 200
+	}
+	if resp.StatusCode != expectedCode {
+		log.Infof("[checkOneURL] Error when checking %s, expect %d, got %d", url, expectedCode, resp.StatusCode)
 	}
 	return resp.StatusCode == expectedCode
 }
