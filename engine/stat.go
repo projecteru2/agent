@@ -6,35 +6,56 @@ import (
 	"strings"
 	"time"
 
+	statsdlib "github.com/CMGS/statsd"
 	log "github.com/Sirupsen/logrus"
 	"github.com/projecteru2/agent/common"
-	"github.com/projecteru2/agent/metric"
 	"github.com/projecteru2/agent/types"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/docker"
+	"github.com/shirou/gopsutil/net"
 )
 
-func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
-	s := metric.NewStats(container, e.dockerized)
-	cpuQuotaRate := 0.0
-	if container.CPUQuota == 0 {
-		// 使用 cpuset 分配的容器
-		cpuQuotaRate = float64(container.CPUShares) / 1024.0 / e.cpuCore
-	} else {
-		cpuQuotaRate = float64(container.CPUQuota) / float64(container.CPUPeriod) / e.cpuCore
-	}
-
-	log.Debugf("[stat] CPUShares: %v, CPUQuota: %d, CPUPeriod: %d, cpuQuotaRate: %f", container.CPUShares, container.CPUQuota, container.CPUPeriod, cpuQuotaRate)
-	totalJiffies1, tsReadingTotalJiffies1, cpuStats1, _, networkStats1, err := getStats(s)
+func getStats(ctx context.Context, container *types.Container, proc string) (*cpu.TimesStat, cpu.TimesStat, []net.IOCountersStat, error) {
+	//get container cpu stats
+	containerCPUStats, err := docker.CgroupCPUDockerWithContext(ctx, container.ID)
 	if err != nil {
-		log.Errorf("[stat] get stats failed %s", err)
+		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
+	}
+	//get system cpu stats
+	systemCPUsStats, err := cpu.TimesWithContext(ctx, false)
+	if err != nil {
+		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
+	}
+	systemCPUStats := systemCPUsStats[0]
+	//get container nic stats
+	netFilePath := fmt.Sprintf("%s/%d/net/dev", proc, container.Pid)
+	containerNetStats, err := net.IOCountersByFileWithContext(ctx, true, netFilePath)
+	if err != nil {
+		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
+	}
+	return containerCPUStats, systemCPUStats, containerNetStats, nil
+}
+
+func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
+	//TODO
+	//FIXME fuck internal pkg
+	proc := "/proc"
+	if e.dockerized {
+		proc = "/hostProc"
+	}
+	//init stats
+	containerCPUStats, systemCPUStats, containerNetStats, err := getStats(parentCtx, container, proc)
+	if err != nil {
+		log.Errorf("[stat] get %s stats failed %v", container.ID[:common.SHORTID], err)
 		return
 	}
 
+	delta := float64(e.config.Metrics.Step)
 	tick := time.NewTicker(time.Duration(e.config.Metrics.Step) * time.Second)
 	defer tick.Stop()
-	statsd := metric.NewStatsdClient(e.transfers.Get(container.ID, 0))
+	statsd := NewStatsdClient(e.transfers.Get(container.ID, 0))
 	host := strings.Replace(e.config.HostName, ".", "-", -1)
 	tagString := fmt.Sprintf("%s.%s", host, container.ID[:common.SHORTID])
-
 	version := strings.Replace(container.Version, ".", "-", -1) // redis 的版本号带了 '.' 导致监控数据格式不一致
 	endpoint := fmt.Sprintf("%s.%s.%s", container.Name, version, container.EntryPoint)
 	defer log.Infof("[stat] container %s %s metric report stop", container.Name, container.ID[:common.SHORTID])
@@ -44,30 +65,44 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 		select {
 		case <-tick.C:
 			go func() {
-				totalJiffies2, tsReadingTotalJiffies2, cpuStats2, memoryStats, networkStats2, err := getStats(s)
+				newContainrCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(parentCtx, container, proc)
 				if err != nil {
-					log.Errorf("stat %s container %s failed %s", container.Name, container.ID[:common.SHORTID], err)
+					log.Errorf("[stat] get %s stats failed %v", container.ID[:common.SHORTID], err)
+					return
+				}
+				containerMemStats, err := docker.CgroupMemDockerWithContext(parentCtx, container.ID)
+				if err != nil {
+					log.Errorf("[stat] get %s mem stats failed %v", container.ID[:common.SHORTID], err)
 					return
 				}
 				result := map[string]float64{}
-				cpuUsageRateServer, cpuSystemRateServer, cpuUsageRateContainer, cpuSystemRateContainer := e.calCPUrate(cpuStats1, cpuStats2, totalJiffies1, totalJiffies2, tsReadingTotalJiffies1, tsReadingTotalJiffies2, cpuQuotaRate)
-				result["cpu_usage_rate_container"] = cpuUsageRateContainer
-				result["cpu_system_rate_container"] = cpuSystemRateContainer
-				result["cpu_usage_rate_server"] = cpuUsageRateServer
-				result["cpu_system_rate_server"] = cpuSystemRateServer
-				result["mem_usage"] = float64(memoryStats.Usage)
-				result["mem_max_usage"] = float64(memoryStats.MaxUsage)
-				result["mem_rss"] = float64(memoryStats.Detail["rss"])
-				result["maxmemory"] = 0.0
-
-				log.Debugf("container.Memory: %d", container.Memory)
-				if container.Memory > 0 {
-					result["mem_usage_rate"] = result["mem_usage"] / float64(container.Memory)
+				//TODO 分 user 和 system 什么的
+				result["cpu_usage"] = float64(newContainrCPUStats.Total()-containerCPUStats.Total()) / float64(newSystemCPUStats.Total()-systemCPUStats.Total())
+				result["mem_usage"] = float64(containerMemStats.MemUsageInBytes)
+				result["mem_max_usage"] = float64(containerMemStats.MemMaxUsageInBytes)
+				result["mem_rss"] = float64(containerMemStats.RSS)
+				if containerMemStats.MemLimitInBytes > 0 {
+					result["mem_usage_percent"] = float64(containerMemStats.MemUsageInBytes) / float64(containerMemStats.MemLimitInBytes)
 				}
-				for k, v := range networkStats2 {
-					result[k+".rate"] = float64(v-networkStats1[k]) / float64(e.config.Metrics.Step)
+				nics := map[string]net.IOCountersStat{}
+				for _, nic := range containerNetStats {
+					nics[nic.Name] = nic
 				}
-				totalJiffies1, cpuStats1, networkStats1 = totalJiffies2, cpuStats2, networkStats2
+				for _, nic := range newContainerNetStats {
+					if _, ok := nics[nic.Name]; !ok {
+						continue
+					}
+					oldNICStats := nics[nic.Name]
+					result[nic.Name+".bytes.sent"] = float64(nic.BytesSent-oldNICStats.BytesSent) / delta
+					result[nic.Name+".bytes.recv"] = float64(nic.BytesRecv-oldNICStats.BytesRecv) / delta
+					result[nic.Name+".packets.sent"] = float64(nic.PacketsSent-oldNICStats.PacketsSent) / delta
+					result[nic.Name+".packets.sent"] = float64(nic.PacketsRecv-oldNICStats.PacketsRecv) / delta
+					result[nic.Name+".err.in"] = float64(nic.Errin-oldNICStats.Errin) / delta
+					result[nic.Name+".err.out"] = float64(nic.Errout-oldNICStats.Errout) / delta
+					result[nic.Name+".drop.in"] = float64(nic.Dropin-oldNICStats.Dropin) / delta
+					result[nic.Name+".drop.out"] = float64(nic.Dropout-oldNICStats.Dropout) / delta
+				}
+				containerCPUStats, systemCPUStats, containerNetStats = newContainrCPUStats, newSystemCPUStats, newContainerNetStats
 				statsd.Send(result, endpoint, tagString)
 			}()
 		case <-parentCtx.Done():
@@ -76,39 +111,31 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	}
 }
 
-func (e *Engine) calCPUrate(preCPUStat, postCPUStat *types.CPUStats, preTotal, postTotal, preTS, postTS uint64, quotaRate float64) (float64, float64, float64, float64) {
-	deltaTimePre := (preCPUStat.ReadingTS - preTS) * 100 // sysconf(_SC_CLK_TCK):100
-	log.Debugf("deltaTimePre: %d, preCPUStatTS: %d, preTS: %d", deltaTimePre, preCPUStat.ReadingTS, preTS)
-	deltaTimePost := (postCPUStat.ReadingTS - postTS) * 100
-	log.Debugf("deltaTimePost: %d, postCPUstatTs: %d, postTS: %d", deltaTimePost, postCPUStat.ReadingTS, postTS)
-	deltaTotal := float64(postTotal - preTotal)
-	log.Debugf("deltaTotal: %f", deltaTotal)
-	cpuUsageRateServer := float64(postCPUStat.UsageInUserMode-preCPUStat.UsageInUserMode) / deltaTotal
-	cpuSystemRateServer := float64(postCPUStat.UsageInSystemMode-preCPUStat.UsageInSystemMode) / deltaTotal
-	cpuUsageRateContainer := cpuUsageRateServer / quotaRate
-	cpuSystemRateContainer := cpuSystemRateServer / quotaRate
-	log.Debugf("quotaRate: %f", quotaRate)
-	log.Debugf("cpuUsageRateContainer: %f, cpuSystemRateContainer: %f", cpuUsageRateContainer, cpuSystemRateContainer)
-	log.Debugf("cpuUsageRateServer: %f, cpuSystemRateServer: %f", cpuUsageRateServer, cpuSystemRateServer)
-	return cpuUsageRateServer, cpuSystemRateServer, cpuUsageRateContainer, cpuSystemRateContainer
+func NewStatsdClient(addr string) *StatsDClient {
+	return &StatsDClient{
+		Addr: addr,
+	}
 }
 
-func getStats(s *metric.Stats) (uint64, uint64, *types.CPUStats, *types.MemoryStats, map[string]uint64, error) {
-	total, ts, err := s.GetTotalJiffies()
+type StatsDClient struct {
+	Addr string
+}
+
+func (self *StatsDClient) Close() error {
+	return nil
+}
+
+func (self *StatsDClient) Send(data map[string]float64, endpoint, tag string) error {
+	remote, err := statsdlib.New(self.Addr)
 	if err != nil {
-		return 0, 0, nil, nil, nil, err
+		log.Errorf("[statsd] Connect statsd failed: %v", err)
+		return err
 	}
-	cpu, err := s.GetCPUStats()
-	if err != nil {
-		return 0, 0, nil, nil, nil, err
+	defer remote.Close()
+	defer remote.Flush()
+	for k, v := range data {
+		key := fmt.Sprintf("eru.%s.%s.%s", endpoint, tag, k)
+		remote.Gauge(key, v)
 	}
-	memory, err := s.GetMemoryStats()
-	if err != nil {
-		return 0, 0, nil, nil, nil, err
-	}
-	network, err := s.GetNetworkStats()
-	if err != nil {
-		return 0, 0, nil, nil, nil, err
-	}
-	return total, ts, cpu, memory, network, nil
+	return nil
 }

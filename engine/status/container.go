@@ -35,6 +35,7 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 	// 那么我们认为这个容器一直是健康的, 并且不做检查
 	// 需要告诉第一次上的时候这个容器是健康的, 还是不是
 	_, checker := c.Config.Labels["healthcheck"]
+	cpuNum := len(strings.Split(c.HostConfig.Resources.CpusetCpus, ","))
 	container := &types.Container{
 		ID:          c.ID,
 		Pid:         c.State.Pid,
@@ -44,6 +45,7 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 		EntryPoint:  entrypoint,
 		Ident:       ident,
 		Version:     version,
+		CPUNum:      cpuNum,
 		CPUQuota:    c.HostConfig.Resources.CPUQuota,
 		CPUPeriod:   c.HostConfig.Resources.CPUPeriod,
 		CPUShares:   c.HostConfig.Resources.CPUShares,

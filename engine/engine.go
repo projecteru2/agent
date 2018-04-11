@@ -56,6 +56,10 @@ func NewEngine(config *types.Config) (*Engine, error) {
 	engine.node = node
 	engine.checker = types.NewPrevCheck()
 	engine.dockerized = os.Getenv(common.DOCKERIZED) != ""
+	if engine.dockerized {
+		os.Setenv("HOST_PROC", "/hostProc")
+	}
+	//TODO 这里应该是获取注册 node 节点的 CPU 数量，而非真实数量
 	engine.cpuCore = float64(runtime.NumCPU())
 	engine.transfers = utils.NewHashBackends(config.Metrics.Transfers)
 	engine.forwards = utils.NewHashBackends(config.Log.Forwards)

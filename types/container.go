@@ -16,6 +16,7 @@ type Container struct {
 	EntryPoint  string
 	Ident       string
 	Version     string
+	CPUNum      int
 	CPUQuota    int64
 	CPUPeriod   int64
 	CPUShares   int64

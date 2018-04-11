@@ -30,3 +30,5 @@ import:
 - package: github.com/projecteru2/core
 - package: google.golang.org/grpc
   version: v1.6.0
+- package: github.com/shirou/gopsutil
+  version: ^2.18.3

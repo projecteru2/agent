@@ -1,12 +1,12 @@
-hash: d345bd853ee74ca15bb6d61e79b43c9a165b1b5ab90ba843a985e9fdce736a97
-updated: 2017-10-18T17:34:11.98849218+08:00
+hash: f9d53810e4a7affb7cfe16db2b2149dd69db8f0eb75c8212f4590fcb78db60e2
+updated: 2018-04-11T17:49:34.203171+08:00
 imports:
 - name: github.com/bmizerany/pat
-  version: 6226ea591a40176dd3ff9cd8eff81ed6ca721a00
+  version: c068ca2f0aacee5ac3681d68e4d0a003b7d1fd2c
 - name: github.com/CMGS/statsd
   version: 48c421b3c1abfbb4e290c7f26cd93f014d686180
 - name: github.com/coreos/etcd
-  version: f1d7dd87da3e8feab4aaf675b8e29c6a5ed5f58b
+  version: e348b1aedd9167360c466ae98f7343d3e22281f8
   subpackages:
   - client
   - pkg/pathutil
@@ -59,11 +59,15 @@ imports:
   - sockets
   - tlsconfig
 - name: github.com/docker/go-units
-  version: 0dadbb0345b35ec7ef35e228dabb8de89a65bf52
+  version: 47565b4f722fb6ceae66b95f853feed578a4a51c
 - name: github.com/docker/libtrust
   version: aabc10ec26b754e797f9028f4589c5b7bd90dc20
+- name: github.com/go-ole/go-ole
+  version: a1ec82a652ebc7e784d7df887cfb31061aeabbcc
+  subpackages:
+  - oleutil
 - name: github.com/golang/protobuf
-  version: 4bd1920723d7b7c925de087aa32e2187708897f7
+  version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
   subpackages:
   - proto
   - ptypes
@@ -81,22 +85,31 @@ imports:
   subpackages:
   - difflib
 - name: github.com/projecteru2/core
-  version: 7d905429de33d6e61f12b7c5565cec2a0828488c
+  version: 7ce89d6e6b31224b38943a5b7ec3433e08c1ec9c
   subpackages:
   - rpc/gen
   - types
   - utils
+- name: github.com/shirou/gopsutil
+  version: fc04d2dd9a512906a2604242b35275179e250eda
+  subpackages:
+  - cpu
+  - docker
+  - internal/common
+  - net
 - name: github.com/Sirupsen/logrus
-  version: f006c2ac4710855cf0f916dd6b77acf6b048dc6e
+  version: c155da19408a8799da419ed3eeb0cb5db0ad5dbc
+- name: github.com/StackExchange/wmi
+  version: 5d049714c4a64225c3c79a7cf7d02f7fb5b96338
 - name: github.com/stretchr/objx
   version: cbeaeb16a013161a98496fad62933b1d21786672
 - name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  version: 12b6f73e6084dad08a7c6e575284b177ecafbc71
   subpackages:
   - assert
   - mock
 - name: github.com/ugorji/go
-  version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
+  version: bdcc60b419d136a85cdf2e7cbcac34b3f1cd6e57
   subpackages:
   - codec
 - name: golang.org/x/crypto
@@ -104,7 +117,7 @@ imports:
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
-  version: c8c74377599bd978aee1cf3b9b63a8634051cec2
+  version: 66aacef3dd8a676686c7ae3716979581e8b03c47
   subpackages:
   - context
   - context/ctxhttp
@@ -121,14 +134,14 @@ imports:
   - unix
   - windows
 - name: golang.org/x/text
-  version: 836efe42bb4aa16aaa17b9c155d8813d336ed720
+  version: b19bf474d317b857955b12035d2c5acb57ce8b01
   subpackages:
   - secure/bidirule
   - transform
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: b0a3dcfcd1a9bd48e63634bd8802960804cf8315
+  version: 09f6ed296fc66555a25fe4ce95173148778dfa85
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
@@ -149,7 +162,7 @@ imports:
   - tap
   - transport
 - name: gopkg.in/urfave/cli.v2
-  version: 50a0fdeea6330854c7b05371cce1fac8c7e636d2
+  version: b2bf3c5abeb90da407891aecd1df2c5a1f6170c1
 - name: gopkg.in/yaml.v2
   version: 25c4ec802a7d637f88d584ab26798e94ad14c13b
 testImports: []
