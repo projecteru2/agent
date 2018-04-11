@@ -32,10 +32,8 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	tick := time.NewTicker(time.Duration(e.config.Metrics.Step) * time.Second)
 	defer tick.Stop()
 	statsd := metric.NewStatsdClient(e.transfers.Get(container.ID, 0))
-	var tagString string
 	host := strings.Replace(e.config.HostName, ".", "-", -1)
-
-	tagString = fmt.Sprintf("%s.%s", host, container.ID[:common.SHORTID])
+	tagString := fmt.Sprintf("%s.%s", host, container.ID[:common.SHORTID])
 
 	version := strings.Replace(container.Version, ".", "-", -1) // redis 的版本号带了 '.' 导致监控数据格式不一致
 	endpoint := fmt.Sprintf("%s.%s.%s", container.Name, version, container.EntryPoint)
