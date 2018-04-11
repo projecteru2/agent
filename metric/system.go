@@ -16,7 +16,6 @@ type Stats struct {
 	cid string
 	pid int
 
-	interval  time.Duration
 	bufReader *bufio.Reader
 
 	cpuPath            string
@@ -34,9 +33,9 @@ func NewStats(container *types.Container, dockerized bool) *Stats {
 		pid:       container.Pid,
 		bufReader: bufio.NewReaderSize(nil, 128),
 	}
-	procDir, statFile := "/proc", "/proc/stat"
+	procDir, statFile := PROC_DIR, PROC_STAT
 	if dockerized {
-		procDir, statFile = "/hostProc", "/hostProc/stat"
+		procDir, statFile = INDOCKER_PROC_DIR, INDOCKER_PROC_STAT
 	}
 	s.statFilePath = statFile
 	s.networkStatsPath = fmt.Sprintf("%s/%d/net/dev", procDir, s.pid)
@@ -85,4 +84,9 @@ func (s *Stats) GetTotalJiffies() (uint64, uint64, error) {
 		}
 	}
 	return 0, tsReadingTotalJiffies, fmt.Errorf("invalid stat format. Error trying to parse statfile: [%v]", s.statFilePath)
+}
+
+type SystemStats struct {
+	bufReader    *bufio.Reader
+	statFilePath string
 }
