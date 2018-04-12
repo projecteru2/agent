@@ -76,8 +76,9 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 					return
 				}
 				result := map[string]float64{}
-				//TODO 分 user 和 system 什么的
 				result["cpu_usage"] = float64(newContainrCPUStats.Total()-containerCPUStats.Total()) / float64(newSystemCPUStats.Total()-systemCPUStats.Total())
+				result["cpu_user_usage"] = float64(newContainrCPUStats.User-containerCPUStats.User) / float64(newSystemCPUStats.User-systemCPUStats.User)
+				result["cpu_sys_usage"] = float64(newContainrCPUStats.System-containerCPUStats.System) / float64(newSystemCPUStats.System-systemCPUStats.System)
 				result["mem_usage"] = float64(containerMemStats.MemUsageInBytes)
 				result["mem_max_usage"] = float64(containerMemStats.MemMaxUsageInBytes)
 				result["mem_rss"] = float64(containerMemStats.RSS)
