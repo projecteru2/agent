@@ -2,7 +2,7 @@ appname: "eru"
 entrypoints:
   agent:
     cmd: "/usr/bin/eru-agent"
-    restart: always
+    restart:always
     publish:
       - "12345"
     healthcheck:

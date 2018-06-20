@@ -1,4 +1,4 @@
-FROM golang:1.9.1-alpine3.6 AS BUILD
+FROM golang:1.10.3-alpine3.7 AS BUILD
 
 MAINTAINER CMGS <ilskdw@gmail.com>
 
@@ -9,7 +9,7 @@ RUN apk add --no-cache git curl make \
 WORKDIR /go/src/github.com/projecteru2/agent
 RUN make build && ./eru-agent --version
 
-FROM alpine:3.6
+FROM alpine:3.7
 
 MAINTAINER CMGS <ilskdw@gmail.com>
 
