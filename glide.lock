@@ -1,12 +1,12 @@
-hash: f9d53810e4a7affb7cfe16db2b2149dd69db8f0eb75c8212f4590fcb78db60e2
-updated: 2018-04-11T17:49:34.203171+08:00
+hash: 728ee7caed0444615be6faf908a789ae1d6a2a17e8292185e2532690d0526753
+updated: 2018-06-20T13:22:50.984825+08:00
 imports:
 - name: github.com/bmizerany/pat
-  version: c068ca2f0aacee5ac3681d68e4d0a003b7d1fd2c
+  version: 6226ea591a40176dd3ff9cd8eff81ed6ca721a00
 - name: github.com/CMGS/statsd
   version: 48c421b3c1abfbb4e290c7f26cd93f014d686180
 - name: github.com/coreos/etcd
-  version: e348b1aedd9167360c466ae98f7343d3e22281f8
+  version: 33245c6b5b49130ca99280408fadfab01aac0e48
   subpackages:
   - client
   - pkg/pathutil
@@ -18,16 +18,16 @@ imports:
   subpackages:
   - semver
 - name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  version: 5215b55f46b2b919f50a1df0eaa5886afe4e3b3d
   subpackages:
   - spew
 - name: github.com/docker/distribution
-  version: e18fe7d3f4573faac5a32a0df3322a4812969c92
+  version: f4118485915abb8b163442717326597908eee6aa
   subpackages:
   - digestset
   - reference
 - name: github.com/docker/docker
-  version: 90d35abf7b3535c1c319c872900fbd76374e521c
+  version: e2593239d949eee454935daea7a5fe025477322f
   subpackages:
   - api
   - api/types
@@ -41,17 +41,15 @@ imports:
   - api/types/registry
   - api/types/strslice
   - api/types/swarm
+  - api/types/swarm/runtime
   - api/types/time
   - api/types/versions
   - api/types/volume
   - client
   - pkg/ioutils
   - pkg/longpath
-  - pkg/random
   - pkg/stdcopy
   - pkg/stringid
-  - pkg/system
-  - pkg/tlsconfig
 - name: github.com/docker/go-connections
   version: 3ede32e2033de7505e6500d6c868c2b9ed9f169d
   subpackages:
@@ -60,14 +58,17 @@ imports:
   - tlsconfig
 - name: github.com/docker/go-units
   version: 47565b4f722fb6ceae66b95f853feed578a4a51c
-- name: github.com/docker/libtrust
-  version: aabc10ec26b754e797f9028f4589c5b7bd90dc20
 - name: github.com/go-ole/go-ole
   version: a1ec82a652ebc7e784d7df887cfb31061aeabbcc
   subpackages:
   - oleutil
+- name: github.com/gogo/protobuf
+  version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
+  subpackages:
+  - gogoproto
+  - proto
 - name: github.com/golang/protobuf
-  version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
+  version: b4deda0973fb4c70b50d226b1af49f3da59f5265
   subpackages:
   - proto
   - ptypes
@@ -75,36 +76,41 @@ imports:
   - ptypes/duration
   - ptypes/timestamp
 - name: github.com/Microsoft/go-winio
-  version: 7ff89941bcb93df2e962467fb073c6e997b13cf0
+  version: 78439966b38d69bf38227fbf57ac8a6fee70f69a
 - name: github.com/opencontainers/go-digest
   version: 279bed98673dd5bef374d3b6e4b09e2af76183bf
+- name: github.com/opencontainers/image-spec
+  version: e562b04403929d582d449ae5386ff79dd7961a11
+  subpackages:
+  - specs-go
+  - specs-go/v1
 - name: github.com/pkg/errors
-  version: c605e284fe17294bda444b34710735b29d1a9d90
+  version: 8842a6e0cc595d1cc9d931f6c875883967280e32
 - name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
   - difflib
 - name: github.com/projecteru2/core
-  version: 7ce89d6e6b31224b38943a5b7ec3433e08c1ec9c
+  version: 1aec4703b02ba4bf11cb1c8b81fb6589d10c119c
   subpackages:
   - rpc/gen
   - types
   - utils
 - name: github.com/shirou/gopsutil
-  version: fc04d2dd9a512906a2604242b35275179e250eda
+  version: eeb1d38d69593f121e060d24d17f7b1f0936b203
   subpackages:
   - cpu
   - docker
   - internal/common
   - net
-- name: github.com/Sirupsen/logrus
+- name: github.com/sirupsen/logrus
   version: c155da19408a8799da419ed3eeb0cb5db0ad5dbc
 - name: github.com/StackExchange/wmi
-  version: 5d049714c4a64225c3c79a7cf7d02f7fb5b96338
+  version: cdffdb33acae0e14efff2628f9bae377b597840e
 - name: github.com/stretchr/objx
-  version: cbeaeb16a013161a98496fad62933b1d21786672
+  version: 0ab728f62c7f6fcd754334f7931c2dd659dce1d1
 - name: github.com/stretchr/testify
-  version: 12b6f73e6084dad08a7c6e575284b177ecafbc71
+  version: f35b8ab0b5a2cef36673838d662e249dd9c94686
   subpackages:
   - assert
   - mock
@@ -113,7 +119,7 @@ imports:
   subpackages:
   - codec
 - name: golang.org/x/crypto
-  version: b176d7def5d71bdd214203491f89843ed217f420
+  version: 1351f936d976c60a0a48d728281922cf63eafb8d
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
@@ -129,7 +135,7 @@ imports:
   - proxy
   - trace
 - name: golang.org/x/sys
-  version: e48874b42435b4347fc52bdee0424a52abc974d7
+  version: ebfc5b4631820b793c9010c87fd8fef0f39eb082
   subpackages:
   - unix
   - windows
@@ -145,24 +151,34 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: f92cdcd7dcdc69e81b2d7b338479a19a8723cfa3
+  version: 2ab07fd5cb02cfc44fd49af17dd2356ed1647ed4
   subpackages:
+  - balancer
+  - balancer/base
+  - balancer/roundrobin
   - codes
   - connectivity
   - credentials
-  - grpclb/grpc_lb_v1/messages
+  - encoding
+  - encoding/proto
   - grpclog
   - internal
+  - internal/backoff
+  - internal/channelz
+  - internal/grpcrand
   - keepalive
   - metadata
   - naming
   - peer
+  - resolver
+  - resolver/dns
+  - resolver/passthrough
   - stats
   - status
   - tap
   - transport
 - name: gopkg.in/urfave/cli.v2
-  version: b2bf3c5abeb90da407891aecd1df2c5a1f6170c1
+  version: d3ae77c26ac8db90639677e4831a728d33c36111
 - name: gopkg.in/yaml.v2
-  version: 25c4ec802a7d637f88d584ab26798e94ad14c13b
+  version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
 testImports: []

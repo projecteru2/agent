@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"syscall"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	engineapi "github.com/docker/docker/client"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/store"

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	enginecontainer "github.com/docker/docker/api/types/container"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"

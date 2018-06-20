@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/projecteru2/agent/api"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine"

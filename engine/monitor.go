@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	types "github.com/docker/docker/api/types"
 	eventtypes "github.com/docker/docker/api/types/events"
 

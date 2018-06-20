@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	enginetypes "github.com/docker/docker/api/types"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"

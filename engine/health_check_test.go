@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/pkg/stringid"
 	"github.com/projecteru2/agent/types"

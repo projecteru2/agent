@@ -3,7 +3,7 @@ package corestore
 import (
 	"fmt"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/projecteru2/agent/types"
 	"google.golang.org/grpc"
 )

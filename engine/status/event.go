@@ -3,7 +3,7 @@ package status
 import (
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	eventtypes "github.com/docker/docker/api/types/events"
 	"github.com/projecteru2/agent/common"
 )

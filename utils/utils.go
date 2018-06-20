@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/coreos/etcd/client"
 	engineapi "github.com/docker/docker/client"
 	"github.com/projecteru2/agent/common"

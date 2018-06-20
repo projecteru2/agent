@@ -7,7 +7,7 @@ import (
 	"time"
 
 	statsdlib "github.com/CMGS/statsd"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 	"github.com/shirou/gopsutil/cpu"
