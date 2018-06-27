@@ -7,12 +7,12 @@ import (
 	"time"
 
 	statsdlib "github.com/CMGS/statsd"
-	log "github.com/sirupsen/logrus"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/docker"
 	"github.com/shirou/gopsutil/net"
+	log "github.com/sirupsen/logrus"
 )
 
 func getStats(ctx context.Context, container *types.Container, proc string) (*cpu.TimesStat, cpu.TimesStat, []net.IOCountersStat, error) {
@@ -97,7 +97,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 					result[nic.Name+".bytes.sent"] = float64(nic.BytesSent-oldNICStats.BytesSent) / delta
 					result[nic.Name+".bytes.recv"] = float64(nic.BytesRecv-oldNICStats.BytesRecv) / delta
 					result[nic.Name+".packets.sent"] = float64(nic.PacketsSent-oldNICStats.PacketsSent) / delta
-					result[nic.Name+".packets.sent"] = float64(nic.PacketsRecv-oldNICStats.PacketsRecv) / delta
+					result[nic.Name+".packets.recv"] = float64(nic.PacketsRecv-oldNICStats.PacketsRecv) / delta
 					result[nic.Name+".err.in"] = float64(nic.Errin-oldNICStats.Errin) / delta
 					result[nic.Name+".err.out"] = float64(nic.Errout-oldNICStats.Errout) / delta
 					result[nic.Name+".drop.in"] = float64(nic.Dropin-oldNICStats.Dropin) / delta
