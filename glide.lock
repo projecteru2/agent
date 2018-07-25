@@ -97,7 +97,7 @@ imports:
   - types
   - utils
 - name: github.com/shirou/gopsutil
-  version: eeb1d38d69593f121e060d24d17f7b1f0936b203
+  version: d9d9688f3d20a6b7942c5222607c29b32b69d15e
   subpackages:
   - cpu
   - docker
