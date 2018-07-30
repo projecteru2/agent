@@ -1,17 +1,15 @@
 appname: "eru"
 entrypoints:
   agent:
-    cmd: "/usr/bin/eru-agent"
-    restart:always
+    cmd: "/usr/bin/eru-agent --config /agent.yaml"
+    restart: always
     publish:
       - "12345"
     healthcheck:
       tcp_ports:
         - "12345"
     privileged: true
-    log_config: "journald"
 volumes:
-  - "<HOST_CONFIG_DIR_PATH>:/etc/eru"
   - "/sys/fs/cgroup/:/sys/fs/cgroup/"
   - "/var/run/docker.sock:/var/run/docker.sock"
   - "/proc/:/hostProc/"
@@ -33,10 +31,6 @@ builds:
       - ./eru-agent --version
     cache:
       /go/src/github.com/projecteru2/agent/eru-agent: /usr/bin/eru-agent
-      /go/src/github.com/projecteru2/agent/agent.yaml.sample: /etc/eru/agent.yaml.sample
-    # envs:
-    #   HTTP_PROXY: <HTTP_PROXY>
-    #   HTTPS_PROXY: <HTTPS_PROXY>
   pack:
     base: alpine:3.8
     labels:
