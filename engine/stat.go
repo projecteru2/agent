@@ -43,7 +43,52 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	for {
 		select {
 		case <-tick.C:
-			go sendStats(parentCtx, container, proc, delta, containerCPUStats, systemCPUStats, containerNetStats, statsd, endpoint, tagString)
+			go func() {
+				newContainrCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(parentCtx, container, proc)
+				if err != nil {
+					log.Errorf("[stat] get %s stats failed %v", container.ID[:common.SHORTID], err)
+					return
+				}
+				containerMemStats, err := docker.CgroupMemDockerWithContext(parentCtx, container.ID)
+				if err != nil {
+					log.Errorf("[stat] get %s mem stats failed %v", container.ID[:common.SHORTID], err)
+					return
+				}
+				result := map[string]float64{}
+				result["cpu_host_usage"] = float64(newContainrCPUStats.Total()-containerCPUStats.Total()) / float64(newSystemCPUStats.Total()-systemCPUStats.Total())
+				result["cpu_host_user_usage"] = float64(newContainrCPUStats.User-containerCPUStats.User) / float64(newSystemCPUStats.User-systemCPUStats.User)
+				result["cpu_host_sys_usage"] = float64(newContainrCPUStats.System-containerCPUStats.System) / float64(newSystemCPUStats.System-systemCPUStats.System)
+				containerCPUPercent := float64(container.CPUQuota) / e.cpuCore
+				result["cpu_container_usage"] = result["cpu_host_usage"] / containerCPUPercent
+				result["cpu_container_user_usage"] = result["cpu_host_user_usage"] / containerCPUPercent
+				result["cpu_container_sys_usage"] = result["cpu_host_sys_usage"] / containerCPUPercent
+				result["mem_usage"] = float64(containerMemStats.MemUsageInBytes)
+				result["mem_max_usage"] = float64(containerMemStats.MemMaxUsageInBytes)
+				result["mem_rss"] = float64(containerMemStats.RSS)
+				if containerMemStats.MemLimitInBytes > 0 {
+					result["mem_usage_percent"] = float64(containerMemStats.MemUsageInBytes) / float64(containerMemStats.MemLimitInBytes)
+				}
+				nics := map[string]net.IOCountersStat{}
+				for _, nic := range containerNetStats {
+					nics[nic.Name] = nic
+				}
+				for _, nic := range newContainerNetStats {
+					if _, ok := nics[nic.Name]; !ok {
+						continue
+					}
+					oldNICStats := nics[nic.Name]
+					result[nic.Name+".bytes.sent"] = float64(nic.BytesSent-oldNICStats.BytesSent) / delta
+					result[nic.Name+".bytes.recv"] = float64(nic.BytesRecv-oldNICStats.BytesRecv) / delta
+					result[nic.Name+".packets.sent"] = float64(nic.PacketsSent-oldNICStats.PacketsSent) / delta
+					result[nic.Name+".packets.recv"] = float64(nic.PacketsRecv-oldNICStats.PacketsRecv) / delta
+					result[nic.Name+".err.in"] = float64(nic.Errin-oldNICStats.Errin) / delta
+					result[nic.Name+".err.out"] = float64(nic.Errout-oldNICStats.Errout) / delta
+					result[nic.Name+".drop.in"] = float64(nic.Dropin-oldNICStats.Dropin) / delta
+					result[nic.Name+".drop.out"] = float64(nic.Dropout-oldNICStats.Dropout) / delta
+				}
+				containerCPUStats, systemCPUStats, containerNetStats = newContainrCPUStats, newSystemCPUStats, newContainerNetStats
+				statsd.Send(result, endpoint, tagString)
+			}()
 		case <-parentCtx.Done():
 			return
 		}
@@ -69,53 +114,6 @@ func getStats(ctx context.Context, container *types.Container, proc string) (*cp
 		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
 	}
 	return containerCPUStats, systemCPUStats, containerNetStats, nil
-}
-
-func sendStats(ctx context.Context,
-	container *types.Container, proc string, delta float64,
-	containerCPUStats *cpu.TimesStat, systemCPUStats cpu.TimesStat,
-	containerNetStats []net.IOCountersStat,
-	statsd *statsDClient, endpoint, tagString string) {
-	newContainrCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(ctx, container, proc)
-	if err != nil {
-		log.Errorf("[stat] get %s stats failed %v", container.ID[:common.SHORTID], err)
-		return
-	}
-	containerMemStats, err := docker.CgroupMemDockerWithContext(ctx, container.ID)
-	if err != nil {
-		log.Errorf("[stat] get %s mem stats failed %v", container.ID[:common.SHORTID], err)
-		return
-	}
-	result := map[string]float64{}
-	result["cpu_usage"] = float64(newContainrCPUStats.Total()-containerCPUStats.Total()) / float64(newSystemCPUStats.Total()-systemCPUStats.Total())
-	result["cpu_user_usage"] = float64(newContainrCPUStats.User-containerCPUStats.User) / float64(newSystemCPUStats.User-systemCPUStats.User)
-	result["cpu_sys_usage"] = float64(newContainrCPUStats.System-containerCPUStats.System) / float64(newSystemCPUStats.System-systemCPUStats.System)
-	result["mem_usage"] = float64(containerMemStats.MemUsageInBytes)
-	result["mem_max_usage"] = float64(containerMemStats.MemMaxUsageInBytes)
-	result["mem_rss"] = float64(containerMemStats.RSS)
-	if containerMemStats.MemLimitInBytes > 0 {
-		result["mem_usage_percent"] = float64(containerMemStats.MemUsageInBytes) / float64(containerMemStats.MemLimitInBytes)
-	}
-	nics := map[string]net.IOCountersStat{}
-	for _, nic := range containerNetStats {
-		nics[nic.Name] = nic
-	}
-	for _, nic := range newContainerNetStats {
-		if _, ok := nics[nic.Name]; !ok {
-			continue
-		}
-		oldNICStats := nics[nic.Name]
-		result[nic.Name+".bytes.sent"] = float64(nic.BytesSent-oldNICStats.BytesSent) / delta
-		result[nic.Name+".bytes.recv"] = float64(nic.BytesRecv-oldNICStats.BytesRecv) / delta
-		result[nic.Name+".packets.sent"] = float64(nic.PacketsSent-oldNICStats.PacketsSent) / delta
-		result[nic.Name+".packets.recv"] = float64(nic.PacketsRecv-oldNICStats.PacketsRecv) / delta
-		result[nic.Name+".err.in"] = float64(nic.Errin-oldNICStats.Errin) / delta
-		result[nic.Name+".err.out"] = float64(nic.Errout-oldNICStats.Errout) / delta
-		result[nic.Name+".drop.in"] = float64(nic.Dropin-oldNICStats.Dropin) / delta
-		result[nic.Name+".drop.out"] = float64(nic.Dropout-oldNICStats.Dropout) / delta
-	}
-	containerCPUStats, systemCPUStats, containerNetStats = newContainrCPUStats, newSystemCPUStats, newContainerNetStats
-	statsd.Send(result, endpoint, tagString)
 }
 
 type statsDClient struct {
