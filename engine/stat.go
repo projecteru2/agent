@@ -58,7 +58,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 				result["cpu_host_usage"] = float64(newContainrCPUStats.Total()-containerCPUStats.Total()) / float64(newSystemCPUStats.Total()-systemCPUStats.Total())
 				result["cpu_host_user_usage"] = float64(newContainrCPUStats.User-containerCPUStats.User) / float64(newSystemCPUStats.User-systemCPUStats.User)
 				result["cpu_host_sys_usage"] = float64(newContainrCPUStats.System-containerCPUStats.System) / float64(newSystemCPUStats.System-systemCPUStats.System)
-				containerCPUPercent := float64(container.CPUQuota) / e.cpuCore
+				containerCPUPercent := float64(container.CPUNum) / e.cpuCore
 				result["cpu_container_usage"] = result["cpu_host_usage"] / containerCPUPercent
 				result["cpu_container_user_usage"] = result["cpu_host_user_usage"] / containerCPUPercent
 				result["cpu_container_sys_usage"] = result["cpu_host_sys_usage"] / containerCPUPercent

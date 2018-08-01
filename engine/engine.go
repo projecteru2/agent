@@ -3,10 +3,8 @@ package engine
 import (
 	"os"
 	"os/signal"
-	"runtime"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
 	engineapi "github.com/docker/docker/client"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/store"
@@ -14,6 +12,8 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	coretypes "github.com/projecteru2/core/types"
+	"github.com/shirou/gopsutil/cpu"
+	log "github.com/sirupsen/logrus"
 )
 
 //Engine is agent
@@ -59,8 +59,12 @@ func NewEngine(config *types.Config) (*Engine, error) {
 	if engine.dockerized {
 		os.Setenv("HOST_PROC", "/hostProc")
 	}
-	//TODO 这里应该是获取注册 node 节点的 CPU 数量，而非真实数量
-	engine.cpuCore = float64(runtime.NumCPU())
+	cpus, err := cpu.Info()
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("[NewEngine] Host has %d cpus", len(cpus))
+	engine.cpuCore = float64(len(cpus))
 	engine.transfers = utils.NewHashBackends(config.Metrics.Transfers)
 	engine.forwards = utils.NewHashBackends(config.Log.Forwards)
 	return engine, nil

@@ -18,6 +18,8 @@ func (c *Client) GetNode(nodename string) (*types.Node, error) {
 		Podname:   resp.Podname,
 		Endpoint:  resp.Endpoint,
 		Available: resp.Available,
+		CPU:       resp.Cpu,
+		MemCap:    resp.Memory,
 	}
 	return node, nil
 }
