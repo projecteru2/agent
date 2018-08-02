@@ -4,14 +4,27 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	enginetypes "github.com/docker/docker/api/types"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	coretypes "github.com/projecteru2/core/types"
+	log "github.com/sirupsen/logrus"
 )
 
-//GenerateContainerMeta make meta obj
+// CalcuateCPUNum calculate how many cpu container used
+func CalcuateCPUNum(container *types.Container, containerJSON enginetypes.ContainerJSON, hostCPUNum float64) *types.Container {
+	cpuNum := hostCPUNum
+	if containerJSON.HostConfig.Resources.CpusetCpus != "" {
+		cpuNum = float64(len(strings.Split(containerJSON.HostConfig.Resources.CpusetCpus, ",")))
+	}
+	if containerJSON.HostConfig.CPUPeriod != 0 && containerJSON.HostConfig.CPUQuota != 0 {
+		cpuNum = float64(containerJSON.HostConfig.CPUQuota) / float64(containerJSON.HostConfig.CPUPeriod)
+	}
+	container.CPUNum = cpuNum
+	return container
+}
+
+// GenerateContainerMeta make meta obj
 func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend map[string]string) (*types.Container, error) {
 	name, entrypoint, ident, err := utils.GetAppInfo(c.Name)
 	if err != nil {
@@ -35,7 +48,6 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 	// 那么我们认为这个容器一直是健康的, 并且不做检查
 	// 需要告诉第一次上的时候这个容器是健康的, 还是不是
 	_, checker := c.Config.Labels["healthcheck"]
-	cpuNum := len(strings.Split(c.HostConfig.Resources.CpusetCpus, ","))
 	container := &types.Container{
 		ID:          c.ID,
 		Pid:         c.State.Pid,
@@ -45,7 +57,6 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 		EntryPoint:  entrypoint,
 		Ident:       ident,
 		Version:     version,
-		CPUNum:      cpuNum,
 		CPUQuota:    c.HostConfig.Resources.CPUQuota,
 		CPUPeriod:   c.HostConfig.Resources.CPUPeriod,
 		CPUShares:   c.HostConfig.Resources.CPUShares,
