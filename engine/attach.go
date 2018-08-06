@@ -10,8 +10,8 @@ import (
 
 	"github.com/docker/docker/pkg/stdcopy"
 
-	log "github.com/sirupsen/logrus"
 	dockertypes "github.com/docker/docker/api/types"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine/logs"
@@ -80,8 +80,10 @@ func (e *Engine) attach(container *types.Container) {
 				//Extra
 			}
 			watcher.LogMonitor.LogC <- l
-			if err := writer.Write(l); err != nil && !(container.Name == "agent" && e.dockerized) {
-				log.Errorf("[attach] %s container %s write failed %s, logs %s", container.Name, container.ID[:common.SHORTID], err, data)
+			if !(container.Name == "agent") && !e.dockerized {
+				if err := writer.Write(l); err != nil {
+					log.Errorf("[attach] %s container %s write failed %s, logs %s", container.Name, container.ID[:common.SHORTID], err, data)
+				}
 			}
 		}
 	}

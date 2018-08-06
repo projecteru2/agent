@@ -15,14 +15,15 @@ func TestNewWriter(t *testing.T) {
 	w, err := NewWriter(addr, true)
 	assert.NoError(t, err)
 
-	err = w.createUDPConn()
+	conn, err := w.createUDPConn()
 	assert.NoError(t, err)
 
+	w.conn = conn
 	w.Write(&types.Log{
 		ID:   "testID",
 		Name: "hello",
 	})
-	w.Close()
+	w.conn.Close()
 
 	// tcp writer
 	addr = "tcp://127.0.0.1:34567"
@@ -33,8 +34,9 @@ func TestNewWriter(t *testing.T) {
 	w, err = NewWriter(addr, true)
 	assert.NoError(t, err)
 
-	err = w.createTCPConn()
+	conn, err = w.createTCPConn()
 	assert.NoError(t, err)
 
-	w.Close()
+	w.conn = conn
+	w.conn.Close()
 }
