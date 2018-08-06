@@ -4,35 +4,42 @@ import (
 	"io/ioutil"
 	"os"
 
+	coretypes "github.com/projecteru2/core/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/urfave/cli.v2"
 	yaml "gopkg.in/yaml.v2"
 )
 
+// DockerConfig contain endpoint
 type DockerConfig struct {
 	Endpoint string `yaml:"endpoint"`
 }
 
+// MetricsConfig contain metrics config
 type MetricsConfig struct {
 	Step      int64    `yaml:"step"`
 	Transfers []string `yaml:"transfers"`
 }
 
+// APIConfig contain api config
 type APIConfig struct {
 	Addr string `yaml:"addr"`
 }
 
+// LogConfig contain log config
 type LogConfig struct {
 	Forwards []string `yaml:"forwards"`
 	Stdout   bool     `yaml:"stdout"`
 }
 
+// Config contain all configs
 type Config struct {
-	PidFile             string `yaml:"pid"`
-	HealthCheckInterval int    `yaml:"health_check_interval"`
-	HealthCheckTimeout  int    `yaml:"health_check_timeout"`
-	Core                string `yaml:"core"`
-	HostName            string `yaml:"-"`
+	PidFile             string               `yaml:"pid"`
+	HealthCheckInterval int                  `yaml:"health_check_interval"`
+	HealthCheckTimeout  int                  `yaml:"health_check_timeout"`
+	Core                string               `yaml:"core"`
+	Auth                coretypes.AuthConfig `yaml:"auth"`
+	HostName            string               `yaml:"-"`
 
 	Docker  DockerConfig
 	Metrics MetricsConfig
@@ -61,6 +68,12 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 
 	if c.String("core-endpoint") != "" {
 		config.Core = c.String("core-endpoint")
+	}
+	if c.String("core-username") != "" {
+		config.Auth.Username = c.String("core-username")
+	}
+	if c.String("core-password") != "" {
+		config.Auth.Password = c.String("core-password")
 	}
 	if c.String("pidfile") != "" {
 		config.PidFile = c.String("pidfile")

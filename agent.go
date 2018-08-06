@@ -3,13 +3,13 @@ package main
 import (
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/projecteru2/agent/api"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/watcher"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/urfave/cli.v2"
 )
 
@@ -81,6 +81,18 @@ func main() {
 				Value:   "",
 				Usage:   "core endpoint",
 				EnvVars: []string{"ERU_AGENT_CORE_ENDPOINT"},
+			},
+			&cli.StringFlag{
+				Name:    "core-username",
+				Value:   "",
+				Usage:   "core username",
+				EnvVars: []string{"ERU_AGENT_CORE_USERNAME"},
+			},
+			&cli.StringFlag{
+				Name:    "core-password",
+				Value:   "",
+				Usage:   "core password",
+				EnvVars: []string{"ERU_AGENT_CORE_PASSWORD"},
 			},
 			&cli.StringFlag{
 				Name:    "docker-endpoint",

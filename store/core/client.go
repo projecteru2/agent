@@ -3,30 +3,20 @@ package corestore
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/projecteru2/agent/types"
-	"google.golang.org/grpc"
+	"github.com/projecteru2/core/client"
 )
 
-type Client struct {
-	addr string
-	conn *grpc.ClientConn
+// CoreStore use core to store meta
+type CoreStore struct {
+	client *client.Client
 }
 
-func NewClient(config *types.Config) (*Client, error) {
+// NewClient new a client
+func NewClient(config *types.Config) (*CoreStore, error) {
 	if config.Core == "" {
 		return nil, fmt.Errorf("Core addr not set")
 	}
-	conn := connect(config.Core)
-
-	return &Client{addr: config.Core, conn: conn}, nil
-}
-
-func connect(server string) *grpc.ClientConn {
-	conn, err := grpc.Dial(server, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("[ConnectEru] Can not connect %v", err)
-	}
-	log.Debugf("[ConnectEru] Init eru connection %s", server)
-	return conn
+	coreClient := client.NewClient(config.Core, config.Auth)
+	return &CoreStore{coreClient}, nil
 }

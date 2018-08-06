@@ -41,7 +41,7 @@ docker run -d --privileged \
   --name eru_agent_$HOSTNAME \
   --net host \
   --restart always \
-  -v /sys/fs/cgroup/:/sys/fs/cgroup/ \
+  -v /sys:/sys:ro \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /proc/:/hostProc/ \
   -v <HOST_CONFIG_DIR_PATH>:/etc/eru \

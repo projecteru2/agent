@@ -10,9 +10,9 @@ entrypoints:
         - "12345"
     privileged: true
 volumes:
-  - "/sys/fs/cgroup/:/sys/fs/cgroup/"
-  - "/var/run/docker.sock:/var/run/docker.sock"
-  - "/proc/:/hostProc/"
+  - /sys:/sys:ro
+  - /var/run/docker.sock:/var/run/docker.sock
+  - /proc/:/hostProc/
 stages:
   - build
   - pack
