@@ -19,7 +19,6 @@ type Container struct {
 	CPUNum      float64
 	CPUQuota    int64
 	CPUPeriod   int64
-	CPUShares   int64
 	Memory      int64
 	Extend      map[string]string
 	Publish     map[string]string

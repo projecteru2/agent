@@ -174,7 +174,6 @@ func mockDockerDoer(r *http.Request) (*http.Response, error) {
 					Resources: container.Resources{
 						CPUQuota:  9999,
 						CPUPeriod: 9999,
-						CPUShares: 999,
 						Memory:    99999,
 					},
 				},

@@ -80,10 +80,8 @@ func (e *Engine) attach(container *types.Container) {
 				//Extra
 			}
 			watcher.LogMonitor.LogC <- l
-			if !(container.Name == "agent") && !e.dockerized {
-				if err := writer.Write(l); err != nil {
-					log.Errorf("[attach] %s container %s write failed %s, logs %s", container.Name, container.ID[:common.SHORTID], err, data)
-				}
+			if err := writer.Write(l); err != nil && !(container.EntryPoint == "agent" && e.dockerized) {
+				log.Errorf("[attach] %s container %s_%s write failed %s, logs %s", container.Name, container.EntryPoint, container.ID[:common.SHORTID], err, data)
 			}
 		}
 	}

@@ -36,8 +36,6 @@ func NewWriter(addr string, stdout bool) (*Writer, error) {
 
 // CreateConn create conn
 func (w *Writer) CreateConn() error {
-	w.Lock()
-	defer w.Unlock()
 	var err error
 	var conn io.WriteCloser
 	switch w.scheme {

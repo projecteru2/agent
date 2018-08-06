@@ -14,9 +14,9 @@ import (
 // CalcuateCPUNum calculate how many cpu container used
 func CalcuateCPUNum(container *types.Container, containerJSON enginetypes.ContainerJSON, hostCPUNum float64) *types.Container {
 	cpuNum := hostCPUNum
-	if containerJSON.HostConfig.Resources.CpusetCpus != "" {
-		cpuNum = float64(len(strings.Split(containerJSON.HostConfig.Resources.CpusetCpus, ",")))
-	}
+	//if containerJSON.HostConfig.Resources.CpusetCpus != "" {
+	//	cpuNum = float64(len(strings.Split(containerJSON.HostConfig.Resources.CpusetCpus, ",")))
+	//}
 	if containerJSON.HostConfig.CPUPeriod != 0 && containerJSON.HostConfig.CPUQuota != 0 {
 		cpuNum = float64(containerJSON.HostConfig.CPUQuota) / float64(containerJSON.HostConfig.CPUPeriod)
 	}
@@ -59,7 +59,6 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 		Version:     version,
 		CPUQuota:    c.HostConfig.Resources.CPUQuota,
 		CPUPeriod:   c.HostConfig.Resources.CPUPeriod,
-		CPUShares:   c.HostConfig.Resources.CPUShares,
 		Memory:      c.HostConfig.Resources.Memory,
 		HealthCheck: nil,
 	}
