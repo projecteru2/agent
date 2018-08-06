@@ -6,27 +6,33 @@ import (
 	"golang.org/x/net/context"
 )
 
-//GetNode return a node by core
-func (c *Client) GetNode(nodename string) (*types.Node, error) {
-	client := pb.NewCoreRPCClient(c.conn)
+// GetNode return a node by core
+func (c *CoreStore) GetNode(nodename string) (*types.Node, error) {
+	client := c.client.GetRPCClient()
 	resp, err := client.GetNodeByName(context.Background(), &pb.GetNodeOptions{Nodename: nodename})
 	if err != nil {
 		return nil, err
 	}
+
+	cpus := types.CPUMap{}
+	for k, v := range resp.Cpu {
+		cpus[k] = int(v)
+	}
+
 	node := &types.Node{
 		Name:      resp.Name,
 		Podname:   resp.Podname,
 		Endpoint:  resp.Endpoint,
 		Available: resp.Available,
-		CPU:       resp.Cpu,
+		CPU:       cpus,
 		MemCap:    resp.Memory,
 	}
 	return node, nil
 }
 
-//UpdateNode update node status
-func (c *Client) UpdateNode(node *types.Node) error {
-	client := pb.NewCoreRPCClient(c.conn)
+// UpdateNode update node status
+func (c *CoreStore) UpdateNode(node *types.Node) error {
+	client := c.client.GetRPCClient()
 	opts := &pb.NodeAvailable{
 		Podname:   node.Podname,
 		Nodename:  node.Name,

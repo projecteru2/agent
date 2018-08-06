@@ -15,3 +15,6 @@ log:
   forwards:
     - tcp://127.0.0.1:5144
   stdout: False
+auth:
+  username: username
+  password: password
