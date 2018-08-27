@@ -55,9 +55,7 @@ func (e *Engine) attach(container *types.Container) {
 	}()
 	log.Infof("[attach] attach %s container %s success", container.Name, container.ID[:common.SHORTID])
 	// attach metrics
-	if e.transfers.Len() > 0 {
-		go e.stat(parentCtx, container)
-	}
+	go e.stat(parentCtx, container)
 	pump := func(typ string, source io.Reader) {
 		buf := bufio.NewReader(source)
 		for {
