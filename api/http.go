@@ -5,19 +5,22 @@ import (
 	"net/http"
 	"runtime/pprof"
 
+	// enable profile
 	_ "net/http/pprof"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/watcher"
+	coreutils "github.com/projecteru2/core/utils"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/bmizerany/pat"
 )
 
+// JSON define a json
 type JSON map[string]interface{}
 
+// Handler define handler
 type Handler struct {
 }
 
@@ -55,7 +58,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		logConsumer := &types.LogConsumer{
-			ID:  utils.RandStringRunes(8),
+			ID:  coreutils.RandomString(8),
 			App: app, Conn: conn, Buf: buf,
 		}
 		watcher.LogMonitor.ConsumerC <- logConsumer
@@ -63,6 +66,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// Serve start a api service
 func Serve(addr string) {
 	if addr == "" {
 		return
