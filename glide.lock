@@ -1,12 +1,16 @@
-hash: 728ee7caed0444615be6faf908a789ae1d6a2a17e8292185e2532690d0526753
-updated: 2018-06-20T13:22:50.984825+08:00
+hash: 4f9849633d27e91a1501922fadf77436c192b09e0b53f496bca0acc6a63eef07
+updated: 2018-08-27T14:40:41.598094+08:00
 imports:
+- name: github.com/beorn7/perks
+  version: 3a771d992973f24aa725d07868b467d1ddfceafb
+  subpackages:
+  - quantile
 - name: github.com/bmizerany/pat
   version: 6226ea591a40176dd3ff9cd8eff81ed6ca721a00
 - name: github.com/CMGS/statsd
   version: 48c421b3c1abfbb4e290c7f26cd93f014d686180
 - name: github.com/coreos/etcd
-  version: 33245c6b5b49130ca99280408fadfab01aac0e48
+  version: fca8add78a9d926166eb739b8e4a124434025ba3
   subpackages:
   - client
   - pkg/pathutil
@@ -27,7 +31,7 @@ imports:
   - digestset
   - reference
 - name: github.com/docker/docker
-  version: e2593239d949eee454935daea7a5fe025477322f
+  version: fe3bc75cc44ec90afbd126e4576f9f4f829fc0bc
   subpackages:
   - api
   - api/types
@@ -46,12 +50,13 @@ imports:
   - api/types/versions
   - api/types/volume
   - client
+  - errdefs
   - pkg/ioutils
   - pkg/longpath
   - pkg/stdcopy
   - pkg/stringid
 - name: github.com/docker/go-connections
-  version: 3ede32e2033de7505e6500d6c868c2b9ed9f169d
+  version: 7395e3f8aa162843a74ed6d48e79627d9792ac55
   subpackages:
   - nat
   - sockets
@@ -68,13 +73,17 @@ imports:
   - gogoproto
   - proto
 - name: github.com/golang/protobuf
-  version: b4deda0973fb4c70b50d226b1af49f3da59f5265
+  version: aa810b61a9c79d51363740d207bb46cf8e620ed5
   subpackages:
   - proto
   - ptypes
   - ptypes/any
   - ptypes/duration
   - ptypes/timestamp
+- name: github.com/matttproud/golang_protobuf_extensions
+  version: c12348ce28de40eed0136aa2b644d0ee0650e56c
+  subpackages:
+  - pbutil
 - name: github.com/Microsoft/go-winio
   version: 78439966b38d69bf38227fbf57ac8a6fee70f69a
 - name: github.com/opencontainers/go-digest
@@ -91,20 +100,42 @@ imports:
   subpackages:
   - difflib
 - name: github.com/projecteru2/core
-  version: 94cd855289a7c1d874d2121502fa5215355875e9
+  version: 277aad04a21af3369a9a0be830678206b13b00f8
   subpackages:
+  - auth
+  - auth/simple
+  - client
   - rpc/gen
   - types
   - utils
+- name: github.com/prometheus/client_golang
+  version: 967789050ba94deca04a5e84cce8ad472ce313c1
+  subpackages:
+  - prometheus
+  - prometheus/promhttp
+- name: github.com/prometheus/client_model
+  version: 6f3806018612930941127f2a7c6c453ba2c527d2
+  subpackages:
+  - go
+- name: github.com/prometheus/common
+  version: e3fb1a1acd7605367a2b378bc2e2f893c05174b7
+  subpackages:
+  - expfmt
+  - internal/bitbucket.org/ww/goautoneg
+  - model
+- name: github.com/prometheus/procfs
+  version: a6e9df898b1336106c743392c48ee0b71f5c4efa
+  subpackages:
+  - xfs
 - name: github.com/shirou/gopsutil
-  version: d9d9688f3d20a6b7942c5222607c29b32b69d15e
+  version: 8048a2e9c5773235122027dd585cf821b2af1249
   subpackages:
   - cpu
   - docker
   - internal/common
   - net
 - name: github.com/sirupsen/logrus
-  version: c155da19408a8799da419ed3eeb0cb5db0ad5dbc
+  version: 3e01752db0189b9157070a0e1668a620f9a85da2
 - name: github.com/StackExchange/wmi
   version: cdffdb33acae0e14efff2628f9bae377b597840e
 - name: github.com/stretchr/objx
@@ -151,7 +182,7 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 2ab07fd5cb02cfc44fd49af17dd2356ed1647ed4
+  version: e00d24941bcee35dd163f4377d5371349f14baaf
   subpackages:
   - balancer
   - balancer/base
@@ -165,7 +196,9 @@ imports:
   - internal
   - internal/backoff
   - internal/channelz
+  - internal/envconfig
   - internal/grpcrand
+  - internal/transport
   - keepalive
   - metadata
   - naming
@@ -176,7 +209,6 @@ imports:
   - stats
   - status
   - tap
-  - transport
 - name: gopkg.in/urfave/cli.v2
   version: d3ae77c26ac8db90639677e4831a728d33c36111
 - name: gopkg.in/yaml.v2

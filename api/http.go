@@ -12,6 +12,7 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/watcher"
 	coreutils "github.com/projecteru2/core/utils"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/bmizerany/pat"
@@ -89,6 +90,7 @@ func Serve(addr string) {
 	}
 
 	http.Handle("/", restfulAPIServer)
+	http.Handle("/metrics", promhttp.Handler())
 	log.Infof("[apiServe] http api started %s", addr)
 	go func() {
 		err := http.ListenAndServe(addr, nil)
