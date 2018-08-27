@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	statsdlib "github.com/CMGS/statsd"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 	"github.com/shirou/gopsutil/cpu"
@@ -32,11 +31,16 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	delta := float64(e.config.Metrics.Step)
 	tick := time.NewTicker(time.Duration(e.config.Metrics.Step) * time.Second)
 	defer tick.Stop()
-	statsd := &statsDClient{e.transfers.Get(container.ID, 0)}
-	host := strings.Replace(e.config.HostName, ".", "-", -1)
-	tagString := fmt.Sprintf("%s.%s", host, container.ID[:common.SHORTID])
+	hostname := strings.Replace(e.config.HostName, ".", "-", -1)
 	version := strings.Replace(container.Version, ".", "-", -1) // redis 的版本号带了 '.' 导致监控数据格式不一致
-	endpoint := fmt.Sprintf("%s.%s.%s", container.Name, version, container.EntryPoint)
+	mClient := NewMetricsClient(
+		e.transfers.Get(container.ID, 0),
+		container.ID,
+		container.Name,
+		container.EntryPoint,
+		version,
+		hostname,
+	)
 	defer log.Infof("[stat] container %s %s metric report stop", container.Name, container.ID[:common.SHORTID])
 	log.Infof("[stat] container %s %s metric report start", container.Name, container.ID[:common.SHORTID])
 
@@ -54,19 +58,21 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 					log.Errorf("[stat] get %s mem stats failed %v", container.ID[:common.SHORTID], err)
 					return
 				}
-				result := map[string]float64{}
-				result["cpu_host_usage"] = float64(newContainrCPUStats.Total()-containerCPUStats.Total()) / float64(newSystemCPUStats.Total()-systemCPUStats.Total())
-				result["cpu_host_user_usage"] = float64(newContainrCPUStats.User-containerCPUStats.User) / float64(newSystemCPUStats.User-systemCPUStats.User)
-				result["cpu_host_sys_usage"] = float64(newContainrCPUStats.System-containerCPUStats.System) / float64(newSystemCPUStats.System-systemCPUStats.System)
+				cpuHostUsage := float64(newContainrCPUStats.Total()-containerCPUStats.Total()) / float64(newSystemCPUStats.Total()-systemCPUStats.Total())
+				mClient.CPUHostUsage(cpuHostUsage)
+				cpuHostUserUsage := float64(newContainrCPUStats.User-containerCPUStats.User) / float64(newSystemCPUStats.User-systemCPUStats.User)
+				mClient.CPUHostUserUsage(cpuHostUserUsage)
+				cpuHostSysUsage := float64(newContainrCPUStats.System-containerCPUStats.System) / float64(newSystemCPUStats.System-systemCPUStats.System)
+				mClient.CPUHostSysUsage(cpuHostSysUsage)
 				containerCPUPercent := container.CPUNum / e.cpuCore
-				result["cpu_container_usage"] = result["cpu_host_usage"] / containerCPUPercent
-				result["cpu_container_user_usage"] = result["cpu_host_user_usage"] / containerCPUPercent
-				result["cpu_container_sys_usage"] = result["cpu_host_sys_usage"] / containerCPUPercent
-				result["mem_usage"] = float64(containerMemStats.MemUsageInBytes)
-				result["mem_max_usage"] = float64(containerMemStats.MemMaxUsageInBytes)
-				result["mem_rss"] = float64(containerMemStats.RSS)
+				mClient.CPUContainerUsage(cpuHostUsage / containerCPUPercent)
+				mClient.CPUContainerUserUsage(cpuHostUserUsage / containerCPUPercent)
+				mClient.CPUContainerSysUsage(cpuHostSysUsage / containerCPUPercent)
+				mClient.MemUsage(float64(containerMemStats.MemUsageInBytes))
+				mClient.MemMaxUsage(float64(containerMemStats.MemMaxUsageInBytes))
+				mClient.MemRss(float64(containerMemStats.RSS))
 				if containerMemStats.MemLimitInBytes > 0 {
-					result["mem_usage_percent"] = float64(containerMemStats.MemUsageInBytes) / float64(containerMemStats.MemLimitInBytes)
+					mClient.MemPercent(float64(containerMemStats.MemUsageInBytes) / float64(containerMemStats.MemLimitInBytes))
 				}
 				nics := map[string]net.IOCountersStat{}
 				for _, nic := range containerNetStats {
@@ -77,19 +83,20 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 						continue
 					}
 					oldNICStats := nics[nic.Name]
-					result[nic.Name+".bytes.sent"] = float64(nic.BytesSent-oldNICStats.BytesSent) / delta
-					result[nic.Name+".bytes.recv"] = float64(nic.BytesRecv-oldNICStats.BytesRecv) / delta
-					result[nic.Name+".packets.sent"] = float64(nic.PacketsSent-oldNICStats.PacketsSent) / delta
-					result[nic.Name+".packets.recv"] = float64(nic.PacketsRecv-oldNICStats.PacketsRecv) / delta
-					result[nic.Name+".err.in"] = float64(nic.Errin-oldNICStats.Errin) / delta
-					result[nic.Name+".err.out"] = float64(nic.Errout-oldNICStats.Errout) / delta
-					result[nic.Name+".drop.in"] = float64(nic.Dropin-oldNICStats.Dropin) / delta
-					result[nic.Name+".drop.out"] = float64(nic.Dropout-oldNICStats.Dropout) / delta
+					mClient.BytesSent(nic.Name, float64(nic.BytesSent-oldNICStats.BytesSent)/delta)
+					mClient.BytesRecv(nic.Name, float64(nic.BytesRecv-oldNICStats.BytesRecv)/delta)
+					mClient.PacketsSent(nic.Name, float64(nic.PacketsSent-oldNICStats.PacketsSent)/delta)
+					mClient.PacketsRecv(nic.Name, float64(nic.PacketsRecv-oldNICStats.PacketsRecv)/delta)
+					mClient.ErrIn(nic.Name, float64(nic.Errin-oldNICStats.Errin)/delta)
+					mClient.ErrOut(nic.Name, float64(nic.Errout-oldNICStats.Errout)/delta)
+					mClient.DropIn(nic.Name, float64(nic.Dropin-oldNICStats.Dropin)/delta)
+					mClient.DropOut(nic.Name, float64(nic.Dropout-oldNICStats.Dropout)/delta)
 				}
 				containerCPUStats, systemCPUStats, containerNetStats = newContainrCPUStats, newSystemCPUStats, newContainerNetStats
-				statsd.Send(result, endpoint, tagString)
+				mClient.Send()
 			}()
 		case <-parentCtx.Done():
+			mClient.Unregister()
 			return
 		}
 	}
@@ -114,23 +121,4 @@ func getStats(ctx context.Context, container *types.Container, proc string) (*cp
 		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
 	}
 	return containerCPUStats, systemCPUStats, containerNetStats, nil
-}
-
-type statsDClient struct {
-	Addr string
-}
-
-func (s *statsDClient) Send(data map[string]float64, endpoint, tag string) error {
-	remote, err := statsdlib.New(s.Addr)
-	if err != nil {
-		log.Errorf("[statsd] Connect statsd failed: %v", err)
-		return err
-	}
-	defer remote.Close()
-	defer remote.Flush()
-	for k, v := range data {
-		key := fmt.Sprintf("eru.%s.%s.%s", endpoint, tag, k)
-		remote.Gauge(key, v)
-	}
-	return nil
 }

@@ -166,7 +166,7 @@ imports:
   - proxy
   - trace
 - name: golang.org/x/sys
-  version: ebfc5b4631820b793c9010c87fd8fef0f39eb082
+  version: 4910a1d54f876d7b22162a85f4d066d3ee649450
   subpackages:
   - unix
   - windows
