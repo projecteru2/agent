@@ -328,7 +328,7 @@ func (m *MetricsClient) Send() error {
 	for k, v := range m.data {
 		key := fmt.Sprintf("%s.%s", m.prefix, k)
 		remote.Gauge(key, v)
+		delete(m.data, k)
 	}
-	m.data = map[string]float64{}
 	return nil
 }
