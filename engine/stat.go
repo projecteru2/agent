@@ -33,8 +33,12 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	defer tick.Stop()
 	hostname := strings.Replace(e.config.HostName, ".", "-", -1)
 	version := strings.Replace(container.Version, ".", "-", -1) // redis 的版本号带了 '.' 导致监控数据格式不一致
+	addr := ""
+	if e.transfers.Len() > 0 {
+		addr = e.transfers.Get(container.ID, 0)
+	}
 	mClient := NewMetricsClient(
-		e.transfers.Get(container.ID, 0),
+		addr,
 		container.ID,
 		container.Name,
 		container.EntryPoint,
