@@ -25,7 +25,7 @@ func CalcuateCPUNum(container *types.Container, containerJSON enginetypes.Contai
 }
 
 // GenerateContainerMeta make meta obj
-func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend map[string]string) (*types.Container, error) {
+func GenerateContainerMeta(c enginetypes.ContainerJSON, extend map[string]string) (*types.Container, error) {
 	name, entrypoint, ident, err := utils.GetAppInfo(c.Name)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,6 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 			Name:       name,
 			EntryPoint: entrypoint,
 			Ident:      ident,
-			Version:    version,
 			Healthy:    false,
 			Running:    false,
 			Extend:     extend,
@@ -56,7 +55,6 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, version string, extend m
 		Name:        name,
 		EntryPoint:  entrypoint,
 		Ident:       ident,
-		Version:     version,
 		CPUQuota:    c.HostConfig.Resources.CPUQuota,
 		CPUPeriod:   c.HostConfig.Resources.CPUPeriod,
 		Memory:      c.HostConfig.Resources.Memory,

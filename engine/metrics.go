@@ -39,15 +39,23 @@ type MetricsClient struct {
 }
 
 // NewMetricsClient new a metrics client
-func NewMetricsClient(statsd, containerID, appname, entrypoint, version, hostname string) *MetricsClient {
+func NewMetricsClient(statsd, containerID, appname, entrypoint, hostname string, extend map[string]string) *MetricsClient {
 	labels := map[string]string{
 		"containerID":  containerID,
 		"appname":      appname,
 		"entrypoint":   entrypoint,
-		"version":      version,
 		"hostname":     hostname,
 		"orchestrator": common.ERU_MARK, // TODO hard encode
 	}
+	for k, v := range extend {
+		if v == "" {
+			continue
+		}
+		if _, ok := labels[k]; !ok {
+			labels[k] = v
+		}
+	}
+
 	cpuHostUsage := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name:        "cpu_host_usage",
 		Help:        "cpu usage in host view.",
@@ -139,8 +147,9 @@ func NewMetricsClient(statsd, containerID, appname, entrypoint, version, hostnam
 		ConstLabels: labels,
 	}, []string{"nic"})
 
+	// TODO 这里已经没有了版本了
 	tag := fmt.Sprintf("%s.%s", hostname, containerID[:common.SHORTID])
-	endpoint := fmt.Sprintf("%s.%s.%s", appname, version, entrypoint)
+	endpoint := fmt.Sprintf("%s.%s", appname, entrypoint)
 	prefix := fmt.Sprintf("%s.%s.%s", common.ERU_MARK, endpoint, tag)
 
 	prometheus.MustRegister(

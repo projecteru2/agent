@@ -32,7 +32,6 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	tick := time.NewTicker(time.Duration(e.config.Metrics.Step) * time.Second)
 	defer tick.Stop()
 	hostname := strings.Replace(e.config.HostName, ".", "-", -1)
-	version := strings.Replace(container.Version, ".", "-", -1) // redis 的版本号带了 '.' 导致监控数据格式不一致
 	addr := ""
 	if e.transfers.Len() > 0 {
 		addr = e.transfers.Get(container.ID, 0)
@@ -42,8 +41,8 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 		container.ID,
 		container.Name,
 		container.EntryPoint,
-		version,
 		hostname,
+		container.Extend,
 	)
 	defer log.Infof("[stat] container %s %s metric report stop", container.Name, container.ID[:common.SHORTID])
 	log.Infof("[stat] container %s %s metric report start", container.Name, container.ID[:common.SHORTID])

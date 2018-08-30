@@ -48,13 +48,12 @@ func (e *Engine) detectContainer(ID string, label map[string]string) (*types.Con
 
 	// 生成基准 meta
 	delete(label, common.ERU_MARK)
-	version, ports := coreutils.ParseLabels(label)
-	delete(label, "version")
+	_, ports := coreutils.ParseLabels(label)
 	delete(label, "name")
 	delete(label, "publish")
 
 	// 是否符合 eru pattern，如果一个容器又有 ERU_MARK 又是三段式的 name，那它就是个 ERU 容器
-	container, err := status.GenerateContainerMeta(c, version, label)
+	container, err := status.GenerateContainerMeta(c, label)
 	if err != nil {
 		return container, err
 	}
