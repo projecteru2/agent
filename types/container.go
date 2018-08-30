@@ -21,7 +21,7 @@ type Container struct {
 	CPUPeriod   int64
 	Memory      int64
 	Extend      map[string]string
-	Publish     map[string]string
+	Publish     map[string][]string
 	Networks    map[string]*network.EndpointSettings `json:"-"`
 	HealthCheck *coretypes.HealthCheck
 }
