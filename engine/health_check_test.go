@@ -6,11 +6,10 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/pkg/stringid"
 	"github.com/projecteru2/agent/types"
 	coretypes "github.com/projecteru2/core/types"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,11 +24,6 @@ func TestCheckSingleContainerHealthy(t *testing.T) {
 		Running:    true,
 		Name:       "test",
 		EntryPoint: "t1",
-		Networks: map[string]*network.EndpointSettings{
-			"x": &network.EndpointSettings{
-				IPAddress: "127.0.0.1",
-			},
-		},
 		HealthCheck: &coretypes.HealthCheck{
 			TCPPorts: []string{"10236"},
 			HTTPPort: "10237",

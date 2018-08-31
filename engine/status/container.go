@@ -1,9 +1,6 @@
 package status
 
 import (
-	"strconv"
-	"strings"
-
 	enginetypes "github.com/docker/docker/api/types"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
@@ -25,7 +22,7 @@ func CalcuateCPUNum(container *types.Container, containerJSON enginetypes.Contai
 }
 
 // GenerateContainerMeta make meta obj
-func GenerateContainerMeta(c enginetypes.ContainerJSON, extend map[string]string) (*types.Container, error) {
+func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.EruContainerMeta, labels map[string]string) (*types.Container, error) {
 	name, entrypoint, ident, err := utils.GetAppInfo(c.Name)
 	if err != nil {
 		return nil, err
@@ -39,14 +36,14 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, extend map[string]string
 			Ident:      ident,
 			Healthy:    false,
 			Running:    false,
-			Extend:     extend,
+			Labels:     labels,
 		}, nil
 	}
 
 	// 第一次上的容器可能没有设置health check
 	// 那么我们认为这个容器一直是健康的, 并且不做检查
 	// 需要告诉第一次上的时候这个容器是健康的, 还是不是
-	_, checker := c.Config.Labels["healthcheck"]
+	checker := (meta.HealthCheck != nil)
 	container := &types.Container{
 		ID:          c.ID,
 		Pid:         c.State.Pid,
@@ -58,33 +55,9 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, extend map[string]string
 		CPUQuota:    c.HostConfig.Resources.CPUQuota,
 		CPUPeriod:   c.HostConfig.Resources.CPUPeriod,
 		Memory:      c.HostConfig.Resources.Memory,
-		HealthCheck: nil,
+		HealthCheck: meta.HealthCheck,
+		Labels:      labels,
 	}
-	if checker {
-		delete(extend, "healthcheck")
-		tcpPortsStr, _ := c.Config.Labels["healthcheck_tcp"]
-		tcpPorts := []string{}
-		if tcpPortsStr != "" {
-			tcpPorts = strings.Split(tcpPortsStr, ",")
-		}
-		httpPort, _ := c.Config.Labels["healthcheck_http"]
-		httpURL, _ := c.Config.Labels["healthcheck_url"]
-		var httpCode int
-		if codeStr, ok := c.Config.Labels["healthcheck_code"]; ok {
-			httpCode, err = strconv.Atoi(codeStr)
-			if err != nil {
-				log.Warnf("[GenerateContainerMeta] code invaild %s", codeStr)
-			}
-		}
-		healthCheck := &coretypes.HealthCheck{
-			TCPPorts: tcpPorts,
-			HTTPPort: httpPort,
-			HTTPURL:  httpURL,
-			HTTPCode: httpCode,
-		}
-		container.HealthCheck = healthCheck
-	}
-	container.Extend = extend
 	log.Debugf("[GenerateContainerMeta] Generate container meta %v %v", container.Name, container.EntryPoint)
 	return container, nil
 }

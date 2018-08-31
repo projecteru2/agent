@@ -2,9 +2,12 @@ package engine
 
 import (
 	"fmt"
+	"strings"
 
 	statsdlib "github.com/CMGS/statsd"
 	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/core/cluster"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -39,21 +42,19 @@ type MetricsClient struct {
 }
 
 // NewMetricsClient new a metrics client
-func NewMetricsClient(statsd, containerID, appname, entrypoint, hostname string, extend map[string]string) *MetricsClient {
-	labels := map[string]string{
-		"containerID":  containerID,
-		"appname":      appname,
-		"entrypoint":   entrypoint,
-		"hostname":     hostname,
-		"orchestrator": common.ERU_MARK, // TODO hard encode
+func NewMetricsClient(statsd, hostname string, container *types.Container) *MetricsClient {
+	clables := []string{}
+	for k, v := range container.Labels {
+		l := fmt.Sprintf("%s=%s", k, v)
+		clables = append(clables, l)
 	}
-	for k, v := range extend {
-		if v == "" {
-			continue
-		}
-		if _, ok := labels[k]; !ok {
-			labels[k] = v
-		}
+	labels := map[string]string{
+		"containerID":  container.ID,
+		"hostname":     hostname,
+		"appname":      container.Name,
+		"entrypoint":   container.EntryPoint,
+		"orchestrator": cluster.ERUMark,
+		"labels":       strings.Join(clables, ","),
 	}
 
 	cpuHostUsage := prometheus.NewGauge(prometheus.GaugeOpts{
@@ -148,9 +149,9 @@ func NewMetricsClient(statsd, containerID, appname, entrypoint, hostname string,
 	}, []string{"nic"})
 
 	// TODO 这里已经没有了版本了
-	tag := fmt.Sprintf("%s.%s", hostname, containerID[:common.SHORTID])
-	endpoint := fmt.Sprintf("%s.%s", appname, entrypoint)
-	prefix := fmt.Sprintf("%s.%s.%s", common.ERU_MARK, endpoint, tag)
+	tag := fmt.Sprintf("%s.%s", hostname, container.ID[:common.SHORTID])
+	endpoint := fmt.Sprintf("%s.%s", container.Name, container.EntryPoint)
+	prefix := fmt.Sprintf("%s.%s.%s", cluster.ERUMark, endpoint, tag)
 
 	prometheus.MustRegister(
 		cpuHostSysUsage, cpuHostUsage, cpuHostUserUsage,

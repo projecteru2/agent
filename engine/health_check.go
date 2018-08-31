@@ -7,10 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-	enginecontainer "github.com/docker/docker/api/types/container"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -36,7 +35,7 @@ func (e *Engine) healthCheck() {
 func (e *Engine) checkAllContainers() {
 	log.Debug("[checkAllContainers] health check begin")
 	timeout := time.Duration(e.config.HealthCheckTimeout) * time.Second
-	containers, err := e.listContainers(true, map[string]string{"label": "healthcheck"})
+	containers, err := e.listContainers(true, nil)
 	if err != nil {
 		log.Errorf("[checkAllContainers] Error when list all containers with label \"ERU=1\": %v", err)
 		return
@@ -47,7 +46,7 @@ func (e *Engine) checkAllContainers() {
 		// ContainerList 返回 enginetypes.Container
 		// ContainerInspect 返回 enginetypes.ContainerJSON
 		// 是不是有毛病啊, 不能返回一样的数据结构么我真是日了狗了... 艹他妹妹...
-		container, err := e.detectContainer(c.ID, c.Labels)
+		container, err := e.detectContainer(c.ID)
 		if err != nil {
 			log.Errorf("[checkAllContainers] detect container failed %v", err)
 			continue
@@ -91,15 +90,14 @@ func (e *Engine) checkOneContainer(container *types.Container, timeout time.Dura
 }
 
 func checkSingleContainerHealthy(container *types.Container, timeout time.Duration) bool {
-	ip := getIPForContainer(container)
 	tcpChecker := []string{}
 	httpChecker := []string{}
 
 	for _, port := range container.HealthCheck.TCPPorts {
-		tcpChecker = append(tcpChecker, fmt.Sprintf("%s:%s", ip, port))
+		tcpChecker = append(tcpChecker, fmt.Sprintf("%s:%s", container.LocalIP, port))
 	}
 	if container.HealthCheck.HTTPPort != "" {
-		httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", ip, container.HealthCheck.HTTPPort, container.HealthCheck.HTTPURL))
+		httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", container.LocalIP, container.HealthCheck.HTTPPort, container.HealthCheck.HTTPURL))
 	}
 
 	id := container.ID[:common.SHORTID]
@@ -131,19 +129,6 @@ func checkTCP(ID string, backends []string, timeout time.Duration) bool {
 		}
 	}
 	return true
-}
-
-// 应用应该都是绑定到 0.0.0.0 的
-// 所以拿哪个 IP 其实无所谓.
-func getIPForContainer(container *types.Container) string {
-	for name, endpoint := range container.Networks {
-		networkmode := enginecontainer.NetworkMode(name)
-		if networkmode.IsHost() {
-			return "127.0.0.1"
-		}
-		return endpoint.IPAddress
-	}
-	return ""
 }
 
 // 偷来的函数
