@@ -109,7 +109,7 @@ func (e *Engine) crash() error {
 		return err
 	}
 	for _, c := range containers {
-		container, err := e.detectContainer(c.ID, c.Labels)
+		container, err := e.detectContainer(c.ID)
 		if err != nil {
 			return err
 		}

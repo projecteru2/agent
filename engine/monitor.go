@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	types "github.com/docker/docker/api/types"
 	eventtypes "github.com/docker/docker/api/types/events"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine/status"
@@ -32,7 +32,7 @@ func (e *Engine) monitor(eventChan <-chan eventtypes.Message) {
 
 func (e *Engine) handleContainerStart(event eventtypes.Message) {
 	log.Debugf("[handleContainerStart] container %s start", event.ID[:common.SHORTID])
-	container, err := e.detectContainer(event.ID, event.Actor.Attributes)
+	container, err := e.detectContainer(event.ID)
 	if err != nil {
 		log.Errorf("[handleContainerStart] detect container failed %v", err)
 		return
@@ -55,7 +55,7 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 
 func (e *Engine) handleContainerDie(event eventtypes.Message) {
 	log.Debugf("[handleContainerDie] container %s die", event.ID[:common.SHORTID])
-	container, err := e.detectContainer(event.ID, event.Actor.Attributes)
+	container, err := e.detectContainer(event.ID)
 	if err != nil {
 		log.Errorf("[handleContainerDie] detect container failed %v", err)
 	}

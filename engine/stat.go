@@ -36,14 +36,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	if e.transfers.Len() > 0 {
 		addr = e.transfers.Get(container.ID, 0)
 	}
-	mClient := NewMetricsClient(
-		addr,
-		container.ID,
-		container.Name,
-		container.EntryPoint,
-		hostname,
-		container.Extend,
-	)
+	mClient := NewMetricsClient(addr, hostname, container)
 	defer log.Infof("[stat] container %s %s metric report stop", container.Name, container.ID[:common.SHORTID])
 	log.Infof("[stat] container %s %s metric report start", container.Name, container.ID[:common.SHORTID])
 

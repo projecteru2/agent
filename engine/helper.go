@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	enginetypes "github.com/docker/docker/api/types"
 	enginecontainer "github.com/docker/docker/api/types/container"
@@ -11,12 +10,13 @@ import (
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine/status"
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/core/cluster"
 	coreutils "github.com/projecteru2/core/utils"
 )
 
 func getFilter(extend map[string]string) enginefilters.Args {
 	f := enginefilters.NewArgs()
-	f.Add("label", fmt.Sprintf("%s=1", common.ERU_MARK))
+	f.Add("label", fmt.Sprintf("%s=1", cluster.ERUMark))
 	for k, v := range extend {
 		f.Add(k, v)
 	}
@@ -34,26 +34,25 @@ func (e *Engine) activated(f bool) error {
 	return e.store.UpdateNode(e.node)
 }
 
-func (e *Engine) detectContainer(ID string, label map[string]string) (*types.Container, error) {
-	if _, ok := label[common.ERU_MARK]; !ok {
-		return nil, fmt.Errorf("not a eru container %s", ID[:common.SHORTID])
-	}
-
+func (e *Engine) detectContainer(ID string) (*types.Container, error) {
 	// 标准化为 inspect 的数据
 	c, err := e.docker.ContainerInspect(context.Background(), ID)
 	if err != nil {
 		return nil, err
 	}
-	label = c.Config.Labels
+	label := c.Config.Labels
+
+	if _, ok := label[cluster.ERUMark]; !ok {
+		return nil, fmt.Errorf("not a eru container %s", ID[:common.SHORTID])
+	}
+	delete(label, cluster.ERUMark)
 
 	// 生成基准 meta
-	delete(label, common.ERU_MARK)
-	_, ports := coreutils.ParseLabels(label)
-	delete(label, "name")
-	delete(label, "publish")
+	meta := coreutils.DecodeMetaInLabel(label)
+	delete(label, cluster.ERUMeta)
 
-	// 是否符合 eru pattern，如果一个容器又有 ERU_MARK 又是三段式的 name，那它就是个 ERU 容器
-	container, err := status.GenerateContainerMeta(c, label)
+	// 是否符合 eru pattern，如果一个容器又有 ERUMark 又是三段式的 name，那它就是个 ERU 容器
+	container, err := status.GenerateContainerMeta(c, meta, label)
 	if err != nil {
 		return container, err
 	}
@@ -61,27 +60,17 @@ func (e *Engine) detectContainer(ID string, label map[string]string) (*types.Con
 	container = status.CalcuateCPUNum(container, c, e.cpuCore)
 	// 活着才有发布必要
 	if c.NetworkSettings != nil && container.Running {
-		container.Publish = coreutils.MakePublishInfo(c.NetworkSettings.Networks, e.node, ports)
-		container.Networks = c.NetworkSettings.Networks
+		container.Publish = coreutils.MakePublishInfo(c.NetworkSettings.Networks, e.node, meta.Publish)
+		for name, endpoint := range c.NetworkSettings.Networks {
+			networkmode := enginecontainer.NetworkMode(name)
+			if networkmode.IsHost() {
+				container.LocalIP = e.node.GetIP()
+			} else {
+				container.LocalIP = endpoint.IPAddress
+			}
+			break
+		}
 	}
 
 	return container, nil
-}
-
-func (e *Engine) makeContainerPublishInfo(nss *enginetypes.NetworkSettings, ports []string) map[string]string {
-	result := map[string]string{}
-	hostIP := e.node.GetIP()
-	for nn, ns := range nss.Networks {
-		ip := ns.IPAddress
-		if enginecontainer.NetworkMode(nn).IsHost() {
-			ip = hostIP
-		}
-
-		data := []string{}
-		for _, port := range ports {
-			data = append(data, fmt.Sprintf("%s:%s", ip, port))
-		}
-		result[nn] = strings.Join(data, ",")
-	}
-	return result
 }

@@ -3,7 +3,6 @@ package types
 import (
 	"sync"
 
-	"github.com/docker/docker/api/types/network"
 	coretypes "github.com/projecteru2/core/types"
 )
 
@@ -20,10 +19,10 @@ type Container struct {
 	CPUQuota    int64
 	CPUPeriod   int64
 	Memory      int64
-	Extend      map[string]string
+	Labels      map[string]string
 	Publish     map[string][]string
-	Networks    map[string]*network.EndpointSettings `json:"-"`
 	HealthCheck *coretypes.HealthCheck
+	LocalIP     string `json:"-"`
 }
 
 // PrevCheck store healthcheck data

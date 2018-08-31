@@ -100,7 +100,7 @@ imports:
   subpackages:
   - difflib
 - name: github.com/projecteru2/core
-  version: 6bf4355783564e951f8781a23e528f33c7a2b962
+  version: 35af3162c047f5cef4a0b60846215831ed21b1a9
   subpackages:
   - auth
   - auth/simple
