@@ -22,7 +22,7 @@ func CalcuateCPUNum(container *types.Container, containerJSON enginetypes.Contai
 }
 
 // GenerateContainerMeta make meta obj
-func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.EruContainerMeta, labels map[string]string) (*types.Container, error) {
+func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.EruMeta, labels map[string]string) (*types.Container, error) {
 	name, entrypoint, ident, err := utils.GetAppInfo(c.Name)
 	if err != nil {
 		return nil, err
