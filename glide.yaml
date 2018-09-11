@@ -31,7 +31,7 @@ import:
 - package: google.golang.org/grpc
   version: master
 - package: github.com/shirou/gopsutil
-  version: ^2.18.3
+  repo: https://github.com/CMGS/gopsutil.git
 - package: github.com/prometheus/client_golang
   version: v0.9.0-pre1
   subpackages:

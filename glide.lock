@@ -1,5 +1,5 @@
-hash: 4f9849633d27e91a1501922fadf77436c192b09e0b53f496bca0acc6a63eef07
-updated: 2018-08-27T14:40:41.598094+08:00
+hash: 36824afbfb9fa802c1434261a61710088e9dc0b73c51b4074bff7fd2b3716781
+updated: 2018-09-11T16:01:27.687072+08:00
 imports:
 - name: github.com/beorn7/perks
   version: 3a771d992973f24aa725d07868b467d1ddfceafb
@@ -7,6 +7,10 @@ imports:
   - quantile
 - name: github.com/bmizerany/pat
   version: 6226ea591a40176dd3ff9cd8eff81ed6ca721a00
+- name: github.com/client9/misspell
+  version: c0b55c8239520f6b5aa15a0207ca8b28027ba49e
+  subpackages:
+  - cmd/misspell
 - name: github.com/CMGS/statsd
   version: 48c421b3c1abfbb4e290c7f26cd93f014d686180
 - name: github.com/coreos/etcd
@@ -31,7 +35,7 @@ imports:
   - digestset
   - reference
 - name: github.com/docker/docker
-  version: fe3bc75cc44ec90afbd126e4576f9f4f829fc0bc
+  version: 77faf158f5265711dbcbff0ffb855eed2e3b6ccd
   subpackages:
   - api
   - api/types
@@ -72,14 +76,28 @@ imports:
   subpackages:
   - gogoproto
   - proto
+- name: github.com/golang/lint
+  version: 06c8688daad7faa9da5a0c2f163a3d14aac986ca
+  subpackages:
+  - golint
 - name: github.com/golang/protobuf
   version: aa810b61a9c79d51363740d207bb46cf8e620ed5
   subpackages:
   - proto
+  - protoc-gen-go
+  - protoc-gen-go/descriptor
+  - protoc-gen-go/generator
+  - protoc-gen-go/generator/internal/remap
+  - protoc-gen-go/grpc
+  - protoc-gen-go/plugin
   - ptypes
   - ptypes/any
   - ptypes/duration
   - ptypes/timestamp
+- name: github.com/kisielk/gotool
+  version: 80517062f582ea3340cd4baf70e86d539ae7d84d
+  subpackages:
+  - internal/load
 - name: github.com/matttproud/golang_protobuf_extensions
   version: c12348ce28de40eed0136aa2b644d0ee0650e56c
   subpackages:
@@ -105,6 +123,7 @@ imports:
   - auth
   - auth/simple
   - client
+  - cluster
   - rpc/gen
   - types
   - utils
@@ -128,7 +147,8 @@ imports:
   subpackages:
   - xfs
 - name: github.com/shirou/gopsutil
-  version: 8048a2e9c5773235122027dd585cf821b2af1249
+  version: d93c01e54d1e03600914fc3afaff59b132780a29
+  repo: https://github.com/CMGS/gopsutil.git
   subpackages:
   - cpu
   - docker
@@ -153,6 +173,8 @@ imports:
   version: 1351f936d976c60a0a48d728281922cf63eafb8d
   subpackages:
   - ssh/terminal
+- name: golang.org/x/lint
+  version: 06c8688daad7faa9da5a0c2f163a3d14aac986ca
 - name: golang.org/x/net
   version: 66aacef3dd8a676686c7ae3716979581e8b03c47
   subpackages:
@@ -177,12 +199,25 @@ imports:
   - transform
   - unicode/bidi
   - unicode/norm
+- name: golang.org/x/tools
+  version: 0aa4b8830f481fed77b73cf7cea2bc3129e05148
+  subpackages:
+  - cmd/goimports
+  - go/ast/astutil
+  - go/buildutil
+  - go/gcexportdata
+  - go/internal/cgo
+  - go/internal/gcimporter
+  - go/loader
+  - go/types/typeutil
+  - imports
+  - internal/fastwalk
 - name: google.golang.org/genproto
   version: 09f6ed296fc66555a25fe4ce95173148778dfa85
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: e00d24941bcee35dd163f4377d5371349f14baaf
+  version: 46ee6abebf62241b49973422c42250327bb94169
   subpackages:
   - balancer
   - balancer/base
@@ -213,4 +248,21 @@ imports:
   version: d3ae77c26ac8db90639677e4831a728d33c36111
 - name: gopkg.in/yaml.v2
   version: 53feefa2559fb8dfa8d81baad31be332c97d6c77
+- name: honnef.co/go/tools
+  version: 88497007e8588ea5b6baee991f74a1607e809487
+  subpackages:
+  - callgraph
+  - callgraph/static
+  - cmd/staticcheck
+  - deprecated
+  - functions
+  - internal/sharedcheck
+  - lint
+  - lint/lintdsl
+  - lint/lintutil
+  - ssa
+  - ssa/ssautil
+  - staticcheck
+  - staticcheck/vrp
+  - version
 testImports: []
