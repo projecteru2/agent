@@ -36,6 +36,11 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	if e.transfers.Len() > 0 {
 		addr = e.transfers.Get(container.ID, 0)
 	}
+
+	period := float64(e.config.Metrics.Step)
+	hostCPUCount := e.cpuCore * period
+	containerCPUCount := container.CPUNum * period
+
 	mClient := NewMetricsClient(addr, hostname, container)
 	defer log.Infof("[stat] container %s %s metric report stop", container.Name, container.ID[:common.SHORTID])
 	log.Infof("[stat] container %s %s metric report start", container.Name, container.ID[:common.SHORTID])
@@ -54,16 +59,35 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 					log.Errorf("[stat] get %s mem stats failed %v", container.ID[:common.SHORTID], err)
 					return
 				}
-				cpuHostUsage := float64(newContainrCPUStats.Total()-containerCPUStats.Total()) / float64(newSystemCPUStats.Total()-systemCPUStats.Total())
+
+				deltaContainerCPUUsage := newContainrCPUStats.Usage - containerCPUStats.Usage      // CPU Usage in seconds
+				deltaContainerCPUSysUsage := newContainrCPUStats.System - containerCPUStats.System // Sys Usage in jiffies / tick
+				deltaContainerCPUUserUsage := newContainrCPUStats.User - containerCPUStats.User    // User Usage in jiffies / tick
+
+				deltaSystemCPUSysUsage := newSystemCPUStats.System - systemCPUStats.System
+				deltaSystemCPUUserUsage := newSystemCPUStats.User - systemCPUStats.User
+
+				cpuHostUsage := deltaContainerCPUUsage / hostCPUCount
+				cpuHostSysUsage := 0.0
+				if deltaSystemCPUSysUsage > 0 {
+					cpuHostSysUsage = deltaContainerCPUSysUsage / deltaSystemCPUSysUsage
+				}
+				cpuHostUserUsage := 0.0
+				if deltaSystemCPUUserUsage > 0 {
+					cpuHostUserUsage = deltaContainerCPUUserUsage / deltaSystemCPUUserUsage
+
+				}
 				mClient.CPUHostUsage(cpuHostUsage)
-				cpuHostUserUsage := float64(newContainrCPUStats.User-containerCPUStats.User) / float64(newSystemCPUStats.User-systemCPUStats.User)
-				mClient.CPUHostUserUsage(cpuHostUserUsage)
-				cpuHostSysUsage := float64(newContainrCPUStats.System-containerCPUStats.System) / float64(newSystemCPUStats.System-systemCPUStats.System)
 				mClient.CPUHostSysUsage(cpuHostSysUsage)
-				containerCPUPercent := container.CPUNum / e.cpuCore
-				mClient.CPUContainerUsage(cpuHostUsage / containerCPUPercent)
-				mClient.CPUContainerUserUsage(cpuHostUserUsage / containerCPUPercent)
-				mClient.CPUContainerSysUsage(cpuHostSysUsage / containerCPUPercent)
+				mClient.CPUHostUserUsage(cpuHostUserUsage)
+
+				cpuContainerUsage := deltaContainerCPUUsage / containerCPUCount // 实际消耗的 CPU 秒 / 允许消耗的 CPU 秒
+				cpuContainerSysUsage := deltaContainerCPUSysUsage / deltaContainerCPUUsage
+				cpuContainerUserUsage := deltaContainerCPUUserUsage / deltaContainerCPUUsage
+				mClient.CPUContainerUsage(cpuContainerUsage)
+				mClient.CPUContainerSysUsage(cpuContainerSysUsage)
+				mClient.CPUContainerUserUsage(cpuContainerUserUsage)
+
 				mClient.MemUsage(float64(containerMemStats.MemUsageInBytes))
 				mClient.MemMaxUsage(float64(containerMemStats.MemMaxUsageInBytes))
 				mClient.MemRss(float64(containerMemStats.RSS))
@@ -98,7 +122,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	}
 }
 
-func getStats(ctx context.Context, container *types.Container, proc string) (*cpu.TimesStat, cpu.TimesStat, []net.IOCountersStat, error) {
+func getStats(ctx context.Context, container *types.Container, proc string) (*docker.CgroupCPUStat, cpu.TimesStat, []net.IOCountersStat, error) {
 	//get container cpu stats
 	containerCPUStats, err := docker.CgroupCPUDockerWithContext(ctx, container.ID)
 	if err != nil {
@@ -109,6 +133,7 @@ func getStats(ctx context.Context, container *types.Container, proc string) (*cp
 	if err != nil {
 		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
 	}
+	// 0 means all cpu
 	systemCPUStats := systemCPUsStats[0]
 	//get container nic stats
 	netFilePath := fmt.Sprintf("%s/%d/net/dev", proc, container.Pid)
