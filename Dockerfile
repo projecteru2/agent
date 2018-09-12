@@ -1,9 +1,9 @@
-FROM golang:1.10.3-alpine3.8 AS BUILD
+FROM golang:1.11.0-alpine3.8 AS BUILD
 
 MAINTAINER CMGS <ilskdw@gmail.com>
 
 # make binary
-RUN apk add --no-cache git curl make \
+RUN apk add --no-cache git curl make gcc libc-dev \
     && curl https://glide.sh/get | sh \
     && go get -d github.com/projecteru2/agent
 WORKDIR /go/src/github.com/projecteru2/agent
