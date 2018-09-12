@@ -82,8 +82,14 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 				mClient.CPUHostUserUsage(cpuHostUserUsage)
 
 				cpuContainerUsage := deltaContainerCPUUsage / containerCPUCount // 实际消耗的 CPU 秒 / 允许消耗的 CPU 秒
-				cpuContainerSysUsage := deltaContainerCPUSysUsage / deltaContainerCPUUsage
-				cpuContainerUserUsage := deltaContainerCPUUserUsage / deltaContainerCPUUsage
+				cpuContainerSysUsage := 0.0
+				if deltaContainerCPUUsage > 0 {
+					cpuContainerSysUsage = deltaContainerCPUSysUsage / deltaContainerCPUUsage
+				}
+				cpuContainerUserUsage := 0.0
+				if deltaContainerCPUUsage > 0 {
+					cpuContainerUserUsage = deltaContainerCPUUserUsage / deltaContainerCPUUsage
+				}
 				mClient.CPUContainerUsage(cpuContainerUsage)
 				mClient.CPUContainerSysUsage(cpuContainerSysUsage)
 				mClient.CPUContainerUserUsage(cpuContainerUserUsage)
