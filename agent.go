@@ -148,6 +148,12 @@ func main() {
 				Usage:   "timeout for agent to check container's health status",
 				EnvVars: []string{"ERU_AGENT_HEALTH_CHECK_TIMEOUT"},
 			},
+			&cli.StringFlag{
+				Name:    "hostname",
+				Value:   "",
+				Usage:   "change hostname",
+				EnvVars: []string{"ERU_HOSTNAME"},
+			},
 		},
 		Action: serve,
 	}

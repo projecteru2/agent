@@ -60,11 +60,15 @@ func (config *Config) LoadConfigFromFile(configPath string) error {
 
 //PrepareConfig 从cli覆写并做准备
 func (config *Config) PrepareConfig(c *cli.Context) {
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Fatal(err)
+	if c.String("hostname") != "" {
+		config.HostName = c.String("hostname")
+	} else {
+		hostname, err := os.Hostname()
+		if err != nil {
+			log.Fatal(err)
+		}
+		config.HostName = hostname
 	}
-	config.HostName = hostname
 
 	if c.String("core-endpoint") != "" {
 		config.Core = c.String("core-endpoint")
