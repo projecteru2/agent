@@ -129,7 +129,7 @@ imports:
   subpackages:
   - xfs
 - name: github.com/shirou/gopsutil
-  version: d93c01e54d1e03600914fc3afaff59b132780a29
+  version: 5902e230d8b1e905e3eef65773da3ab16bea26ca
   repo: https://github.com/CMGS/gopsutil.git
   subpackages:
   - cpu
