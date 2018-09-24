@@ -10,7 +10,7 @@ deps:
 	rm -rf ./vendor/github.com/docker/distribution/vendor
 
 binary:
-	go build -ldflags "$(GO_LDFLAGS)" -a -tags netgo -installsuffix netgo -o eru-agent
+	go build -ldflags "$(GO_LDFLAGS)" -a -tags "netgo osusergo" -installsuffix netgo -o eru-agent
 
 build: deps binary
 
