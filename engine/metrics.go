@@ -15,6 +15,7 @@ import (
 // MetricsClient combine statsd and prometheus
 type MetricsClient struct {
 	statsd string
+	statsdClient *statsdlib.Client
 	prefix string
 	data   map[string]float64
 
@@ -323,21 +324,34 @@ func (m *MetricsClient) DropOut(nic string, i float64) {
 	m.dropOut.WithLabelValues(nic).Set(i)
 }
 
+// Lazy connecting
+func (m *MetricsClient) checkConn() error {
+	if m.statsdClient != nil {
+		return nil
+	}
+	// We needn't try to renew/reconnect because of only supporting UDP protocol now
+	// We should add an `errorCount` to reconnect when implementing TCP protocol
+	var err error
+	if m.statsdClient, err = statsdlib.New(m.statsd, statsdlib.WithErrorHandler(func (err error) {
+		log.Errorf("[statsd] Sending statsd failed: %v", err)
+	})); err != nil {
+		log.Errorf("[statsd] Connect statsd failed: %v", err)
+		return err
+	}
+	return nil
+}
+
 // Send to statsd
 func (m *MetricsClient) Send() error {
 	if m.statsd == "" {
 		return nil
 	}
-	remote, err := statsdlib.New(m.statsd)
-	if err != nil {
-		log.Errorf("[statsd] Connect statsd failed: %v", err)
+	if err := m.checkConn(); err != nil {
 		return err
 	}
-	defer remote.Close()
-	defer remote.Flush()
 	for k, v := range m.data {
 		key := fmt.Sprintf("%s.%s", m.prefix, k)
-		remote.Gauge(key, v)
+		m.statsdClient.Gauge(key, v)
 		delete(m.data, k)
 	}
 	return nil

@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"encoding/json"
 	"net"
 	"testing"
 
@@ -19,6 +20,7 @@ func TestNewWriter(t *testing.T) {
 	assert.NoError(t, err)
 
 	w.conn = conn
+	w.encoder = json.NewEncoder(conn)
 	w.Write(&types.Log{
 		ID:   "testID",
 		Name: "hello",
@@ -38,5 +40,6 @@ func TestNewWriter(t *testing.T) {
 	assert.NoError(t, err)
 
 	w.conn = conn
+	w.encoder = json.NewEncoder(conn)
 	w.conn.Close()
 }
