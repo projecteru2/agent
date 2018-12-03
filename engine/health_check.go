@@ -123,10 +123,11 @@ func checkHTTP(ID string, backends []string, code int, timeout time.Duration) bo
 func checkTCP(ID string, backends []string, timeout time.Duration) bool {
 	for _, backend := range backends {
 		log.Debugf("[checkTCP] Check health via tcp: container %s, backend %s", ID, backend)
-		_, err := net.DialTimeout("tcp", backend, timeout)
+		conn, err := net.DialTimeout("tcp", backend, timeout)
 		if err != nil {
 			return false
 		}
+		conn.Close()
 	}
 	return true
 }

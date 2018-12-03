@@ -2,15 +2,20 @@ package logs
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/projecteru2/agent/types"
 	log "github.com/sirupsen/logrus"
 )
+
+// ErrConnecting means writer is in connecting status, waiting to be connected
+var ErrConnecting = errors.New("Connecting")
 
 // Writer is a writer!
 type Writer struct {
@@ -18,6 +23,7 @@ type Writer struct {
 	addr    string
 	scheme  string
 	conn    io.WriteCloser
+	connecting bool
 	stdout  bool
 	encoder *json.Encoder
 }
@@ -30,12 +36,13 @@ func NewWriter(addr string, stdout bool) (*Writer, error) {
 	}
 	writer := &Writer{addr: u.Host, scheme: u.Scheme}
 	writer.stdout = stdout
-	err = writer.CreateConn()
+	// pre-connect and ignore error
+	writer.checkConn()
 	return writer, err
 }
 
 // CreateConn create conn
-func (w *Writer) CreateConn() error {
+func (w *Writer) createConn() (io.WriteCloser, error) {
 	var err error
 	var conn io.WriteCloser
 	switch w.scheme {
@@ -44,26 +51,79 @@ func (w *Writer) CreateConn() error {
 	case "tcp":
 		conn, err = w.createTCPConn()
 	default:
-		return fmt.Errorf("Invalid scheme: %s", w.scheme)
+		return nil, fmt.Errorf("[writer] Invalid scheme: %s", w.scheme)
 	}
-	w.conn = conn
-	w.encoder = json.NewEncoder(conn)
-	return err
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
+func (w *Writer) checkError(err error) {
+	if err != nil && err != ErrConnecting {
+		log.Errorf("[writer] Sending log failed %s", err)
+		if w.conn != nil {
+			w.Lock()
+			defer w.Unlock()
+			w.conn.Close()
+			w.conn = nil
+		}
+	}
+}
+
+func (w *Writer) checkConn() error {
+	if w.conn != nil {
+		// normal
+		return nil
+	}
+	if w.connecting == false {
+		w.Lock()
+		defer w.Unlock()
+		// double check
+		if w.connecting == true {
+			return ErrConnecting
+		}
+		w.connecting = true
+		go func() {
+			log.Infof("[writer] Begin trying to connect to %s", w.addr)
+			// retrying up to 4 times to prevent infinite loop
+			for i := 0; i < 4; i++ {
+				conn, err := w.createConn()
+				if err == nil {
+					w.Lock()
+					w.conn = conn
+					w.encoder = json.NewEncoder(conn)
+					w.connecting = false
+					w.Unlock()
+					break
+				} else {
+					log.Warnf("[writer] Failed to connect to %s: %s", w.addr, err)
+					time.Sleep(30 * time.Second)
+				}
+			}
+			if w.conn == nil {
+				log.Warnf("[writer] Connect to %s failed for 4 times", w.addr)
+				w.Lock()
+				w.connecting = false
+				w.Unlock()
+			} else {
+				log.Infof("[writer] Connect to %s successfully", w.addr)
+			}
+		}()
+	}
+	return ErrConnecting
 }
 
 // Write write log to remote
 func (w *Writer) Write(logline *types.Log) error {
-	w.Lock()
-	defer w.Unlock()
 	if w.stdout {
 		log.Info(logline)
 	}
-	err := w.encoder.Encode(logline)
-	if err != nil {
-		log.Error(err)
-		err = w.conn.Close()
-		w.CreateConn()
+	err := w.checkConn()
+	if err == nil {
+		err = w.encoder.Encode(logline)
 	}
+	w.checkError(err)
 	return err
 }
 
