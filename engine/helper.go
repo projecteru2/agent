@@ -60,7 +60,7 @@ func (e *Engine) detectContainer(ID string) (*types.Container, error) {
 	container = status.CalcuateCPUNum(container, c, e.cpuCore)
 	// 活着才有发布必要
 	if c.NetworkSettings != nil && container.Running {
-		container.Publish = coreutils.MakePublishInfo(c.NetworkSettings.Networks, e.node, meta.Publish)
+		container.Publish = coreutils.MakePublishInfo(c.NetworkSettings.Networks, e.node.GetIP(), meta.Publish)
 		for name, endpoint := range c.NetworkSettings.Networks {
 			networkmode := enginecontainer.NetworkMode(name)
 			if networkmode.IsHost() {

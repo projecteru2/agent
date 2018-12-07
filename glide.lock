@@ -1,5 +1,5 @@
-hash: fd54250df523596e24ec12c97a40b168a90933c38ebb899adb5739e6ddac7a74
-updated: 2018-09-12T14:17:55.046253+08:00
+hash: 7994aad282ea690578949ac8bc03bdcd599b86006ac83e82ae397177bedf3faa
+updated: 2018-12-07T16:13:49.000895+08:00
 imports:
 - name: github.com/beorn7/perks
   version: 3a771d992973f24aa725d07868b467d1ddfceafb
@@ -9,8 +9,12 @@ imports:
   version: 6226ea591a40176dd3ff9cd8eff81ed6ca721a00
 - name: github.com/CMGS/statsd
   version: 48c421b3c1abfbb4e290c7f26cd93f014d686180
+- name: github.com/containerd/continuity
+  version: 246e49050efdf45e8f17fbbcf1547ee376f9939e
+  subpackages:
+  - pathdriver
 - name: github.com/coreos/etcd
-  version: fca8add78a9d926166eb739b8e4a124434025ba3
+  version: 27fc7e2296f506182f58ce846e48f36b34fe6842
   subpackages:
   - client
   - pkg/pathutil
@@ -31,7 +35,7 @@ imports:
   - digestset
   - reference
 - name: github.com/docker/docker
-  version: 738994f77d0c0332455ebfeec0858c3feb6d6994
+  version: 758255791e25767aeeb5b2509e2d54f9ec91b242
   subpackages:
   - api
   - api/types
@@ -51,10 +55,16 @@ imports:
   - api/types/volume
   - client
   - errdefs
+  - pkg/archive
+  - pkg/fileutils
+  - pkg/idtools
   - pkg/ioutils
   - pkg/longpath
+  - pkg/mount
+  - pkg/pools
   - pkg/stdcopy
   - pkg/stringid
+  - pkg/system
 - name: github.com/docker/go-connections
   version: 7395e3f8aa162843a74ed6d48e79627d9792ac55
   subpackages:
@@ -93,6 +103,11 @@ imports:
   subpackages:
   - specs-go
   - specs-go/v1
+- name: github.com/opencontainers/runc
+  version: ad0f5255060d36872be04de22f8731f38ef2d7b1
+  subpackages:
+  - libcontainer/system
+  - libcontainer/user
 - name: github.com/pkg/errors
   version: 8842a6e0cc595d1cc9d931f6c875883967280e32
 - name: github.com/pmezard/go-difflib
@@ -100,7 +115,7 @@ imports:
   subpackages:
   - difflib
 - name: github.com/projecteru2/core
-  version: bcd3a906d68b283fb9e4bf35acf67d94ff737bb2
+  version: 44ec7eab2421f0bc6cfadb903c57f145e2ab97f2
   subpackages:
   - auth
   - auth/simple
@@ -137,7 +152,7 @@ imports:
   - internal/common
   - net
 - name: github.com/sirupsen/logrus
-  version: 3e01752db0189b9157070a0e1668a620f9a85da2
+  version: bcd833dfe83d3cebad139e4a29ed79cb2318bf95
 - name: github.com/StackExchange/wmi
   version: cdffdb33acae0e14efff2628f9bae377b597840e
 - name: github.com/stretchr/objx
@@ -184,22 +199,27 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 9cc4fdbde2304827ffdbc7896f49db40c5536600
+  version: ef2b8e2f53fcd6654d12966394462f84e0f04066
   subpackages:
   - balancer
   - balancer/base
   - balancer/roundrobin
+  - binarylog/grpc_binarylog_v1
   - codes
   - connectivity
   - credentials
+  - credentials/internal
   - encoding
   - encoding/proto
   - grpclog
   - internal
   - internal/backoff
+  - internal/binarylog
   - internal/channelz
   - internal/envconfig
   - internal/grpcrand
+  - internal/grpcsync
+  - internal/syscall
   - internal/transport
   - keepalive
   - metadata
