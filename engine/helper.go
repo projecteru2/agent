@@ -7,6 +7,7 @@ import (
 	enginetypes "github.com/docker/docker/api/types"
 	enginecontainer "github.com/docker/docker/api/types/container"
 	enginefilters "github.com/docker/docker/api/types/filters"
+	engineclient "github.com/docker/docker/client"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine/status"
 	"github.com/projecteru2/agent/types"
@@ -60,16 +61,19 @@ func (e *Engine) detectContainer(ID string) (*types.Container, error) {
 	container = status.CalcuateCPUNum(container, c, e.cpuCore)
 	// 活着才有发布必要
 	if c.NetworkSettings != nil && container.Running {
-		container.Publish = coreutils.MakePublishInfo(c.NetworkSettings.Networks, e.node.GetIP(), meta.Publish)
+		networks := map[string]string{}
 		for name, endpoint := range c.NetworkSettings.Networks {
+			networks[name] = endpoint.IPAddress
 			networkmode := enginecontainer.NetworkMode(name)
 			if networkmode.IsHost() {
-				container.LocalIP = e.node.GetIP()
+				uri, _ := engineclient.ParseHostURL(e.node.Endpoint)
+				container.LocalIP = uri.Hostname()
 			} else {
 				container.LocalIP = endpoint.IPAddress
 			}
 			break
 		}
+		container.Publish = coreutils.MakePublishInfo(networks, meta.Publish)
 	}
 
 	return container, nil
