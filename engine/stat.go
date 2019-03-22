@@ -130,9 +130,17 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 
 func getStats(ctx context.Context, container *types.Container, proc string) (*docker.CgroupCPUStat, cpu.TimesStat, []net.IOCountersStat, error) {
 	//get container cpu stats
-	containerCPUStats, err := docker.CgroupCPUDockerWithContext(ctx, container.ID)
+	containerCPUStatsWithoutUsage, err := docker.CgroupCPUDockerWithContext(ctx, container.ID)
 	if err != nil {
 		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
+	}
+	containerCPUStatsUsage, err := docker.CgroupCPUDockerUsageWithContext(ctx, container.ID)
+	if err != nil {
+		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
+	}
+	containerCPUStats := &docker.CgroupCPUStat{
+		TimesStat: *containerCPUStatsWithoutUsage,
+		Usage:     containerCPUStatsUsage,
 	}
 	//get system cpu stats
 	systemCPUsStats, err := cpu.TimesWithContext(ctx, false)
