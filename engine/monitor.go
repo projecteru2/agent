@@ -58,12 +58,11 @@ func (e *Engine) handleContainerDie(event eventtypes.Message) {
 	container, err := e.detectContainer(event.ID)
 	if err != nil {
 		log.Errorf("[handleContainerDie] detect container failed %v", err)
-	}
-
-	if err := e.store.DeployContainer(container, e.node); err != nil {
+	} else if err := e.store.DeployContainer(container, e.node); err != nil {
 		log.Errorf("[handleContainerDie] update deploy status failed %v", err)
+	} else {
+		e.checker.Del(event.ID)
 	}
-	e.checker.Del(event.ID)
 }
 
 //Destroy by core, data removed by core
