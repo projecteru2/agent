@@ -7,11 +7,11 @@ import (
 	enginetypes "github.com/docker/docker/api/types"
 	enginecontainer "github.com/docker/docker/api/types/container"
 	enginefilters "github.com/docker/docker/api/types/filters"
-	engineclient "github.com/docker/docker/client"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine/status"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/core/cluster"
+	engine "github.com/projecteru2/core/engine/docker"
 	coreutils "github.com/projecteru2/core/utils"
 )
 
@@ -66,8 +66,7 @@ func (e *Engine) detectContainer(ID string) (*types.Container, error) {
 			networks[name] = endpoint.IPAddress
 			networkmode := enginecontainer.NetworkMode(name)
 			if networkmode.IsHost() {
-				uri, _ := engineclient.ParseHostURL(e.node.Endpoint)
-				container.LocalIP = uri.Hostname()
+				container.LocalIP = engine.GetIP(e.node.Endpoint)
 			} else {
 				container.LocalIP = endpoint.IPAddress
 			}

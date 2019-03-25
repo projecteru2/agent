@@ -116,6 +116,8 @@ github.com/projecteru2/core v0.0.0-20181205035831-44ec7eab2421 h1:xU5NGYdbQbOpwR
 github.com/projecteru2/core v0.0.0-20181205035831-44ec7eab2421/go.mod h1:77Y/UgYluTei82giL6MFOCmhukzynSzstWSgKEgqD9g=
 github.com/projecteru2/core v0.0.0-20190322080211-5133736f7d72 h1:GX0EccHwCMT9FLqWDVuEJWIUAC7SlUTWRaSaxoYRFDU=
 github.com/projecteru2/core v0.0.0-20190322080211-5133736f7d72/go.mod h1:sICQxSpC112B0B026jre+z2wV3YGd3RvbKTt26nQMEw=
+github.com/projecteru2/core v0.0.0-20190325104637-5e57120e17b9 h1:/FpTndmtBjLcxyk1GI7QlMXKsUWROegOP8+o9fYEaoM=
+github.com/projecteru2/core v0.0.0-20190325104637-5e57120e17b9/go.mod h1:sICQxSpC112B0B026jre+z2wV3YGd3RvbKTt26nQMEw=
 github.com/prometheus/client_golang v0.9.0-pre1 h1:AWTOhsOI9qxeirTuA0A4By/1Es1+y9EcCGY6bBZ2fhM=
 github.com/prometheus/client_golang v0.9.0-pre1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_model v0.0.0-20170216185247-6f3806018612 h1:13pIdM2tpaDi4OVe24fgoIS7ZTqMt0QI+bwQsX5hq+g=
