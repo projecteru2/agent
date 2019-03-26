@@ -20,7 +20,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.0.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.8.5 // indirect
-	github.com/projecteru2/core v0.0.0-20190325104637-5e57120e17b9
+	github.com/projecteru2/core v0.0.0-20190326030614-009ffba4ba0b
 	github.com/prometheus/client_golang v0.9.0-pre1
 	github.com/shirou/gopsutil v0.0.0-20190318113002-381f7cc0bf4c
 	github.com/sirupsen/logrus v1.2.0
