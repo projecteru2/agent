@@ -138,10 +138,9 @@ func getStats(ctx context.Context, container *types.Container, proc string) (*do
 	if err != nil {
 		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
 	}
-	containerCPUStats := &docker.CgroupCPUStat{
-		TimesStat: *containerCPUStatsWithoutUsage,
-		Usage:     containerCPUStatsUsage,
-	}
+	containerCPUStats := &docker.CgroupCPUStat{}
+	*containerCPUStats = *containerCPUStatsWithoutUsage;
+	containerCPUStats.Usage = containerCPUStatsUsage
 	//get system cpu stats
 	systemCPUsStats, err := cpu.TimesWithContext(ctx, false)
 	if err != nil {
