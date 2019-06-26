@@ -20,12 +20,12 @@ var ErrConnecting = errors.New("Connecting")
 // Writer is a writer!
 type Writer struct {
 	sync.Mutex
-	addr    string
-	scheme  string
-	conn    io.WriteCloser
+	addr       string
+	scheme     string
+	conn       io.WriteCloser
 	connecting bool
-	stdout  bool
-	encoder *json.Encoder
+	stdout     bool
+	encoder    *json.Encoder
 }
 
 // NewWriter return writer
@@ -85,7 +85,7 @@ func (w *Writer) checkConn() error {
 		}
 		w.connecting = true
 		go func() {
-			log.Infof("[writer] Begin trying to connect to %s", w.addr)
+			log.Debugf("[writer] Begin trying to connect to %s", w.addr)
 			// retrying up to 4 times to prevent infinite loop
 			for i := 0; i < 4; i++ {
 				conn, err := w.createConn()
@@ -107,7 +107,7 @@ func (w *Writer) checkConn() error {
 				w.connecting = false
 				w.Unlock()
 			} else {
-				log.Infof("[writer] Connect to %s successfully", w.addr)
+				log.Debugf("[writer] Connect to %s successfully", w.addr)
 			}
 		}()
 	}
