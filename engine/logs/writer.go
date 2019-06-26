@@ -28,14 +28,31 @@ type Writer struct {
 	encoder    *json.Encoder
 }
 
+type discard struct {
+}
+
+// Write writer
+func (d discard) Write(p []byte) (n int, err error) {
+	return 0, nil
+}
+
+// Close closer
+func (d discard) Close() error {
+	return nil
+}
+
 // NewWriter return writer
 func NewWriter(addr string, stdout bool) (*Writer, error) {
+	if addr == "__discard__" {
+		w := &Writer{conn: discard{}}
+		w.encoder = json.NewEncoder(w.conn)
+		return w, nil
+	}
 	u, err := url.Parse(addr)
 	if err != nil {
 		return nil, err
 	}
-	writer := &Writer{addr: u.Host, scheme: u.Scheme}
-	writer.stdout = stdout
+	writer := &Writer{addr: u.Host, scheme: u.Scheme, stdout: stdout}
 	// pre-connect and ignore error
 	writer.checkConn()
 	return writer, err
