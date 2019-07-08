@@ -28,7 +28,7 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.EruMeta,
 		return nil, err
 	}
 
-	if !c.State.Running {
+	if !c.State.Running || c.State.Pid == 0 {
 		return &types.Container{
 			ID:         c.ID,
 			Name:       name,
