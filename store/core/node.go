@@ -1,6 +1,7 @@
 package corestore
 
 import (
+	"github.com/projecteru2/core/cluster"
 	pb "github.com/projecteru2/core/rpc/gen"
 	"github.com/projecteru2/core/types"
 	"golang.org/x/net/context"
@@ -33,11 +34,15 @@ func (c *CoreStore) GetNode(nodename string) (*types.Node, error) {
 // UpdateNode update node status
 func (c *CoreStore) UpdateNode(node *types.Node) error {
 	client := c.client.GetRPCClient()
-	opts := &pb.NodeAvailable{
-		Podname:   node.Podname,
-		Nodename:  node.Name,
-		Available: node.Available,
+	opts := &pb.SetNodeOptions{
+		Podname:  node.Podname,
+		Nodename: node.Name,
 	}
-	_, err := client.SetNodeAvailable(context.Background(), opts)
+	if node.Available {
+		opts.Status = cluster.NodeUp
+	} else {
+		opts.Status = cluster.NodeDown
+	}
+	_, err := client.SetNode(context.Background(), opts)
 	return err
 }
