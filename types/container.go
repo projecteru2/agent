@@ -8,10 +8,8 @@ import (
 
 // Container define agent view container
 type Container struct {
-	ID          string
+	coretypes.Meta
 	Pid         int
-	Running     bool
-	Healthy     bool
 	Name        string
 	EntryPoint  string
 	Ident       string
@@ -19,8 +17,6 @@ type Container struct {
 	CPUQuota    int64
 	CPUPeriod   int64
 	Memory      int64
-	Labels      map[string]string
-	Publish     map[string][]string
 	HealthCheck *coretypes.HealthCheck
 	LocalIP     string `json:"-"`
 }

@@ -14,10 +14,10 @@ import (
 
 // MetricsClient combine statsd and prometheus
 type MetricsClient struct {
-	statsd string
+	statsd       string
 	statsdClient *statsdlib.Client
-	prefix string
-	data   map[string]float64
+	prefix       string
+	data         map[string]float64
 
 	cpuHostUsage     prometheus.Gauge
 	cpuHostSysUsage  prometheus.Gauge
@@ -45,7 +45,10 @@ type MetricsClient struct {
 // NewMetricsClient new a metrics client
 func NewMetricsClient(statsd, hostname string, container *types.Container) *MetricsClient {
 	clables := []string{}
-	for k, v := range container.Labels {
+	labeList := container.Labels
+	delete(labeList, cluster.ERUMark)
+	delete(labeList, cluster.ERUMeta)
+	for k, v := range labeList {
 		l := fmt.Sprintf("%s=%s", k, v)
 		clables = append(clables, l)
 	}
@@ -332,7 +335,7 @@ func (m *MetricsClient) checkConn() error {
 	// We needn't try to renew/reconnect because of only supporting UDP protocol now
 	// We should add an `errorCount` to reconnect when implementing TCP protocol
 	var err error
-	if m.statsdClient, err = statsdlib.New(m.statsd, statsdlib.WithErrorHandler(func (err error) {
+	if m.statsdClient, err = statsdlib.New(m.statsd, statsdlib.WithErrorHandler(func(err error) {
 		log.Errorf("[statsd] Sending statsd failed: %v", err)
 	})); err != nil {
 		log.Errorf("[statsd] Connect statsd failed: %v", err)

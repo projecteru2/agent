@@ -46,11 +46,9 @@ func (e *Engine) detectContainer(ID string) (*types.Container, error) {
 	if _, ok := label[cluster.ERUMark]; !ok {
 		return nil, fmt.Errorf("not a eru container %s", ID[:common.SHORTID])
 	}
-	delete(label, cluster.ERUMark)
 
 	// 生成基准 meta
 	meta := coreutils.DecodeMetaInLabel(label)
-	delete(label, cluster.ERUMeta)
 
 	// 是否符合 eru pattern，如果一个容器又有 ERUMark 又是三段式的 name，那它就是个 ERU 容器
 	container, err := status.GenerateContainerMeta(c, meta, label)
@@ -63,16 +61,17 @@ func (e *Engine) detectContainer(ID string) (*types.Container, error) {
 	if c.NetworkSettings != nil && container.Running {
 		networks := map[string]string{}
 		for name, endpoint := range c.NetworkSettings.Networks {
-			networks[name] = endpoint.IPAddress
 			networkmode := enginecontainer.NetworkMode(name)
 			if networkmode.IsHost() {
 				container.LocalIP = engine.GetIP(e.node.Endpoint)
+				networks[name] = container.LocalIP
 			} else {
 				container.LocalIP = endpoint.IPAddress
+				networks[name] = endpoint.IPAddress
 			}
 			break
 		}
-		container.Publish = coreutils.MakePublishInfo(networks, meta.Publish)
+		container.Networks = networks
 	}
 
 	return container, nil

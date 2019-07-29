@@ -5,6 +5,7 @@ import (
 	"net"
 )
 
+// Log for log
 type Log struct {
 	ID         string            `json:"id"`
 	Name       string            `json:"name"`
@@ -16,6 +17,7 @@ type Log struct {
 	Extra      map[string]string `json:"extra"`
 }
 
+// LogConsumer for log consumer
 type LogConsumer struct {
 	ID   string
 	App  string

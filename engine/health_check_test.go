@@ -19,9 +19,11 @@ func TestCheckSingleContainerHealthy(t *testing.T) {
 	go http.ListenAndServe(":10237", http.NotFoundHandler())
 	time.Sleep(100 * time.Millisecond)
 	container := &types.Container{
-		ID:         stringid.GenerateRandomID(),
+		Meta: coretypes.Meta{
+			ID:      stringid.GenerateRandomID(),
+			Running: true,
+		},
 		Pid:        12349,
-		Running:    true,
 		Name:       "test",
 		EntryPoint: "t1",
 		HealthCheck: &coretypes.HealthCheck{
