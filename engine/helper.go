@@ -63,16 +63,17 @@ func (e *Engine) detectContainer(ID string) (*types.Container, error) {
 	if c.NetworkSettings != nil && container.Running {
 		networks := map[string]string{}
 		for name, endpoint := range c.NetworkSettings.Networks {
-			networks[name] = endpoint.IPAddress
 			networkmode := enginecontainer.NetworkMode(name)
 			if networkmode.IsHost() {
 				container.LocalIP = engine.GetIP(e.node.Endpoint)
+				networks[name] = container.LocalIP
 			} else {
 				container.LocalIP = endpoint.IPAddress
+				networks[name] = endpoint.IPAddress
 			}
 			break
 		}
-		container.Publish = coreutils.MakePublishInfo(networks, meta.Publish)
+		container.Networks = networks
 	}
 
 	return container, nil

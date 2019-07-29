@@ -34,9 +34,11 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.EruMeta,
 			Name:       name,
 			EntryPoint: entrypoint,
 			Ident:      ident,
-			Healthy:    false,
-			Running:    false,
 			Labels:     labels,
+			ContainerStatus: coretypes.ContainerStatus{
+				Healthy: false,
+				Running: false,
+			},
 		}, nil
 	}
 
@@ -45,10 +47,12 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.EruMeta,
 	// 需要告诉第一次上的时候这个容器是健康的, 还是不是
 	checker := (meta.HealthCheck != nil)
 	container := &types.Container{
+		ContainerStatus: coretypes.ContainerStatus{
+			Healthy: !checker,
+			Running: c.State.Running,
+		},
 		ID:          c.ID,
 		Pid:         c.State.Pid,
-		Running:     c.State.Running,
-		Healthy:     !checker,
 		Name:        name,
 		EntryPoint:  entrypoint,
 		Ident:       ident,
