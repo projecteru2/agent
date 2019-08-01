@@ -273,8 +273,8 @@ func mockNewEngine() *Engine {
 		panic(err)
 	}
 
-	engine.checker = agenttypes.NewPrevCheck()
 	engine.config = &agenttypes.Config{}
+	engine.checker = agenttypes.NewPrevCheck(engine.config)
 	engine.store = mockStore
 	engine.docker = docker
 	engine.cpuCore = float64(runtime.NumCPU())

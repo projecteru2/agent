@@ -29,7 +29,7 @@ type Handler struct {
 func (h *Handler) version(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(JSON{"version": common.ERU_AGENT_VERSION})
+	json.NewEncoder(w).Encode(JSON{"version": common.EruAgentVersion})
 }
 
 // URL /profile/

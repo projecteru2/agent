@@ -62,7 +62,7 @@ func main() {
 	app := &cli.App{
 		Name:    "Eru-Agent",
 		Usage:   "Run eru agent",
-		Version: common.ERU_AGENT_VERSION,
+		Version: common.EruAgentVersion,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "config",

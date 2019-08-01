@@ -37,6 +37,7 @@ type Config struct {
 	PidFile             string               `yaml:"pid"`
 	HealthCheckInterval int                  `yaml:"health_check_interval"`
 	HealthCheckTimeout  int                  `yaml:"health_check_timeout"`
+	HealthCheckCacheTTL int                  `yaml:"health_check_cache_ttl"`
 	Core                string               `yaml:"core"`
 	Auth                coretypes.AuthConfig `yaml:"auth"`
 	HostName            string               `yaml:"-"`
@@ -115,5 +116,8 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 	}
 	if config.HealthCheckInterval == 0 {
 		config.HealthCheckInterval = 10
+	}
+	if config.HealthCheckCacheTTL == 0 {
+		config.HealthCheckCacheTTL = 60
 	}
 }

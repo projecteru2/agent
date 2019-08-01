@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	statsdlib "github.com/CMGS/statsd"
-	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/core/cluster"
+	coreutils "github.com/projecteru2/core/utils"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -153,7 +153,7 @@ func NewMetricsClient(statsd, hostname string, container *types.Container) *Metr
 	}, []string{"nic"})
 
 	// TODO 这里已经没有了版本了
-	tag := fmt.Sprintf("%s.%s", hostname, container.ID[:common.SHORTID])
+	tag := fmt.Sprintf("%s.%s", hostname, coreutils.ShortID(container.ID))
 	endpoint := fmt.Sprintf("%s.%s", container.Name, container.EntryPoint)
 	prefix := fmt.Sprintf("%s.%s.%s", cluster.ERUMark, endpoint, tag)
 

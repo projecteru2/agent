@@ -10,13 +10,14 @@ import (
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine/status"
+	coreutils "github.com/projecteru2/core/utils"
 )
 
 var eventHandler = status.NewEventHandler()
 
 func (e *Engine) initMonitor() (<-chan eventtypes.Message, <-chan error) {
-	eventHandler.Handle(common.STATUS_START, e.handleContainerStart)
-	eventHandler.Handle(common.STATUS_DIE, e.handleContainerDie)
+	eventHandler.Handle(common.StatusStart, e.handleContainerStart)
+	eventHandler.Handle(common.StatusDie, e.handleContainerDie)
 
 	ctx := context.Background()
 	f := getFilter(map[string]string{"type": eventtypes.ContainerEventType})
@@ -31,7 +32,7 @@ func (e *Engine) monitor(eventChan <-chan eventtypes.Message) {
 }
 
 func (e *Engine) handleContainerStart(event eventtypes.Message) {
-	log.Debugf("[handleContainerStart] container %s start", event.ID[:common.SHORTID])
+	log.Debugf("[handleContainerStart] container %s start", coreutils.ShortID(event.ID))
 	container, err := e.detectContainer(event.ID)
 	if err != nil {
 		log.Errorf("[handleContainerStart] detect container failed %v", err)
@@ -54,7 +55,7 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 }
 
 func (e *Engine) handleContainerDie(event eventtypes.Message) {
-	log.Debugf("[handleContainerDie] container %s die", event.ID[:common.SHORTID])
+	log.Debugf("[handleContainerDie] container %s die", coreutils.ShortID(event.ID))
 	container, err := e.detectContainer(event.ID)
 	if err != nil {
 		log.Errorf("[handleContainerDie] detect container failed %v", err)

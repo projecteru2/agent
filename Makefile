@@ -2,7 +2,7 @@
 
 REPO_PATH := github.com/projecteru2/agent
 VERSION := $(shell cat VERSION)
-GO_LDFLAGS ?= -s -w -X $(REPO_PATH)/common.ERU_AGENT_VERSION=$(VERSION)
+GO_LDFLAGS ?= -s -w -X $(REPO_PATH)/common.EruAgentVersion=$(VERSION)
 
 deps:
 	env GO111MODULE=on go mod download
