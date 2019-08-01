@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
+	coreutils "github.com/projecteru2/core/utils"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/docker"
 	"github.com/shirou/gopsutil/net"
@@ -24,7 +24,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	//init stats
 	containerCPUStats, systemCPUStats, containerNetStats, err := getStats(parentCtx, container, proc)
 	if err != nil {
-		log.Errorf("[stat] get %s stats failed %v", container.ID[:common.SHORTID], err)
+		log.Errorf("[stat] get %s stats failed %v", coreutils.ShortID(container.ID), err)
 		return
 	}
 
@@ -42,8 +42,8 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	containerCPUCount := container.CPUNum * period
 
 	mClient := NewMetricsClient(addr, hostname, container)
-	defer log.Infof("[stat] container %s %s metric report stop", container.Name, container.ID[:common.SHORTID])
-	log.Infof("[stat] container %s %s metric report start", container.Name, container.ID[:common.SHORTID])
+	defer log.Infof("[stat] container %s %s metric report stop", container.Name, coreutils.ShortID(container.ID))
+	log.Infof("[stat] container %s %s metric report start", container.Name, coreutils.ShortID(container.ID))
 
 	for {
 		select {
@@ -51,12 +51,12 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 			go func() {
 				newContainrCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(parentCtx, container, proc)
 				if err != nil {
-					log.Errorf("[stat] get %s stats failed %v", container.ID[:common.SHORTID], err)
+					log.Errorf("[stat] get %s stats failed %v", coreutils.ShortID(container.ID), err)
 					return
 				}
 				containerMemStats, err := docker.CgroupMemDockerWithContext(parentCtx, container.ID)
 				if err != nil {
-					log.Errorf("[stat] get %s mem stats failed %v", container.ID[:common.SHORTID], err)
+					log.Errorf("[stat] get %s mem stats failed %v", coreutils.ShortID(container.ID), err)
 					return
 				}
 

@@ -26,8 +26,8 @@ func CheckExistsError(err error) error {
 
 // MakeDockerClient make a docker client
 func MakeDockerClient(config *types.Config) (*engineapi.Client, error) {
-	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("eru-agent-%s", common.ERU_AGENT_VERSION)}
-	return engineapi.NewClient(config.Docker.Endpoint, common.DOCKER_CLI_VERSION, nil, defaultHeaders)
+	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("eru-agent-%s", common.EruAgentVersion)}
+	return engineapi.NewClient(config.Docker.Endpoint, common.DockerCliVersion, nil, defaultHeaders)
 }
 
 // WritePid write pid

@@ -7,16 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
+	coreutils "github.com/projecteru2/core/utils"
 	log "github.com/sirupsen/logrus"
-)
-
-const (
-	healthNotRunning = 0
-	healthNotFound   = 1
-	healthGood       = 2
-	healthBad        = 3
 )
 
 func (e *Engine) healthCheck() {
@@ -57,36 +50,45 @@ func (e *Engine) checkAllContainers() {
 }
 
 // 检查一个容器
-func (e *Engine) checkOneContainer(container *types.Container, timeout time.Duration) int {
+func (e *Engine) checkOneContainer(container *types.Container, timeout time.Duration) {
 	// 理论上这里都是 running 的容器，因为 listContainers 标记为 all=false 了
 	// 并且都有 healthcheck 标记
 	// 检查现在是不是还健康
 	// for safe
-	if container.HealthCheck == nil {
-		return healthNotFound
+	healthy := true
+	if container.HealthCheck != nil {
+		healthy = checkSingleContainerHealthy(container, timeout)
 	}
+	prevHealthy, exists := e.checker.Get(container.ID)
 
-	healthy := checkSingleContainerHealthy(container, timeout)
-	prevHealthy := e.checker.Get(container.ID)
-	defer e.checker.Set(container.ID, healthy)
-	if healthy && !prevHealthy {
-		// 如果健康并且之前是挂了, 那么修改成健康
+	changed := false
+	defer func() {
+		if changed {
+			if container.Healthy {
+				log.Infof("[checkOneContainer] Container %s resurges", coreutils.ShortID(container.ID))
+			} else {
+				log.Infof("[checkOneContainer] Container %s dies", coreutils.ShortID(container.ID))
+			}
+			if err := e.store.DeployContainer(container, e.node); err != nil {
+				log.Errorf("[checkOneContainer] update deploy status failed %v", err)
+			} else {
+				e.checker.Set(container.ID, healthy)
+			}
+		}
+	}()
+
+	if !exists { // 不存在就直接赋值
+		container.Healthy = healthy
+		changed = true
+		log.Debugf("[checkOneContainer] Container %s has no check before", coreutils.ShortID(container.ID))
+	} else if healthy && !prevHealthy { // 如果健康并且之前是挂了, 那么修改成健康
 		container.Healthy = true
-		if err := e.store.DeployContainer(container, e.node); err != nil {
-			log.Errorf("[checkOneContainer] update deploy status failed %v", err)
-		}
-		log.Infof("[checkOneContainer] Container %s resurges", container.ID[:common.SHORTID])
-		return healthGood
-	} else if !healthy && prevHealthy {
-		// 如果挂了并且之前是健康, 那么修改成挂了
+		changed = true
+	} else if !healthy && prevHealthy { // 如果挂了并且之前是健康, 那么修改成挂了
 		container.Healthy = false
-		if err := e.store.DeployContainer(container, e.node); err != nil {
-			log.Errorf("[checkOneContainer] update deploy status failed %v", err)
-		}
-		log.Infof("[continerDie] Container %s dies", container.ID[:common.SHORTID])
-		return healthBad
+		changed = true
 	}
-	return healthNotFound
+	return
 }
 
 func checkSingleContainerHealthy(container *types.Container, timeout time.Duration) bool {
@@ -100,7 +102,7 @@ func checkSingleContainerHealthy(container *types.Container, timeout time.Durati
 		httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", container.LocalIP, container.HealthCheck.HTTPPort, container.HealthCheck.HTTPURL))
 	}
 
-	id := container.ID[:common.SHORTID]
+	id := coreutils.ShortID(container.ID)
 	f1 := checkHTTP(id, httpChecker, container.HealthCheck.HTTPCode, timeout)
 	f2 := checkTCP(id, tcpChecker, timeout)
 	return f1 && f2

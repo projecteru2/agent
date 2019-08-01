@@ -1,8 +1,9 @@
 package types
 
 import (
-	"sync"
+	"time"
 
+	"github.com/patrickmn/go-cache"
 	coretypes "github.com/projecteru2/core/types"
 )
 
@@ -23,39 +24,31 @@ type Container struct {
 
 // PrevCheck store healthcheck data
 type PrevCheck struct {
-	sync.Mutex
-	data map[string]bool
+	data *cache.Cache
 }
 
 // Set set data to store
 func (p *PrevCheck) Set(ID string, f bool) {
-	p.Lock()
-	defer p.Unlock()
-	p.data[ID] = f
+	p.data.Set(ID, f, cache.DefaultExpiration)
 }
 
 // Get get data from store
-func (p *PrevCheck) Get(ID string) bool {
-	p.Lock()
-	defer p.Unlock()
-	v, ok := p.data[ID]
+func (p *PrevCheck) Get(ID string) (bool, bool) {
+	v, ok := p.data.Get(ID)
 	if !ok {
-		return false
+		return false, false
 	}
-	return v
+	return v.(bool), true
 }
 
 // Del delete data from store
 func (p *PrevCheck) Del(ID string) {
-	p.Lock()
-	defer p.Unlock()
-	delete(p.data, ID)
+	p.data.Delete(ID)
 }
 
 // NewPrevCheck new a prevcheck obj
-func NewPrevCheck() *PrevCheck {
+func NewPrevCheck(config *Config) *PrevCheck {
 	return &PrevCheck{
-		sync.Mutex{},
-		map[string]bool{},
+		cache.New(time.Duration(config.HealthCheckCacheTTL)*time.Second, 60*time.Minute),
 	}
 }

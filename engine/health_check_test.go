@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"github.com/docker/docker/pkg/stringid"
+	"github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
 	coretypes "github.com/projecteru2/core/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestCheckSingleContainerHealthy(t *testing.T) {
@@ -42,6 +44,8 @@ func TestCheckAllContainers(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 
 	e := mockNewEngine()
+	mockStore := e.store.(*mocks.Store)
+	mockStore.On("DeployContainer", mock.Anything, mock.Anything).Return(nil)
 	e.checkAllContainers()
 
 	time.Sleep(1 * time.Second)

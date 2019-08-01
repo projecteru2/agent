@@ -9,14 +9,17 @@ import (
 	"github.com/projecteru2/agent/types"
 )
 
+// Watcher indicate watcher
 type Watcher struct {
 	consumer  map[string]map[string]*types.LogConsumer
 	LogC      chan *types.Log
 	ConsumerC chan *types.LogConsumer
 }
 
+// LogMonitor indicate log monitor
 var LogMonitor *Watcher
 
+// InitMonitor init a monitor
 func InitMonitor() {
 	LogMonitor = &Watcher{}
 	LogMonitor.consumer = map[string]map[string]*types.LogConsumer{}
@@ -24,6 +27,7 @@ func InitMonitor() {
 	LogMonitor.ConsumerC = make(chan *types.LogConsumer)
 }
 
+// Serve start monitor
 func (w *Watcher) Serve() {
 	logrus.Info("[logServe] Log monitor started")
 	for {

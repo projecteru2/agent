@@ -7,7 +7,6 @@ import (
 	enginetypes "github.com/docker/docker/api/types"
 	enginecontainer "github.com/docker/docker/api/types/container"
 	enginefilters "github.com/docker/docker/api/types/filters"
-	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine/status"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/core/cluster"
@@ -44,7 +43,7 @@ func (e *Engine) detectContainer(ID string) (*types.Container, error) {
 	label := c.Config.Labels
 
 	if _, ok := label[cluster.ERUMark]; !ok {
-		return nil, fmt.Errorf("not a eru container %s", ID[:common.SHORTID])
+		return nil, fmt.Errorf("not a eru container %s", coreutils.ShortID(ID))
 	}
 
 	// 生成基准 meta

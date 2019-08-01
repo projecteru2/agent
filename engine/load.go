@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"github.com/projecteru2/agent/common"
+	coreutils "github.com/projecteru2/core/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -13,7 +13,7 @@ func (e *Engine) load() error {
 	}
 
 	for _, container := range containers {
-		log.Debugf("[load] detect container %s", container.ID[:common.SHORTID])
+		log.Debugf("[load] detect container %s", coreutils.ShortID(container.ID))
 		c, err := e.detectContainer(container.ID)
 		if err != nil {
 			log.Errorf("[load] detect container failed %v", err)

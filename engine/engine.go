@@ -8,10 +8,11 @@ import (
 	engineapi "github.com/docker/docker/client"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/store"
-	"github.com/projecteru2/agent/store/core"
+	corestore "github.com/projecteru2/agent/store/core"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	coretypes "github.com/projecteru2/core/types"
+	coreutils "github.com/projecteru2/core/utils"
 	"github.com/shirou/gopsutil/cpu"
 	log "github.com/sirupsen/logrus"
 )
@@ -54,7 +55,7 @@ func NewEngine(config *types.Config) (*Engine, error) {
 	engine.store = store
 	engine.docker = docker
 	engine.node = node
-	engine.checker = types.NewPrevCheck()
+	engine.checker = types.NewPrevCheck(config)
 	engine.dockerized = os.Getenv(common.DOCKERIZED) != ""
 	if engine.dockerized {
 		os.Setenv("HOST_PROC", "/hostProc")
@@ -117,7 +118,7 @@ func (e *Engine) crash() error {
 		if err := e.store.DeployContainer(container, e.node); err != nil {
 			return err
 		}
-		log.Infof("[crash] mark %s unhealthy", container.ID[:common.SHORTID])
+		log.Infof("[crash] mark %s unhealthy", coreutils.ShortID(container.ID))
 	}
 	return e.activated(false)
 }

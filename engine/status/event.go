@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	eventtypes "github.com/docker/docker/api/types/events"
-	"github.com/projecteru2/agent/common"
+	coreutils "github.com/projecteru2/core/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,7 +29,7 @@ func (e *EventHandler) Handle(action string, h func(eventtypes.Message)) {
 // Watch watch change
 func (e *EventHandler) Watch(c <-chan eventtypes.Message) {
 	for ev := range c {
-		log.Infof("[Watch] Monitor: cid %s action %s", ev.ID[:common.SHORTID], ev.Action)
+		log.Infof("[Watch] Monitor: cid %s action %s", coreutils.ShortID(ev.ID), ev.Action)
 		e.Lock()
 		h, exists := e.handlers[ev.Action]
 		e.Unlock()
