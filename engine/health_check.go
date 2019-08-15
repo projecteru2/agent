@@ -55,7 +55,7 @@ func (e *Engine) checkOneContainer(container *types.Container, timeout time.Dura
 	// 并且都有 healthcheck 标记
 	// 检查现在是不是还健康
 	// for safe
-	healthy := true
+	healthy := container.Running
 	if container.HealthCheck != nil {
 		healthy = checkSingleContainerHealthy(container, timeout)
 	}
