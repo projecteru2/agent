@@ -62,8 +62,8 @@ func (e *Engine) detectContainer(ID string) (*types.Container, error) {
 		for name, endpoint := range c.NetworkSettings.Networks {
 			networkmode := enginecontainer.NetworkMode(name)
 			if networkmode.IsHost() {
-				container.LocalIP = engine.GetIP(e.node.Endpoint)
-				networks[name] = container.LocalIP
+				container.LocalIP = "127.0.0.1"
+				networks[name] = engine.GetIP(e.node.Endpoint)
 			} else {
 				container.LocalIP = endpoint.IPAddress
 				networks[name] = endpoint.IPAddress
