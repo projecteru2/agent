@@ -1,23 +1,21 @@
 package types
 
 import (
-	"io/ioutil"
 	"os"
 
 	coretypes "github.com/projecteru2/core/types"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/urfave/cli.v2"
-	yaml "gopkg.in/yaml.v2"
+	cli "github.com/urfave/cli/v2"
 )
 
 // DockerConfig contain endpoint
 type DockerConfig struct {
-	Endpoint string `yaml:"endpoint"`
+	Endpoint string `yaml:"endpoint" required:"true"`
 }
 
 // MetricsConfig contain metrics config
 type MetricsConfig struct {
-	Step      int64    `yaml:"step"`
+	Step      int64    `yaml:"step" required:"true" default:"10"`
 	Transfers []string `yaml:"transfers"`
 }
 
@@ -34,11 +32,11 @@ type LogConfig struct {
 
 // Config contain all configs
 type Config struct {
-	PidFile             string               `yaml:"pid"`
+	PidFile             string               `yaml:"pid" required:"true" default:"/tmp/agent.pid"`
 	HealthCheckInterval int                  `yaml:"health_check_interval"`
 	HealthCheckTimeout  int                  `yaml:"health_check_timeout"`
 	HealthCheckCacheTTL int                  `yaml:"health_check_cache_ttl"`
-	Core                string               `yaml:"core"`
+	Core                string               `yaml:"core" required:"true"`
 	Auth                coretypes.AuthConfig `yaml:"auth"`
 	HostName            string               `yaml:"-"`
 
@@ -46,17 +44,6 @@ type Config struct {
 	Metrics MetricsConfig
 	API     APIConfig
 	Log     LogConfig
-}
-
-//LoadConfigFromFile 从config path指定的文件加载config
-//失败就算了, 反正也要从cli覆写的
-func (config *Config) LoadConfigFromFile(configPath string) error {
-	bytes, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return err
-	}
-
-	return yaml.Unmarshal(bytes, config)
 }
 
 //PrepareConfig 从cli覆写并做准备

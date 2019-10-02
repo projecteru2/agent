@@ -3,8 +3,8 @@ FROM golang:alpine AS BUILD
 MAINTAINER CMGS <ilskdw@gmail.com>
 
 # make binary
-RUN apk add --no-cache git curl make gcc libc-dev \
-    && go get -d github.com/projecteru2/agent
+RUN apk add --no-cache git curl make gcc libc-dev
+RUN git clone https://github.com/projecteru2/agent.git /go/src/github.com/projecteru2/agent
 WORKDIR /go/src/github.com/projecteru2/agent
 RUN make build && ./eru-agent --version
 

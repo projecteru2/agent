@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	"github.com/jinzhu/configor"
 	"github.com/projecteru2/agent/api"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine"
@@ -10,7 +11,7 @@ import (
 	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/watcher"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/urfave/cli.v2"
+	cli "github.com/urfave/cli/v2"
 )
 
 func setupLogLevel(l string) error {
@@ -24,10 +25,11 @@ func setupLogLevel(l string) error {
 
 func initConfig(c *cli.Context) *types.Config {
 	config := &types.Config{}
-	err := config.LoadConfigFromFile(c.String("config"))
-	if err != nil {
-		log.Warnf("[main] load config failed %v", err)
+
+	if err := configor.Load(config, c.String("config")); err != nil {
+		log.Fatalf("[main] load config failed %v", err)
 	}
+
 	config.PrepareConfig(c)
 	return config
 }

@@ -56,7 +56,7 @@ After we implemented bootstrap in eru2, now you can build and deploy agent with 
 1. Test source code and build image
 
 ```shell
-<cli_execute_path> --name <image_name> https://goo.gl/3K3GHb
+<cli_execute_path> --name <image_name> http://bit.ly/EruAgent
 ```
 
 Make sure you can clone code by ssh protocol because libgit2 ask for it. So you need configure core with github certs. After the fresh image was named and tagged, it will be auto pushed to the remote registry which was defined in core.
@@ -64,7 +64,7 @@ Make sure you can clone code by ssh protocol because libgit2 ask for it. So you 
 2. Deploy agent by eru with specific resource.
 
 ```shell
-<cli_execute_path> container deploy -pod <pod_name> --entry agent --network <network_name> --deploy-method fill --image <projecteru2/agent>|<your_own_image> --count 1 --file <agent_config_yaml>:/etc/eru/agent.yaml [--cpu 0.3 | --mem 1024000000] https://goo.gl/3K3GHb
+<cli_execute_path> container deploy -pod <pod_name> --entry agent --network <network_name> --deploy-method fill --image <projecteru2/agent>|<your_own_image> --count 1 --file <agent_config_yaml>:/etc/eru/agent.yaml [--cpu 0.3 | --mem 1024000000] http://bit.ly/EruAgent
 ```
 
 Now you will find agent was started in each node, and monitor containers status include itself.
