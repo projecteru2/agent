@@ -20,7 +20,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.8.5 // indirect
 	github.com/jinzhu/configor v1.1.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/projecteru2/core v0.0.0-20191002093440-fbd586e6fb95
+	github.com/projecteru2/core v0.0.0-20191007040439-f2540719e47f
 	github.com/prometheus/client_golang v0.9.3
 	github.com/shirou/gopsutil v2.19.9+incompatible
 	github.com/sirupsen/logrus v1.4.2
@@ -31,7 +31,7 @@ require (
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	go.etcd.io/bbolt v1.3.2 // indirect
 	go.uber.org/zap v1.9.1 // indirect
-	golang.org/x/net v0.0.0-20190926025831-c00fd9afed17
+	golang.org/x/net v0.0.0-20191003171128-d98b1b443823
 )
 
 replace github.com/libgit2/git2go v0.0.0-20190813182810-37e5b53f742d => github.com/CMGS/git2go v0.0.0-20190930074211-b81086e21275

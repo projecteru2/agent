@@ -38,6 +38,7 @@ func (e *Engine) attach(container *types.Container) {
 			Stdin:  false,
 			Stdout: true,
 			Stderr: true,
+			Logs:   true,
 		}
 		resp, err := e.docker.ContainerAttach(ctx, container.ID, options)
 		if err != nil && err != httputil.ErrPersistEOF {
