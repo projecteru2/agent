@@ -78,10 +78,10 @@ func (w *Writer) createConn() (io.WriteCloser, error) {
 
 func (w *Writer) checkError(err error) {
 	if err != nil && err != ErrConnecting {
+		w.Lock()
+		defer w.Unlock()
 		log.Errorf("[writer] Sending log failed %s", err)
 		if w.conn != nil {
-			w.Lock()
-			defer w.Unlock()
 			w.conn.Close()
 			w.conn = nil
 		}
