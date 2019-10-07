@@ -302,7 +302,7 @@ func TestEvents(t *testing.T) {
 	for {
 		select {
 		case err := <-errChan:
-			assert.Equal(t, err, io.ErrClosedPipe)
+			assert.Error(t, err)
 			return
 		case event := <-eventChan:
 			testlogF("ID: %s, Action: %s, Status: %s", event.ID, event.Action, event.Status)
