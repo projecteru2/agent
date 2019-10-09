@@ -27,7 +27,7 @@ func (e *Engine) load() error {
 			//}
 		}
 
-		if err := e.store.DeployContainer(c, e.node); err != nil {
+		if err := e.store.DeployContainerStats(c, e.node); err != nil {
 			log.Errorf("[load] update deploy status failed %v", err)
 		}
 	}

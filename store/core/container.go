@@ -9,8 +9,8 @@ import (
 	"golang.org/x/net/context"
 )
 
-// DeployContainer deploy containers
-func (c *CoreStore) DeployContainer(container *types.Container, node *coretypes.Node) error {
+// DeployContainerStats deploy containers
+func (c *CoreStore) DeployContainerStats(container *types.Container, node *coretypes.Node) error {
 	client := c.client.GetRPCClient()
 	bytes, err := json.Marshal(container)
 	if err != nil {
