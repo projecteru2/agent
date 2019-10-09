@@ -45,7 +45,7 @@ func TestCheckAllContainers(t *testing.T) {
 
 	e := mockNewEngine()
 	mockStore := e.store.(*mocks.Store)
-	mockStore.On("DeployContainer", mock.Anything, mock.Anything).Return(nil)
+	mockStore.On("DeployContainerStats", mock.Anything, mock.Anything).Return(nil)
 	e.checkAllContainers()
 
 	time.Sleep(1 * time.Second)

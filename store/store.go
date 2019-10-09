@@ -10,5 +10,5 @@ type Store interface {
 	GetNode(nodename string) (*coretypes.Node, error)
 	UpdateNode(node *coretypes.Node) error
 
-	DeployContainer(container *types.Container, node *coretypes.Node) error
+	DeployContainerStats(container *types.Container, node *coretypes.Node) error
 }
