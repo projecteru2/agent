@@ -46,7 +46,7 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 
 	// 发现需要 health check 立刻执行
 	if container.Healthy {
-		if err := e.store.DeployContainer(container, e.node); err != nil {
+		if err := e.store.DeployContainerStats(container, e.node); err != nil {
 			log.Errorf("[handleContainerStart] update deploy status failed %v", err)
 		}
 	} else {
@@ -59,7 +59,7 @@ func (e *Engine) handleContainerDie(event eventtypes.Message) {
 	container, err := e.detectContainer(event.ID)
 	if err != nil {
 		log.Errorf("[handleContainerDie] detect container failed %v", err)
-	} else if err := e.store.DeployContainer(container, e.node); err != nil {
+	} else if err := e.store.DeployContainerStats(container, e.node); err != nil {
 		log.Errorf("[handleContainerDie] update deploy status failed %v", err)
 	} else {
 		e.checker.Del(event.ID)
