@@ -21,7 +21,7 @@ func TestCheckSingleContainerHealthy(t *testing.T) {
 	go http.ListenAndServe(":10237", http.NotFoundHandler())
 	time.Sleep(100 * time.Millisecond)
 	container := &types.Container{
-		Meta: coretypes.Meta{
+		StatusMeta: coretypes.StatusMeta{
 			ID:      stringid.GenerateRandomID(),
 			Running: true,
 		},
@@ -45,7 +45,7 @@ func TestCheckAllContainers(t *testing.T) {
 
 	e := mockNewEngine()
 	mockStore := e.store.(*mocks.Store)
-	mockStore.On("DeployContainerStats", mock.Anything, mock.Anything).Return(nil)
+	mockStore.On("SetContainerStatus", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	e.checkAllContainers()
 
 	time.Sleep(1 * time.Second)
