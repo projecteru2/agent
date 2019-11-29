@@ -46,7 +46,7 @@ func TestMonitor(t *testing.T) {
 	n := new(coretypes.Node)
 	mockStore.On("GetNode", mock.AnythingOfType("string")).Return(n, nil)
 	mockStore.On("UpdateNode", mock.Anything).Return(nil)
-	mockStore.On("DeployContainerStats", mock.Anything, mock.Anything).Return(nil)
+	mockStore.On("SetContainerStatus", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	go e.monitor(eventChan)
 	time.Sleep(3 * time.Second)

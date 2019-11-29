@@ -9,20 +9,25 @@ import (
 	"golang.org/x/net/context"
 )
 
-// DeployContainerStats deploy containers
-func (c *CoreStore) DeployContainerStats(container *types.Container, node *coretypes.Node) error {
+// SetContainerStatus deploy containers
+func (c *CoreStore) SetContainerStatus(ctx context.Context, container *types.Container, node *coretypes.Node) error {
 	client := c.client.GetRPCClient()
-	bytes, err := json.Marshal(container)
+	bytes, err := json.Marshal(container.Labels)
 	if err != nil {
 		return err
 	}
-	opts := &pb.ContainerDeployedOptions{
-		Id:         container.ID,
-		Appname:    container.Name,
-		Entrypoint: container.EntryPoint,
-		Nodename:   node.Name,
-		Data:       bytes,
+	containerStatus := &pb.ContainerStatus{
+		Id:        container.ID,
+		Running:   container.Running,
+		Healthy:   container.Healthy,
+		Networks:  container.Networks,
+		Extension: bytes,
+		Ttl:       int64(2 * c.config.HealthCheckInterval),
 	}
-	_, err = client.ContainerDeployed(context.Background(), opts)
+
+	opts := &pb.SetContainersStatusOptions{
+		Status: []*pb.ContainerStatus{containerStatus},
+	}
+	_, err = client.SetContainersStatus(ctx, opts)
 	return err
 }

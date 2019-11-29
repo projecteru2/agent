@@ -20,7 +20,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway v1.8.5 // indirect
 	github.com/jinzhu/configor v1.1.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/projecteru2/core v0.0.0-20191007040439-f2540719e47f
+	github.com/projecteru2/core v0.0.0-20191129101134-74c84ffabdce
 	github.com/prometheus/client_golang v0.9.3
 	github.com/shirou/gopsutil v2.19.9+incompatible
 	github.com/sirupsen/logrus v1.4.2

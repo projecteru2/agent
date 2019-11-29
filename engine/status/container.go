@@ -22,7 +22,7 @@ func CalcuateCPUNum(container *types.Container, containerJSON enginetypes.Contai
 }
 
 // GenerateContainerMeta make meta obj
-func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.EruMeta, labels map[string]string) (*types.Container, error) {
+func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.LabelMeta, labels map[string]string) (*types.Container, error) {
 	name, entrypoint, ident, err := utils.GetAppInfo(c.Name)
 	if err != nil {
 		return nil, err
@@ -30,15 +30,15 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.EruMeta,
 
 	if !c.State.Running || c.State.Pid == 0 {
 		return &types.Container{
-			Meta: coretypes.Meta{
+			StatusMeta: coretypes.StatusMeta{
 				ID:      c.ID,
 				Healthy: false,
 				Running: false,
-				Labels:  labels,
 			},
 			Name:       name,
 			EntryPoint: entrypoint,
 			Ident:      ident,
+			Labels:     labels,
 		}, nil
 	}
 
@@ -47,11 +47,10 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.EruMeta,
 	// 需要告诉第一次上的时候这个容器是健康的, 还是不是
 	checker := (meta.HealthCheck != nil)
 	container := &types.Container{
-		Meta: coretypes.Meta{
+		StatusMeta: coretypes.StatusMeta{
 			ID:      c.ID,
 			Healthy: !checker,
 			Running: c.State.Running,
-			Labels:  labels,
 		},
 		Pid:         c.State.Pid,
 		Name:        name,
@@ -60,6 +59,7 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.EruMeta,
 		CPUQuota:    c.HostConfig.Resources.CPUQuota,
 		CPUPeriod:   c.HostConfig.Resources.CPUPeriod,
 		Memory:      c.HostConfig.Resources.Memory,
+		Labels:      labels,
 		HealthCheck: meta.HealthCheck,
 	}
 	log.Debugf("[GenerateContainerMeta] Generate container meta %v %v", container.Name, container.EntryPoint)
