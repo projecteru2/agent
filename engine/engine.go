@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"os/signal"
 	"syscall"
@@ -115,7 +116,7 @@ func (e *Engine) crash() error {
 			return err
 		}
 		container.Healthy = false
-		if err := e.store.DeployContainerStats(container, e.node); err != nil {
+		if err := e.store.SetContainerStatus(context.Background(), container, e.node); err != nil {
 			return err
 		}
 		log.Infof("[crash] mark %s unhealthy", coreutils.ShortID(container.ID))

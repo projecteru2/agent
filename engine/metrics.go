@@ -47,7 +47,7 @@ func NewMetricsClient(statsd, hostname string, container *types.Container) *Metr
 	clables := []string{}
 	labeList := container.Labels
 	delete(labeList, cluster.ERUMark)
-	delete(labeList, cluster.ERUMeta)
+	delete(labeList, cluster.LabelMeta)
 	for k, v := range labeList {
 		l := fmt.Sprintf("%s=%s", k, v)
 		clables = append(clables, l)

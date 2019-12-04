@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	coreutils "github.com/projecteru2/core/utils"
 	log "github.com/sirupsen/logrus"
 )
@@ -27,7 +28,7 @@ func (e *Engine) load() error {
 			//}
 		}
 
-		if err := e.store.DeployContainerStats(c, e.node); err != nil {
+		if err := e.store.SetContainerStatus(context.Background(), c, e.node); err != nil {
 			log.Errorf("[load] update deploy status failed %v", err)
 		}
 	}

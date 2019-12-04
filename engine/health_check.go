@@ -13,8 +13,7 @@ import (
 )
 
 func (e *Engine) healthCheck() {
-	interval := e.config.HealthCheckInterval
-	tick := time.NewTicker(time.Duration(interval) * time.Second)
+	tick := time.NewTicker(time.Duration(e.config.HealthCheckInterval) * time.Second)
 	defer tick.Stop()
 	for ; ; <-tick.C {
 		go e.checkAllContainers()
@@ -60,26 +59,24 @@ func (e *Engine) checkOneContainer(container *types.Container, timeout time.Dura
 		healthy = checkSingleContainerHealthy(container, timeout)
 	}
 	prevHealthy, exists := e.checker.Get(container.ID)
-
-	defer func() {
-		if !exists || prevHealthy != container.Healthy {
-			if container.Healthy {
-				log.Infof("[checkOneContainer] Container %s resurges", coreutils.ShortID(container.ID))
-			} else {
-				log.Infof("[checkOneContainer] Container %s dies", coreutils.ShortID(container.ID))
-			}
-			if err := e.store.DeployContainerStats(container, e.node); err != nil {
-				log.Errorf("[checkOneContainer] update deploy status failed %v", err)
-			} else {
-				e.checker.Set(container.ID, healthy)
-			}
-		}
-	}()
-
 	if !exists { // 不存在就直接赋值
 		log.Debugf("[checkOneContainer] Container %s has no check before", coreutils.ShortID(container.ID))
 	}
+
 	container.Healthy = healthy
+	if !exists || prevHealthy != container.Healthy {
+		if container.Healthy {
+			log.Infof("[checkOneContainer] Container %s resurges", coreutils.ShortID(container.ID))
+		} else {
+			log.Infof("[checkOneContainer] Container %s dies", coreutils.ShortID(container.ID))
+		}
+	}
+
+	if err := e.store.SetContainerStatus(context.Background(), container, e.node); err != nil {
+		log.Errorf("[checkOneContainer] update deploy status failed %v", err)
+	} else {
+		e.checker.Set(container.ID, healthy)
+	}
 	return
 }
 

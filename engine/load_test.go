@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	coretypes "github.com/projecteru2/core/types"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -20,7 +20,7 @@ func TestLoad(t *testing.T) {
 	n := new(coretypes.Node)
 	mockStore.On("GetNode", mock.AnythingOfType("string")).Return(n, nil)
 	mockStore.On("UpdateNode", mock.Anything).Return(nil)
-	mockStore.On("DeployContainerStats", mock.Anything, mock.Anything).Return(nil)
+	mockStore.On("SetContainerStatus", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	err := e.load()
 	assert.NoError(t, err)
