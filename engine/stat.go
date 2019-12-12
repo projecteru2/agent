@@ -97,8 +97,8 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 		mClient.MemUsage(float64(containerMemStats.MemUsageInBytes))
 		mClient.MemMaxUsage(float64(containerMemStats.MemMaxUsageInBytes))
 		mClient.MemRss(float64(containerMemStats.RSS))
-		if containerMemStats.MemLimitInBytes > 0 {
-			mClient.MemPercent(float64(containerMemStats.MemUsageInBytes) / float64(containerMemStats.MemLimitInBytes))
+		if container.Memory > 0 {
+			mClient.MemPercent(float64(containerMemStats.MemUsageInBytes) / float64(container.Memory))
 		}
 		nics := map[string]net.IOCountersStat{}
 		for _, nic := range containerNetStats {
