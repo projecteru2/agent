@@ -28,7 +28,6 @@ type Engine struct {
 
 	transfers *utils.HashBackends
 	forwards  *utils.HashBackends
-	checker   *types.PrevCheck
 
 	dockerized bool
 }
@@ -56,7 +55,6 @@ func NewEngine(config *types.Config) (*Engine, error) {
 	engine.store = store
 	engine.docker = docker
 	engine.node = node
-	engine.checker = types.NewPrevCheck(config)
 	engine.dockerized = os.Getenv(common.DOCKERIZED) != ""
 	if engine.dockerized {
 		os.Setenv("HOST_PROC", "/hostProc")

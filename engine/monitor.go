@@ -61,7 +61,5 @@ func (e *Engine) handleContainerDie(event eventtypes.Message) {
 		log.Errorf("[handleContainerDie] detect container failed %v", err)
 	} else if err := e.store.SetContainerStatus(context.Background(), container, e.node); err != nil {
 		log.Errorf("[handleContainerDie] update deploy status failed %v", err)
-	} else {
-		e.checker.Del(event.ID)
 	}
 }
