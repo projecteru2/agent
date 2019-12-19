@@ -28,40 +28,30 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.LabelMet
 		return nil, err
 	}
 
-	if !c.State.Running || c.State.Pid == 0 {
-		return &types.Container{
-			StatusMeta: coretypes.StatusMeta{
-				ID:      c.ID,
-				Healthy: false,
-				Running: false,
-			},
-			Name:       name,
-			EntryPoint: entrypoint,
-			Ident:      ident,
-			Labels:     labels,
-		}, nil
-	}
-
-	// 第一次上的容器可能没有设置health check
-	// 那么我们认为这个容器一直是健康的, 并且不做检查
-	// 需要告诉第一次上的时候这个容器是健康的, 还是不是
-	checker := (meta.HealthCheck != nil)
 	container := &types.Container{
-		StatusMeta: coretypes.StatusMeta{
-			ID:      c.ID,
-			Healthy: !checker,
-			Running: c.State.Running,
-		},
-		Pid:         c.State.Pid,
+		StatusMeta:  coretypes.StatusMeta{ID: c.ID},
 		Name:        name,
 		EntryPoint:  entrypoint,
 		Ident:       ident,
-		CPUQuota:    c.HostConfig.Resources.CPUQuota,
-		CPUPeriod:   c.HostConfig.Resources.CPUPeriod,
-		Memory:      c.HostConfig.Resources.Memory,
 		Labels:      labels,
 		HealthCheck: meta.HealthCheck,
+		CPUQuota:    c.HostConfig.Resources.CPUQuota,
+		CPUPeriod:   c.HostConfig.Resources.CPUPeriod,
+		Memory:      utils.Max(c.HostConfig.Memory, c.HostConfig.MemoryReservation),
 	}
+
+	if !c.State.Running || c.State.Pid == 0 {
+		container.Healthy = false
+		container.Running = false
+	} else {
+		// 第一次上的容器可能没有设置health check
+		// 那么我们认为这个容器一直是健康的, 并且不做检查
+		// 需要告诉第一次上的时候这个容器是健康的, 还是不是
+		container.Pid = c.State.Pid
+		container.Running = c.State.Running
+		container.Healthy = !(meta.HealthCheck != nil)
+	}
+
 	log.Debugf("[GenerateContainerMeta] Generate container meta %v %v", container.Name, container.EntryPoint)
 	return container, nil
 }
