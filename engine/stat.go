@@ -99,6 +99,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 		mClient.MemRss(float64(containerMemStats.RSS))
 		if container.Memory > 0 {
 			mClient.MemPercent(float64(containerMemStats.MemUsageInBytes) / float64(container.Memory))
+			mClient.MemRSSPercent(float64(containerMemStats.RSS) / float64(container.Memory))
 		}
 		nics := map[string]net.IOCountersStat{}
 		for _, nic := range containerNetStats {
