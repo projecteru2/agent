@@ -41,3 +41,11 @@ func WritePid(path string) {
 func GetAppInfo(containerName string) (name, entrypoint, ident string, err error) {
 	return coreutils.ParseContainerName(containerName)
 }
+
+// Max return max value
+func Max(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}

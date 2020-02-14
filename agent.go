@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 
+	_ "go.uber.org/automaxprocs"
+
 	"github.com/jinzhu/configor"
 	"github.com/projecteru2/agent/api"
 	"github.com/projecteru2/agent/common"

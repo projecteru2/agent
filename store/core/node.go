@@ -10,7 +10,7 @@ import (
 // GetNode return a node by core
 func (c *CoreStore) GetNode(nodename string) (*types.Node, error) {
 	client := c.client.GetRPCClient()
-	resp, err := client.GetNodeByName(context.Background(), &pb.GetNodeOptions{Nodename: nodename})
+	resp, err := client.GetNode(context.Background(), &pb.GetNodeOptions{Nodename: nodename})
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,6 @@ func (c *CoreStore) GetNode(nodename string) (*types.Node, error) {
 func (c *CoreStore) UpdateNode(node *types.Node) error {
 	client := c.client.GetRPCClient()
 	opts := &pb.SetNodeOptions{
-		Podname:  node.Podname,
 		Nodename: node.Name,
 	}
 	if node.Available {

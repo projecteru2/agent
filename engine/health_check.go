@@ -54,28 +54,13 @@ func (e *Engine) checkOneContainer(container *types.Container, timeout time.Dura
 	// 并且都有 healthcheck 标记
 	// 检查现在是不是还健康
 	// for safe
-	healthy := container.Running
+	container.Healthy = container.Running
 	if container.HealthCheck != nil {
-		healthy = checkSingleContainerHealthy(container, timeout)
-	}
-	prevHealthy, exists := e.checker.Get(container.ID)
-	if !exists { // 不存在就直接赋值
-		log.Debugf("[checkOneContainer] Container %s has no check before", coreutils.ShortID(container.ID))
-	}
-
-	container.Healthy = healthy
-	if !exists || prevHealthy != container.Healthy {
-		if container.Healthy {
-			log.Infof("[checkOneContainer] Container %s resurges", coreutils.ShortID(container.ID))
-		} else {
-			log.Infof("[checkOneContainer] Container %s dies", coreutils.ShortID(container.ID))
-		}
+		container.Healthy = checkSingleContainerHealthy(container, timeout)
 	}
 
 	if err := e.store.SetContainerStatus(context.Background(), container, e.node); err != nil {
 		log.Errorf("[checkOneContainer] update deploy status failed %v", err)
-	} else {
-		e.checker.Set(container.ID, healthy)
 	}
 	return
 }

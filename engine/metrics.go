@@ -27,10 +27,11 @@ type MetricsClient struct {
 	cpuContainerSysUsage  prometheus.Gauge
 	cpuContainerUserUsage prometheus.Gauge
 
-	memUsage    prometheus.Gauge
-	memMaxUsage prometheus.Gauge
-	memRss      prometheus.Gauge
-	memPercent  prometheus.Gauge
+	memUsage      prometheus.Gauge
+	memMaxUsage   prometheus.Gauge
+	memRss        prometheus.Gauge
+	memPercent    prometheus.Gauge
+	memRSSPercent prometheus.Gauge
 
 	bytesSent   *prometheus.GaugeVec
 	bytesRecv   *prometheus.GaugeVec
@@ -111,6 +112,11 @@ func NewMetricsClient(statsd, hostname string, container *types.Container) *Metr
 		Help:        "memory percent.",
 		ConstLabels: labels,
 	})
+	memRSSPercent := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name:        "mem_rss_percent",
+		Help:        "memory rss percent.",
+		ConstLabels: labels,
+	})
 	bytesSent := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "bytes_send",
 		Help:        "bytes send.",
@@ -160,7 +166,7 @@ func NewMetricsClient(statsd, hostname string, container *types.Container) *Metr
 	prometheus.MustRegister(
 		cpuHostSysUsage, cpuHostUsage, cpuHostUserUsage,
 		cpuContainerSysUsage, cpuContainerUsage, cpuContainerUserUsage,
-		memMaxUsage, memRss, memUsage, memPercent,
+		memMaxUsage, memRss, memUsage, memPercent, memRSSPercent,
 		bytesRecv, bytesSent, packetsRecv, packetsSent,
 		errIn, errOut, dropIn, dropOut,
 	)
@@ -178,10 +184,11 @@ func NewMetricsClient(statsd, hostname string, container *types.Container) *Metr
 		cpuContainerSysUsage:  cpuContainerSysUsage,
 		cpuContainerUserUsage: cpuContainerUserUsage,
 
-		memUsage:    memUsage,
-		memMaxUsage: memMaxUsage,
-		memRss:      memRss,
-		memPercent:  memPercent,
+		memUsage:      memUsage,
+		memMaxUsage:   memMaxUsage,
+		memRss:        memRss,
+		memPercent:    memPercent,
+		memRSSPercent: memRSSPercent,
 
 		bytesSent:   bytesSent,
 		bytesRecv:   bytesRecv,
@@ -208,6 +215,7 @@ func (m *MetricsClient) Unregister() {
 	prometheus.Unregister(m.memMaxUsage)
 	prometheus.Unregister(m.memRss)
 	prometheus.Unregister(m.memPercent)
+	prometheus.Unregister(m.memRSSPercent)
 
 	prometheus.Unregister(m.bytesRecv)
 	prometheus.Unregister(m.bytesSent)
@@ -277,6 +285,12 @@ func (m *MetricsClient) MemRss(i float64) {
 func (m *MetricsClient) MemPercent(i float64) {
 	m.data["mem_percent"] = i
 	m.memPercent.Set(i)
+}
+
+// MemRSSPercent set memory percent
+func (m *MetricsClient) MemRSSPercent(i float64) {
+	m.data["mem_rss_percent"] = i
+	m.memRSSPercent.Set(i)
 }
 
 // BytesSent set bytes send
