@@ -7,3 +7,5 @@ vendor/*
 debug.test
 update_core.sh
 build.yaml
+cscope.*
+*~
