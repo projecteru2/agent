@@ -40,13 +40,18 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 
 	period := float64(e.config.Metrics.Step)
 	hostCPUCount := e.cpuCore * period
-	containerCPUCount := container.CPUNum * period
 
 	mClient := NewMetricsClient(addr, hostname, container)
 	defer log.Infof("[stat] container %s %s metric report stop", container.Name, coreutils.ShortID(container.ID))
 	log.Infof("[stat] container %s %s metric report start", container.Name, coreutils.ShortID(container.ID))
 
 	updateMetrics := func() {
+		container, err = e.detectContainer(container.ID)
+		if err != nil {
+			log.Errorf("[stat] can not refresh container meta %s", container.ID)
+			return
+		}
+		containerCPUCount := container.CPUNum * period
 		timeoutCtx, cancel := context.WithTimeout(parentCtx, timeout)
 		defer cancel()
 		newContainrCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(timeoutCtx, container, proc)
