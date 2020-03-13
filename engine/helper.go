@@ -56,6 +56,9 @@ func (e *Engine) detectContainer(ID string) (*types.Container, error) {
 	}
 	// 计算容器用了多少 CPU
 	container = status.CalcuateCPUNum(container, c, e.cpuCore)
+	if container.Memory == 0 {
+		container.Memory = e.memory
+	}
 	// 活着才有发布必要
 	if c.NetworkSettings != nil && container.Running {
 		networks := map[string]string{}

@@ -15,6 +15,9 @@ func NewHashBackends(data []string) *HashBackends {
 
 // Get get a backend
 func (s *HashBackends) Get(v string, offset int) string {
+	if s.length == 0 {
+		return ""
+	}
 	h := fnv.New32a()
 	h.Write([]byte(v))
 	return s.data[(h.Sum32()+uint32(offset))%s.length]

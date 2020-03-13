@@ -22,6 +22,9 @@ import (
 
 func (e *Engine) attach(container *types.Container) {
 	transfer := e.forwards.Get(container.ID, 0)
+	if transfer == "" {
+		transfer = logs.Discard
+	}
 	writer, err := logs.NewWriter(transfer, e.config.Log.Stdout)
 	if err != nil {
 		log.Errorf("[attach] Create log forward failed %s", err)

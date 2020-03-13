@@ -12,6 +12,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Discard .
+const Discard = "__discard__"
+
 // ErrConnecting means writer is in connecting status, waiting to be connected
 var ErrConnecting = errors.New("Connecting")
 
@@ -40,7 +43,7 @@ func (d discard) Close() error {
 
 // NewWriter return writer
 func NewWriter(addr string, stdout bool) (*Writer, error) {
-	if addr == "__discard__" {
+	if addr == Discard {
 		return &Writer{
 			enc: NewStreamEncoder(discard{}),
 		}, nil
