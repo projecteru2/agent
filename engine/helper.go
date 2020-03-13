@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"math"
 
 	enginetypes "github.com/docker/docker/api/types"
 	enginecontainer "github.com/docker/docker/api/types/container"
@@ -56,7 +57,7 @@ func (e *Engine) detectContainer(ID string) (*types.Container, error) {
 	}
 	// 计算容器用了多少 CPU
 	container = status.CalcuateCPUNum(container, c, e.cpuCore)
-	if container.Memory == 0 {
+	if container.Memory == 0 || container.Memory == math.MaxInt64 {
 		container.Memory = e.memory
 	}
 	// 活着才有发布必要
