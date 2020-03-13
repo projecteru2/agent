@@ -17,7 +17,7 @@ func (c *CoreStore) GetNode(nodename string) (*types.Node, error) {
 
 	cpus := types.CPUMap{}
 	for k, v := range resp.Cpu {
-		cpus[k] = int(v)
+		cpus[k] = int64(v)
 	}
 
 	node := &types.Node{

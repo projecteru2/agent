@@ -15,6 +15,7 @@ import (
 	coretypes "github.com/projecteru2/core/types"
 	coreutils "github.com/projecteru2/core/utils"
 	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -25,6 +26,7 @@ type Engine struct {
 	docker  *engineapi.Client
 	node    *coretypes.Node
 	cpuCore float64 // 因为到时候要乘以 float64 所以就直接转换成 float64 吧
+	memory  int64
 
 	transfers *utils.HashBackends
 	forwards  *utils.HashBackends
@@ -64,7 +66,13 @@ func NewEngine(config *types.Config) (*Engine, error) {
 		return nil, err
 	}
 	log.Infof("[NewEngine] Host has %d cpus", len(cpus))
+	memory, err := mem.VirtualMemory()
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("[NewEngine] Host has %d memory", memory.Total)
 	engine.cpuCore = float64(len(cpus))
+	engine.memory = int64(memory.Total)
 	engine.transfers = utils.NewHashBackends(config.Metrics.Transfers)
 	engine.forwards = utils.NewHashBackends(config.Log.Forwards)
 	return engine, nil
