@@ -9,6 +9,8 @@ entrypoints:
       tcp_ports:
         - "12345"
     privileged: true
+    log:
+      type: "none"
 volumes:
   - /sys:/sys:ro
   - /var/run/docker.sock:/var/run/docker.sock
