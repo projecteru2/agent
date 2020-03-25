@@ -86,13 +86,13 @@ func (w *Writer) checkError(err error) {
 }
 
 func (w *Writer) checkConn() error {
+	w.Lock()
+	defer w.Unlock()
 	if w.enc != nil {
 		// normal
 		return nil
 	}
 	if w.connecting == false {
-		w.Lock()
-		defer w.Unlock()
 		// double check
 		if w.connecting == true {
 			return ErrConnecting
