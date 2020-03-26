@@ -27,7 +27,7 @@ cp eru-agent.service $SERVICE
 
 echo $VERSION rpm build begin
 
-fpm -f -s dir -t rpm -n eru-agent --epoch 0 -v $VERSION --iteration 1.el7 -C $RPMROOT -p $PWD --after-install $after_install_script --verbose --category 'Development/App' --description 'docker eru agent' --url 'https://github.com/projecteru2/agent' --license 'MIT'  --no-rpm-sign usr etc
+fpm -f -s dir -t rpm -n eru-agent --epoch 0 -v $VERSION --iteration 1.el7 -C $RPMROOT -p $PWD --after-install $after_install_script --verbose --category 'Development/App' --description 'docker eru agent' --url 'https://github.com/projecteru2/agent' --license 'MIT' -a all --no-rpm-sign usr etc
 
 BIN="$DEBROOT/usr/bin"
 CONF="$DEBROOT/etc/eru"

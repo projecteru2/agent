@@ -22,6 +22,7 @@ func setupLogLevel(l string) error {
 		return err
 	}
 	log.SetLevel(level)
+	log.SetOutput(os.Stdout)
 	return nil
 }
 
