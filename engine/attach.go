@@ -33,7 +33,7 @@ func (e *Engine) attach(container *types.Container) {
 		return
 	}
 
-	cap, err := units.RAMInBytes("10M")
+	cap, _ := units.RAMInBytes("10M")
 	outr, outw := utils.NewBufPipe(cap)
 	errr, errw := utils.NewBufPipe(cap)
 	ctx := context.Background()
