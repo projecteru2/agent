@@ -20,7 +20,6 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.8.5 // indirect
 	github.com/jinzhu/configor v1.1.1
-	github.com/jschwinger23/bufpipe v1.0.5 // indirect
 	github.com/projecteru2/core v0.0.0-20200313031343-262c693ab0bc
 	github.com/prometheus/client_golang v0.9.3
 	github.com/shirou/gopsutil v2.20.2+incompatible
