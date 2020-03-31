@@ -12,6 +12,7 @@ require (
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/docker/docker v0.0.0-20181113085551-758255791e25
+	github.com/docker/go-units v0.3.3
 	github.com/go-ole/go-ole v0.0.0-20180213002836-a1ec82a652eb // indirect
 	github.com/gorilla/mux v1.7.0 // indirect
 	github.com/gorilla/websocket v1.4.0 // indirect
@@ -19,12 +20,13 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.8.5 // indirect
 	github.com/jinzhu/configor v1.1.1
+	github.com/jschwinger23/bufpipe v1.0.5 // indirect
 	github.com/projecteru2/core v0.0.0-20200313031343-262c693ab0bc
 	github.com/prometheus/client_golang v0.9.3
 	github.com/shirou/gopsutil v2.20.2+incompatible
 	github.com/sirupsen/logrus v1.4.2
 	github.com/soheilhy/cmux v0.1.4 // indirect
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/testify v1.5.1
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5 // indirect
 	github.com/urfave/cli/v2 v2.0.0-alpha.2
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
