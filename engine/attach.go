@@ -14,9 +14,11 @@ import (
 	coreutils "github.com/projecteru2/core/utils"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/docker/go-units"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine/logs"
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/watcher"
 )
 
@@ -31,8 +33,9 @@ func (e *Engine) attach(container *types.Container) {
 		return
 	}
 
-	outr, outw := io.Pipe()
-	errr, errw := io.Pipe()
+	cap, err := units.RAMInBytes("10M")
+	outr, outw := utils.NewBufPipe(cap)
+	errr, errw := utils.NewBufPipe(cap)
 	ctx := context.Background()
 	cancelCtx, cancel := context.WithCancel(ctx)
 	go func() {
