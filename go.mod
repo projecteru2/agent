@@ -20,7 +20,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.8.5 // indirect
 	github.com/jinzhu/configor v1.1.1
-	github.com/projecteru2/core v0.0.0-20200313031343-262c693ab0bc
+	github.com/projecteru2/core v0.0.0-20200609134348-2134395ce052
 	github.com/prometheus/client_golang v0.9.3
 	github.com/shirou/gopsutil v2.20.2+incompatible
 	github.com/sirupsen/logrus v1.4.2
@@ -30,9 +30,9 @@ require (
 	github.com/urfave/cli/v2 v2.0.0-alpha.2
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	go.etcd.io/bbolt v1.3.2 // indirect
-	go.uber.org/automaxprocs v1.2.0
+	go.uber.org/automaxprocs v1.3.0
 	go.uber.org/zap v1.9.1 // indirect
-	golang.org/x/net v0.0.0-20191003171128-d98b1b443823
+	golang.org/x/net v0.0.0-20200319234117-63522dbf7eec
 )
 
 replace github.com/libgit2/git2go v0.0.0-20190813182810-37e5b53f742d => github.com/CMGS/git2go v0.0.0-20190930074211-b81086e21275
