@@ -11,7 +11,7 @@ cat > $after_install_script << EOF
 systemctl daemon-reload
 EOF
 
-VERSION=$(cat VERSION)
+VERSION=$(date +%y.%m.%d)
 
 BIN="$RPMROOT/usr/bin"
 CONF="$RPMROOT/etc/eru"
