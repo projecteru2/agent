@@ -1,7 +1,7 @@
 .PHONY: deps build test binary
 
 REPO_PATH := github.com/projecteru2/agent
-VERSION := $(shell date +%y.%m.%d)
+VERSION := $(shell git describe --tags $(shell git rev-list --tags --max-count=1))
 GO_LDFLAGS ?= -s -w -X $(REPO_PATH)/common.EruAgentVersion=$(VERSION)
 
 deps:
