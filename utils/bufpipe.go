@@ -31,9 +31,12 @@ type PipeWriter struct {
 // NewBufPipe creates a synchronous pipe with capacity
 func NewBufPipe(bufCap int64) (*PipeReader, *PipeWriter) {
 	p := &pipe{
-		buf:  bytes.NewBuffer(nil),
-		cond: sync.NewCond(new(sync.Mutex)),
-		cap:  bufCap,
+		buf:    bytes.NewBuffer(nil),
+		cond:   sync.NewCond(new(sync.Mutex)),
+		cap:    bufCap,
+		length: 0,
+		rerr:   nil,
+		werr:   nil,
 	}
 	return &PipeReader{
 			pipe: p,

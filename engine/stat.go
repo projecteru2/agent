@@ -125,7 +125,9 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 			mClient.DropOut(nic.Name, float64(nic.Dropout-oldNICStats.Dropout)/delta)
 		}
 		containerCPUStats, systemCPUStats, containerNetStats = newContainrCPUStats, newSystemCPUStats, newContainerNetStats
-		mClient.Send()
+		if err := mClient.Send(); err != nil {
+			log.Errorf("[stat] Send metrics failed %v", err)
+		}
 	}
 	for {
 		select {

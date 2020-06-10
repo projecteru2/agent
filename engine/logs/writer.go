@@ -54,7 +54,7 @@ func NewWriter(addr string, stdout bool) (*Writer, error) {
 	}
 	writer := &Writer{addr: u.Host, scheme: u.Scheme, stdout: stdout}
 	// pre-connect and ignore error
-	writer.checkConn()
+	_ = writer.checkConn()
 	return writer, err
 }
 
@@ -92,9 +92,9 @@ func (w *Writer) checkConn() error {
 		// normal
 		return nil
 	}
-	if w.connecting == false {
+	if !w.connecting {
 		// double check
-		if w.connecting == true {
+		if w.connecting {
 			return ErrConnecting
 		}
 		w.connecting = true

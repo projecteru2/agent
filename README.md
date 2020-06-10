@@ -1,6 +1,7 @@
 Agent
 ======
-![](https://github.com/projecteru2/cli/workflows/goreleaser/badge.svg)
+![](https://github.com/projecteru2/agent/workflows/goreleaser/badge.svg)
+![](https://github.com/projecteru2/agent/workflows/golangci-lint/badge.svg)
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/0ae492f3a2c04f7c9b743998f4184943)](https://www.codacy.com/gh/projecteru2/agent?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=projecteru2/agent&amp;utm_campaign=Badge_Grade)
 
 Agent run on the node.

@@ -99,13 +99,15 @@ func (e *Engine) Run() error {
 
 	// wait for signal
 	var c = make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGHUP, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGQUIT)
+	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT)
 	select {
 	case s := <-c:
 		log.Infof("[Engine] Agent caught system signal %s, exiting", s)
 		return nil
 	case err := <-errChan:
-		e.crash()
+		if err := e.crash(); err != nil {
+			log.Infof("[Engine] Mark node crash failed %v", err)
+		}
 		return err
 	}
 }

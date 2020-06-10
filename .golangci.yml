@@ -1,0 +1,11 @@
+run:
+  timeout: 5m
+  tests: false
+  skip-dirs:
+    - tools
+
+issues:
+  exclude-rules:
+    - linters:
+        - staticcheck
+      text: "SA1019:"
