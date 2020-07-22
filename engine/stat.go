@@ -2,14 +2,11 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/projecteru2/agent/types"
 	coreutils "github.com/projecteru2/core/utils"
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/docker"
 	"github.com/shirou/gopsutil/net"
 	log "github.com/sirupsen/logrus"
 )
@@ -59,7 +56,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 			log.Errorf("[stat] get %s stats failed %v", coreutils.ShortID(container.ID), err)
 			return
 		}
-		containerMemStats, err := docker.CgroupMemDockerWithContext(timeoutCtx, container.ID)
+		containerMemStats, err := getMemStats(timeoutCtx, container)
 		if err != nil {
 			log.Errorf("[stat] get %s mem stats failed %v", coreutils.ShortID(container.ID), err)
 			return
@@ -138,34 +135,4 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 			return
 		}
 	}
-}
-
-func getStats(ctx context.Context, container *types.Container, proc string) (*docker.CgroupCPUStat, cpu.TimesStat, []net.IOCountersStat, error) {
-	//get container cpu stats
-	containerCPUStatsWithoutUsage, err := docker.CgroupCPUDockerWithContext(ctx, container.ID)
-	if err != nil {
-		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
-	}
-	containerCPUStatsUsage, err := docker.CgroupCPUDockerUsageWithContext(ctx, container.ID)
-	if err != nil {
-		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
-	}
-	containerCPUStats := &docker.CgroupCPUStat{
-		TimesStat: *containerCPUStatsWithoutUsage,
-		Usage:     containerCPUStatsUsage,
-	}
-	//get system cpu stats
-	systemCPUsStats, err := cpu.TimesWithContext(ctx, false)
-	if err != nil {
-		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
-	}
-	// 0 means all cpu
-	systemCPUStats := systemCPUsStats[0]
-	//get container nic stats
-	netFilePath := fmt.Sprintf("%s/%d/net/dev", proc, container.Pid)
-	containerNetStats, err := net.IOCountersByFileWithContext(ctx, true, netFilePath)
-	if err != nil {
-		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
-	}
-	return containerCPUStats, systemCPUStats, containerNetStats, nil
 }

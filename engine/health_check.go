@@ -140,6 +140,7 @@ func checkOneURL(url string, expectedCode int, timeout time.Duration) bool {
 		log.Warnf("[checkOneURL] Error when checking %s, %s", url, err.Error())
 		return false
 	}
+	defer resp.Body.Close()
 	if expectedCode == 0 {
 		return resp.StatusCode < 500 && resp.StatusCode >= 200
 	}

@@ -6,10 +6,10 @@ import (
 	"runtime/pprof"
 
 	// enable profile
-	_ "net/http/pprof"
+	_ "net/http/pprof" // nolint
 
-	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/versioninfo"
 	"github.com/projecteru2/agent/watcher"
 	coreutils "github.com/projecteru2/core/utils"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -26,14 +26,14 @@ type Handler struct {
 }
 
 // URL /version/
-func (h *Handler) version(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) version(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(JSON{"version": common.EruAgentVersion})
+	_ = json.NewEncoder(w).Encode(JSON{"version": versioninfo.VERSION})
 }
 
 // URL /profile/
-func (h *Handler) profile(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) profile(w http.ResponseWriter, _ *http.Request) {
 	r := JSON{}
 	for _, p := range pprof.Profiles() {
 		r[p.Name()] = p.Count()

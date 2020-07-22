@@ -1,16 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	_ "go.uber.org/automaxprocs"
 
 	"github.com/jinzhu/configor"
 	"github.com/projecteru2/agent/api"
-	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
+	"github.com/projecteru2/agent/versioninfo"
 	"github.com/projecteru2/agent/watcher"
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
@@ -64,10 +65,14 @@ func serve(c *cli.Context) error {
 }
 
 func main() {
+	cli.VersionPrinter = func(c *cli.Context) {
+		fmt.Print(versioninfo.VersionString())
+	}
+
 	app := &cli.App{
-		Name:    "Eru-Agent",
+		Name:    versioninfo.NAME,
 		Usage:   "Run eru agent",
-		Version: common.EruAgentVersion,
+		Version: versioninfo.VERSION,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "config",

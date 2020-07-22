@@ -22,7 +22,7 @@ func (c *CoreStore) SetContainerStatus(ctx context.Context, container *types.Con
 		Healthy:   container.Healthy,
 		Networks:  container.Networks,
 		Extension: bytes,
-		Ttl:       int64(2 * c.config.HealthCheckInterval + c.config.HealthCheckInterval / 2),
+		Ttl:       int64(2*c.config.HealthCheckInterval + c.config.HealthCheckInterval/2),
 	}
 
 	opts := &pb.SetContainersStatusOptions{

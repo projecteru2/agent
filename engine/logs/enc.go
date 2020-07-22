@@ -11,7 +11,7 @@ import (
 )
 
 // Encoder .
-type Encoder interface{
+type Encoder interface {
 	Encode(*types.Log) error
 	Close() error
 }
@@ -26,7 +26,7 @@ type StreamEncoder struct {
 func NewStreamEncoder(wt io.WriteCloser) *StreamEncoder {
 	return &StreamEncoder{
 		Encoder: json.NewEncoder(wt),
-		wt: wt,
+		wt:      wt,
 	}
 }
 
@@ -59,12 +59,12 @@ func CreateJournalEncoder() (*JournalEncoder, error) {
 func (c *JournalEncoder) Encode(logline *types.Log) error {
 	vars := map[string]string{
 		"SYSLOG_IDENTIFIER": logline.Name,
-		"ID": logline.ID,
-		"TYPE": logline.Type,
-		"ENTRY_POINT": logline.EntryPoint,
-		"IDENT": logline.Ident,
-		"DATE_TIME": logline.Datetime,
-		"EXTRA": fmt.Sprintf("%v", logline.Extra),
+		"ID":                logline.ID,
+		"TYPE":              logline.Type,
+		"ENTRY_POINT":       logline.EntryPoint,
+		"IDENT":             logline.Ident,
+		"DATE_TIME":         logline.Datetime,
+		"EXTRA":             fmt.Sprintf("%v", logline.Extra),
 	}
 
 	c.Lock()

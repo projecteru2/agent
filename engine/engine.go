@@ -12,6 +12,7 @@ import (
 	corestore "github.com/projecteru2/agent/store/core"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
+	dockerengine "github.com/projecteru2/core/engine/docker"
 	coretypes "github.com/projecteru2/core/types"
 	coreutils "github.com/projecteru2/core/utils"
 	"github.com/shirou/gopsutil/cpu"
@@ -25,6 +26,7 @@ type Engine struct {
 	config  *types.Config
 	docker  *engineapi.Client
 	node    *coretypes.Node
+	nodeIP  string
 	cpuCore float64 // 因为到时候要乘以 float64 所以就直接转换成 float64 吧
 	memory  int64
 
@@ -57,6 +59,11 @@ func NewEngine(config *types.Config) (*Engine, error) {
 	engine.store = store
 	engine.docker = docker
 	engine.node = node
+	engine.nodeIP = dockerengine.GetIP(node.Endpoint)
+	if engine.nodeIP == "" {
+		engine.nodeIP = common.LocalIP
+	}
+	log.Infof("[NewEngine] Host IP %s", engine.nodeIP)
 	engine.dockerized = os.Getenv(common.DOCKERIZED) != ""
 	if engine.dockerized {
 		os.Setenv("HOST_PROC", "/hostProc")

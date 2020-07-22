@@ -92,38 +92,35 @@ func (w *Writer) checkConn() error {
 		// normal
 		return nil
 	}
-	if !w.connecting {
-		// double check
-		if w.connecting {
-			return ErrConnecting
-		}
-		w.connecting = true
-		go func() {
-			log.Debugf("[writer] Begin trying to connect to %s", w.addr)
-			// retrying up to 4 times to prevent infinite loop
-			for i := 0; i < 4; i++ {
-				enc, err := w.createEncoder()
-				if err == nil {
-					w.Lock()
-					w.enc = enc
-					w.connecting = false
-					w.Unlock()
-					break
-				} else {
-					log.Warnf("[writer] Failed to connect to %s: %s", w.addr, err)
-					time.Sleep(30 * time.Second)
-				}
-			}
-			if w.enc == nil {
-				log.Warnf("[writer] Connect to %s failed for 4 times", w.addr)
+	if w.connecting {
+		return ErrConnecting
+	}
+	w.connecting = true
+	go func() {
+		log.Debugf("[writer] Begin trying to connect to %s", w.addr)
+		// retrying up to 4 times to prevent infinite loop
+		for i := 0; i < 4; i++ {
+			enc, err := w.createEncoder()
+			if err == nil {
 				w.Lock()
+				w.enc = enc
 				w.connecting = false
 				w.Unlock()
+				break
 			} else {
-				log.Debugf("[writer] Connect to %s successfully", w.addr)
+				log.Warnf("[writer] Failed to connect to %s: %s", w.addr, err)
+				time.Sleep(30 * time.Second)
 			}
-		}()
-	}
+		}
+		if w.enc == nil {
+			log.Warnf("[writer] Connect to %s failed for 4 times", w.addr)
+			w.Lock()
+			w.connecting = false
+			w.Unlock()
+		} else {
+			log.Debugf("[writer] Connect to %s successfully", w.addr)
+		}
+	}()
 	return ErrConnecting
 }
 

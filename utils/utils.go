@@ -10,6 +10,7 @@ import (
 	engineapi "github.com/docker/docker/client"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/versioninfo"
 	coreutils "github.com/projecteru2/core/utils"
 	log "github.com/sirupsen/logrus"
 )
@@ -26,13 +27,13 @@ func CheckExistsError(err error) error {
 
 // MakeDockerClient make a docker client
 func MakeDockerClient(config *types.Config) (*engineapi.Client, error) {
-	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("eru-agent-%s", common.EruAgentVersion)}
+	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("eru-agent-%s", versioninfo.VERSION)}
 	return engineapi.NewClient(config.Docker.Endpoint, common.DockerCliVersion, nil, defaultHeaders)
 }
 
 // WritePid write pid
 func WritePid(path string) {
-	if err := ioutil.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0755); err != nil {
+	if err := ioutil.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
 		log.Panicf("Save pid file failed %s", err)
 	}
 }
