@@ -51,7 +51,7 @@ func serve(c *cli.Context) error {
 	watcher.InitMonitor()
 	go watcher.LogMonitor.Serve()
 
-	agent, err := engine.NewEngine(config)
+	agent, err := engine.NewEngine(c.Context, config)
 	if err != nil {
 		log.Fatal(err)
 	}

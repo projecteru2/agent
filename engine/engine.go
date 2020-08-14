@@ -37,14 +37,14 @@ type Engine struct {
 }
 
 //NewEngine make a engine instance
-func NewEngine(config *types.Config) (*Engine, error) {
+func NewEngine(ctx context.Context, config *types.Config) (*Engine, error) {
 	engine := &Engine{}
 	docker, err := utils.MakeDockerClient(config)
 	if err != nil {
 		return nil, err
 	}
 
-	store, err := corestore.NewClient(config)
+	store, err := corestore.NewClient(ctx, config)
 	if err != nil {
 		return nil, err
 	}

@@ -3,6 +3,8 @@ package corestore
 import (
 	"fmt"
 
+	"context"
+
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/core/client"
 )
@@ -14,10 +16,10 @@ type CoreStore struct {
 }
 
 // NewClient new a client
-func NewClient(config *types.Config) (*CoreStore, error) {
+func NewClient(ctx context.Context, config *types.Config) (*CoreStore, error) {
 	if config.Core == "" {
 		return nil, fmt.Errorf("Core addr not set")
 	}
-	coreClient := client.NewClient(config.Core, config.Auth)
-	return &CoreStore{coreClient, config}, nil
+	coreClient, err := client.NewClient(ctx, config.Core, config.Auth)
+	return &CoreStore{coreClient, config}, err
 }
