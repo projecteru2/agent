@@ -1,7 +1,6 @@
 package corestore
 
 import (
-	"github.com/projecteru2/core/cluster"
 	pb "github.com/projecteru2/core/rpc/gen"
 	"github.com/projecteru2/core/types"
 	"golang.org/x/net/context"
@@ -38,9 +37,9 @@ func (c *CoreStore) UpdateNode(node *types.Node) error {
 		Nodename: node.Name,
 	}
 	if node.Available {
-		opts.Status = cluster.NodeUp
+		opts.Status = types.TriTrue
 	} else {
-		opts.Status = cluster.NodeDown
+		opts.Status = types.TriFalse
 	}
 	_, err := client.SetNode(context.Background(), opts)
 	return err
