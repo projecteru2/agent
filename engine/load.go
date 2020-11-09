@@ -23,10 +23,7 @@ func (e *Engine) load() error {
 		}
 
 		if c.Running {
-			//TODO 这里应该用文档说明你丫的远端得有东西
-			//if _, ok := container.Labels["agent"]; !ok || !e.dockerized {
 			e.attach(c)
-			//}
 		}
 
 		if err := e.store.SetContainerStatus(context.Background(), c, e.node); err != nil {

@@ -12,13 +12,13 @@ import (
 )
 
 func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
-	//TODO
-	//FIXME fuck internal pkg
+	// TODO
+	// FIXME fuck internal pkg
 	proc := "/proc"
 	if e.dockerized {
 		proc = "/hostProc"
 	}
-	//init stats
+	// init stats
 	containerCPUStats, systemCPUStats, containerNetStats, err := getStats(parentCtx, container, proc)
 	if err != nil {
 		log.Errorf("[stat] get %s stats failed %v", coreutils.ShortID(container.ID), err)
@@ -29,7 +29,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	timeout := time.Duration(e.config.Metrics.Step) * time.Second
 	tick := time.NewTicker(timeout)
 	defer tick.Stop()
-	hostname := strings.Replace(e.config.HostName, ".", "-", -1)
+	hostname := strings.ReplaceAll(e.config.HostName, ".", "-")
 	addr := ""
 	if e.transfers.Len() > 0 {
 		addr = e.transfers.Get(container.ID, 0)

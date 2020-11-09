@@ -83,8 +83,7 @@ func (e *Engine) attach(container *types.Container) {
 				Ident:      container.Ident,
 				Data:       data,
 				Datetime:   time.Now().Format(common.DateTimeFormat),
-				//TODO
-				//Extra
+				// TODO extra info
 			}
 			watcher.LogMonitor.LogC <- l
 			if err := writer.Write(l); err != nil && !(container.EntryPoint == "agent" && e.dockerized) {

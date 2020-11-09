@@ -53,15 +53,11 @@ func serve(c *cli.Context) error {
 
 	agent, err := engine.NewEngine(c.Context, config)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	go api.Serve(config.API.Addr)
-
-	if err := agent.Run(); err != nil {
-		log.Fatalf("Agent caught error %s", err)
-	}
-	return nil
+	return agent.Run()
 }
 
 func main() {
@@ -151,6 +147,12 @@ func main() {
 				Value:   0,
 				Usage:   "interval for agent to check container's health status",
 				EnvVars: []string{"ERU_AGENT_HEALTH_CHECK_INTERVAL"},
+			},
+			&cli.IntFlag{
+				Name:    "health-check-status-ttl",
+				Value:   0,
+				Usage:   "ttl for container's health status in remote store",
+				EnvVars: []string{"ERU_AGENT_HEALTH_CHECK_STATUS_TTL"},
 			},
 			&cli.IntFlag{
 				Name:    "health-check-timeout",

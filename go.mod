@@ -16,9 +16,9 @@ require (
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/jinzhu/configor v1.2.0
-	github.com/projecteru2/core v0.0.0-20200817033302-333f86113b59
+	github.com/projecteru2/core v0.0.0-20201112061342-2817b766fdfb
 	github.com/prometheus/client_golang v1.7.1
-	github.com/shirou/gopsutil v2.20.2+incompatible
+	github.com/shirou/gopsutil v3.20.10+incompatible
 	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.6.1
@@ -29,6 +29,7 @@ require (
 	golang.org/x/net v0.0.0-20200813134508-3edf25e44fcc
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/tools v0.0.0-20200612022331-742c5eb664c2 // indirect
+	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200605160147-a5ece683394c // indirect
 )

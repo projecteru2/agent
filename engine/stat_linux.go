@@ -13,7 +13,7 @@ import (
 )
 
 func getStats(ctx context.Context, container *types.Container, proc string) (*docker.CgroupCPUStat, cpu.TimesStat, []net.IOCountersStat, error) {
-	//get container cpu stats
+	// get container cpu stats
 	containerCPUStatsWithoutUsage, err := docker.CgroupCPUDockerWithContext(ctx, container.ID)
 	if err != nil {
 		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
@@ -26,14 +26,14 @@ func getStats(ctx context.Context, container *types.Container, proc string) (*do
 		TimesStat: *containerCPUStatsWithoutUsage,
 		Usage:     containerCPUStatsUsage,
 	}
-	//get system cpu stats
+	// get system cpu stats
 	systemCPUsStats, err := cpu.TimesWithContext(ctx, false)
 	if err != nil {
 		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
 	}
 	// 0 means all cpu
 	systemCPUStats := systemCPUsStats[0]
-	//get container nic stats
+	// get container nic stats
 	netFilePath := fmt.Sprintf("%s/%d/net/dev", proc, container.Pid)
 	containerNetStats, err := net.IOCountersByFileWithContext(ctx, true, netFilePath)
 	if err != nil {

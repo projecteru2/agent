@@ -37,9 +37,9 @@ func (c *CoreStore) UpdateNode(node *types.Node) error {
 		Nodename: node.Name,
 	}
 	if node.Available {
-		opts.Status = types.TriTrue
+		opts.StatusOpt = types.TriTrue
 	} else {
-		opts.Status = types.TriFalse
+		opts.StatusOpt = types.TriFalse
 	}
 	_, err := client.SetNode(context.Background(), opts)
 	return err

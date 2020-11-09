@@ -16,7 +16,7 @@ func getStats(ctx context.Context, container *types.Container, proc string) (*do
 		TimesStat: cpu.TimesStat{},
 		Usage:     0.0,
 	}
-	//get system cpu stats
+	// get system cpu stats
 	systemCPUsStats, err := cpu.TimesWithContext(ctx, false)
 	if err != nil {
 		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err

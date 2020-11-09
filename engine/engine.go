@@ -20,7 +20,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//Engine is agent
+// Engine is agent
 type Engine struct {
 	store   store.Store
 	config  *types.Config
@@ -36,7 +36,7 @@ type Engine struct {
 	dockerized bool
 }
 
-//NewEngine make a engine instance
+// NewEngine make a engine instance
 func NewEngine(ctx context.Context, config *types.Config) (*Engine, error) {
 	engine := &Engine{}
 	docker, err := utils.MakeDockerClient(config)
@@ -85,7 +85,7 @@ func NewEngine(ctx context.Context, config *types.Config) (*Engine, error) {
 	return engine, nil
 }
 
-//Run will start agent
+// Run will start agent
 func (e *Engine) Run() error {
 	// load container
 	if err := e.load(); err != nil {
