@@ -9,6 +9,7 @@ import (
 	"github.com/jinzhu/configor"
 	"github.com/projecteru2/agent/api"
 	"github.com/projecteru2/agent/engine"
+	"github.com/projecteru2/agent/selfmon"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/versioninfo"
@@ -47,6 +48,10 @@ func serve(c *cli.Context) error {
 	log.Debugf("[config] %v", config)
 	utils.WritePid(config.PidFile)
 	defer os.Remove(config.PidFile)
+
+	if c.Bool("selfmon") {
+		return selfmon.Monitor(config)
+	}
 
 	watcher.InitMonitor()
 	go watcher.LogMonitor.Serve()
@@ -165,6 +170,11 @@ func main() {
 				Value:   "",
 				Usage:   "change hostname",
 				EnvVars: []string{"ERU_HOSTNAME"},
+			},
+			&cli.BoolFlag{
+				Name:  "selfmon",
+				Value: false,
+				Usage: "run this agent as a selfmon daemon",
 			},
 		},
 		Action: serve,
