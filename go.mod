@@ -16,7 +16,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/jinzhu/configor v1.2.0
-	github.com/projecteru2/core v0.0.0-20201112061342-2817b766fdfb
+	github.com/projecteru2/core v0.0.0-20201119101637-e65c465120ed
 	github.com/prometheus/client_golang v1.7.1
 	github.com/shirou/gopsutil v3.20.10+incompatible
 	github.com/sirupsen/logrus v1.6.0
