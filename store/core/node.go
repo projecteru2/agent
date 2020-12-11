@@ -1,9 +1,10 @@
 package corestore
 
 import (
+	"context"
+
 	pb "github.com/projecteru2/core/rpc/gen"
 	"github.com/projecteru2/core/types"
-	"golang.org/x/net/context"
 )
 
 // GetNode return a node by core
@@ -20,12 +21,14 @@ func (c *CoreStore) GetNode(nodename string) (*types.Node, error) {
 	}
 
 	node := &types.Node{
-		Name:      resp.Name,
-		Podname:   resp.Podname,
-		Endpoint:  resp.Endpoint,
+		NodeMeta: types.NodeMeta{
+			Name:     resp.Name,
+			Podname:  resp.Podname,
+			Endpoint: resp.Endpoint,
+			CPU:      cpus,
+			MemCap:   resp.Memory,
+		},
 		Available: resp.Available,
-		CPU:       cpus,
-		MemCap:    resp.Memory,
 	}
 	return node, nil
 }

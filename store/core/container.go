@@ -3,10 +3,11 @@ package corestore
 import (
 	"encoding/json"
 
+	"context"
+
 	"github.com/projecteru2/agent/types"
 	pb "github.com/projecteru2/core/rpc/gen"
 	coretypes "github.com/projecteru2/core/types"
-	"golang.org/x/net/context"
 )
 
 // SetContainerStatus deploy containers
@@ -16,7 +17,7 @@ func (c *CoreStore) SetContainerStatus(ctx context.Context, container *types.Con
 	if err != nil {
 		return err
 	}
-	containerStatus := &pb.ContainerStatus{
+	containerStatus := &pb.WorkloadStatus{
 		Id:        container.ID,
 		Running:   container.Running,
 		Healthy:   container.Healthy,
@@ -25,9 +26,9 @@ func (c *CoreStore) SetContainerStatus(ctx context.Context, container *types.Con
 		Ttl:       int64(2*c.config.HealthCheckStatusTTL + c.config.HealthCheckStatusTTL/2),
 	}
 
-	opts := &pb.SetContainersStatusOptions{
-		Status: []*pb.ContainerStatus{containerStatus},
+	opts := &pb.SetWorkloadsStatusOptions{
+		Status: []*pb.WorkloadStatus{containerStatus},
 	}
-	_, err = client.SetContainersStatus(ctx, opts)
+	_, err = client.SetWorkloadsStatus(ctx, opts)
 	return err
 }

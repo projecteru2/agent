@@ -6,28 +6,17 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/coreos/etcd/client"
 	engineapi "github.com/docker/docker/client"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/versioninfo"
+	"github.com/projecteru2/agent/version"
 	coreutils "github.com/projecteru2/core/utils"
 	log "github.com/sirupsen/logrus"
 )
 
-// CheckExistsError check etcd data exist
-func CheckExistsError(err error) error {
-	if etcdError, ok := err.(client.Error); ok {
-		if etcdError.Code == client.ErrorCodeNodeExist {
-			return nil
-		}
-	}
-	return err
-}
-
 // MakeDockerClient make a docker client
 func MakeDockerClient(config *types.Config) (*engineapi.Client, error) {
-	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("eru-agent-%s", versioninfo.VERSION)}
+	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("eru-agent-%s", version.VERSION)}
 	return engineapi.NewClient(config.Docker.Endpoint, common.DockerCliVersion, nil, defaultHeaders)
 }
 
@@ -40,7 +29,7 @@ func WritePid(path string) {
 
 // GetAppInfo return app info
 func GetAppInfo(containerName string) (name, entrypoint, ident string, err error) {
-	return coreutils.ParseContainerName(containerName)
+	return coreutils.ParseWorkloadName(containerName)
 }
 
 // Max return max value

@@ -12,7 +12,7 @@ import (
 	"github.com/projecteru2/agent/selfmon"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
-	"github.com/projecteru2/agent/versioninfo"
+	"github.com/projecteru2/agent/version"
 	"github.com/projecteru2/agent/watcher"
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
@@ -67,13 +67,13 @@ func serve(c *cli.Context) error {
 
 func main() {
 	cli.VersionPrinter = func(c *cli.Context) {
-		fmt.Print(versioninfo.VersionString())
+		fmt.Print(version.String())
 	}
 
 	app := &cli.App{
-		Name:    versioninfo.NAME,
+		Name:    version.NAME,
 		Usage:   "Run eru agent",
-		Version: versioninfo.VERSION,
+		Version: version.VERSION,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "config",

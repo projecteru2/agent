@@ -211,7 +211,7 @@ func mockDockerDoer(r *http.Request) (*http.Response, error) {
 				ID:      stringid.GenerateRandomID(),
 				Names:   []string{"hello_docker_ident"},
 				Image:   "test:image",
-				ImageID: stringid.GenerateNonCryptoID(),
+				ImageID: stringid.GenerateRandomID(),
 				Command: "top",
 				Labels:  map[string]string{"ERU": "1"},
 			},

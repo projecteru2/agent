@@ -1,4 +1,4 @@
-package versioninfo
+package version
 
 import (
 	"fmt"
@@ -16,8 +16,8 @@ var (
 	BUILTAT = "now"
 )
 
-// VersionString .
-func VersionString() string {
+// String .
+func String() string {
 	version := ""
 	version += fmt.Sprintf("Version:        %s\n", VERSION)
 	version += fmt.Sprintf("Git hash:       %s\n", REVISION)

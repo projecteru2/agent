@@ -131,9 +131,9 @@ func (m *Selfmon) report() {
 		}
 
 		if _, err := cli.SetNode(context.Background(), &pb.SetNodeOptions{
-			Nodename:       node.Name,
-			StatusOpt:      pb.TriOpt_FALSE,
-			ContainersDown: true,
+			Nodename:      node.Name,
+			StatusOpt:     pb.TriOpt_FALSE,
+			WorkloadsDown: true,
 		}); err != nil {
 			log.Errorf("[selfmon] set node %s down failed %v", node.Name, err)
 			return true

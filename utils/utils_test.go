@@ -43,7 +43,7 @@ func TestGetAppInfo(t *testing.T) {
 	containerName = "api_EAXPcM"
 	_, _, _, err = GetAppInfo(containerName)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid container name")
+	assert.Contains(t, err.Error(), "invalid workload name")
 }
 
 func TestPipeWriter_NoBlocking(t *testing.T) {
