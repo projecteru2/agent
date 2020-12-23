@@ -26,6 +26,11 @@ func TestCache(t *testing.T) {
 	a.True(ok)
 	a.Equal(value, "testvalue")
 
+	cache.Put("testkey", "testvalue1", 1)
+	value, ok = cache.Get("testkey")
+	a.True(ok)
+	a.Equal(value, "testvalue1")
+
 	time.Sleep(3 * time.Second)
 	value, ok = cache.Get("testkey")
 	a.False(ok)

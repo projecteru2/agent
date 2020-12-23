@@ -34,10 +34,7 @@ func (c *CoreStore) SetContainerStatus(ctx context.Context, container *types.Con
 		return nil
 	}
 
-	if !ok || pbs != v {
-		c.cache.Put(container.ID, pbs, defaultContainerStatusTTL)
-	}
-
+	c.cache.Put(container.ID, pbs, defaultContainerStatusTTL)
 	opts := &pb.SetWorkloadsStatusOptions{
 		Status: []*pb.WorkloadStatus{containerStatus},
 	}
