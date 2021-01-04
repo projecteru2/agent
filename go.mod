@@ -12,7 +12,7 @@ require (
 	github.com/go-ole/go-ole v0.0.0-20180213002836-a1ec82a652eb // indirect
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/jinzhu/configor v1.2.1
-	github.com/projecteru2/core v0.0.0-20201211090948-f648b9078e0c
+	github.com/projecteru2/core v0.0.0-20210104031929-579829945ca6
 	github.com/prometheus/client_golang v1.8.0
 	github.com/shirou/gopsutil v3.20.11+incompatible
 	github.com/sirupsen/logrus v1.7.0
