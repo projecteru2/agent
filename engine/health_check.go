@@ -13,7 +13,7 @@ import (
 )
 
 func (e *Engine) healthCheck() {
-	tick := time.NewTicker(time.Duration(e.config.HealthCheckInterval) * time.Second)
+	tick := time.NewTicker(time.Duration(e.config.HealthCheck.Interval) * time.Second)
 	defer tick.Stop()
 	for ; ; <-tick.C {
 		go e.checkAllContainers()
@@ -26,7 +26,6 @@ func (e *Engine) healthCheck() {
 // 为了保证最终数据一致性这里也要检测
 func (e *Engine) checkAllContainers() {
 	log.Debug("[checkAllContainers] health check begin")
-	timeout := time.Duration(e.config.HealthCheckTimeout) * time.Second
 	containers, err := e.listContainers(true, nil)
 	if err != nil {
 		log.Errorf("[checkAllContainers] Error when list all containers with label \"ERU=1\": %v", err)
@@ -44,18 +43,19 @@ func (e *Engine) checkAllContainers() {
 			continue
 		}
 
-		go e.checkOneContainer(container, timeout)
+		go e.checkOneContainer(container)
 	}
 }
 
 // 检查一个容器
-func (e *Engine) checkOneContainer(container *types.Container, timeout time.Duration) {
+func (e *Engine) checkOneContainer(container *types.Container) {
 	// 理论上这里都是 running 的容器，因为 listContainers 标记为 all=false 了
 	// 并且都有 healthcheck 标记
 	// 检查现在是不是还健康
 	// for safe
 	container.Healthy = container.Running
 	if container.HealthCheck != nil {
+		timeout := time.Duration(e.config.HealthCheck.Timeout) * time.Second
 		container.Healthy = checkSingleContainerHealthy(container, timeout)
 	}
 

@@ -30,21 +30,26 @@ type LogConfig struct {
 	Stdout   bool     `yaml:"stdout"`
 }
 
+// HealthCheckConfig contain healthcheck config
+type HealthCheckConfig struct {
+	Interval  int `yaml:"interval" required:"true" default:"15"`
+	StatusTTL int `yaml:"status_ttl"`
+	Timeout   int `yaml:"timeout" default:"10"`
+	CacheTTL  int `yaml:"cache_ttl" default:"300"`
+}
+
 // Config contain all configs
 type Config struct {
-	PidFile              string               `yaml:"pid" required:"true" default:"/tmp/agent.pid"`
-	HealthCheckInterval  int                  `yaml:"health_check_interval"`
-	HealthCheckTimeout   int                  `yaml:"health_check_timeout"`
-	HealthCheckCacheTTL  int                  `yaml:"health_check_cache_ttl"`
-	HealthCheckStatusTTL int                  `yaml:"health_check_status_ttl"`
-	Core                 string               `yaml:"core" required:"true"`
-	Auth                 coretypes.AuthConfig `yaml:"auth"`
-	HostName             string               `yaml:"-"`
+	PidFile  string `yaml:"pid" required:"true" default:"/tmp/agent.pid"`
+	Core     string `yaml:"core" required:"true"`
+	HostName string `yaml:"-"`
 
-	Docker  DockerConfig
-	Metrics MetricsConfig
-	API     APIConfig
-	Log     LogConfig
+	Auth        coretypes.AuthConfig `yaml:"auth"`
+	Docker      DockerConfig
+	Metrics     MetricsConfig
+	API         APIConfig
+	Log         LogConfig
+	HealthCheck HealthCheckConfig `yaml:"healcheck"`
 }
 
 // PrepareConfig 从cli覆写并做准备
@@ -72,13 +77,14 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 		config.PidFile = c.String("pidfile")
 	}
 	if c.Int("health-check-interval") > 0 {
-		config.HealthCheckInterval = c.Int("health-check-interval")
+		config.HealthCheck.Interval = c.Int("health-check-interval")
 	}
+	config.HealthCheck.StatusTTL = c.Int("health-check-status-ttl") // status ttl can be 0
 	if c.Int("health-check-timeout") > 0 {
-		config.HealthCheckTimeout = c.Int("health-check-timeout")
+		config.HealthCheck.Timeout = c.Int("health-check-timeout")
 	}
-	if c.Int("health-check-status-ttl") > 0 {
-		config.HealthCheckStatusTTL = c.Int("health-check-status-ttl")
+	if c.Int("health-check-cache-ttl") > 0 {
+		config.HealthCheck.CacheTTL = c.Int("health-check-cache-ttl")
 	}
 	if c.String("docker-endpoint") != "" {
 		config.Docker.Endpoint = c.String("docker-endpoint")
@@ -102,13 +108,13 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 	if config.PidFile == "" {
 		log.Fatal("need to set pidfile")
 	}
-	if config.HealthCheckTimeout == 0 {
-		config.HealthCheckTimeout = 3
+	if config.HealthCheck.Interval == 0 {
+		config.HealthCheck.Interval = 15
 	}
-	if config.HealthCheckInterval == 0 {
-		config.HealthCheckInterval = 10
+	if config.HealthCheck.Timeout == 0 {
+		config.HealthCheck.Timeout = 10
 	}
-	if config.HealthCheckCacheTTL == 0 {
-		config.HealthCheckCacheTTL = 60
+	if config.HealthCheck.CacheTTL == 0 {
+		config.HealthCheck.CacheTTL = 300
 	}
 }

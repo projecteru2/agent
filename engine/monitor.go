@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"time"
 
 	types "github.com/docker/docker/api/types"
 	eventtypes "github.com/docker/docker/api/types/events"
@@ -50,7 +49,7 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 			log.Errorf("[handleContainerStart] update deploy status failed %v", err)
 		}
 	} else {
-		go e.checkOneContainer(container, time.Duration(e.config.HealthCheckTimeout)*time.Second)
+		go e.checkOneContainer(container)
 	}
 }
 

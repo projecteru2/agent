@@ -1,12 +1,14 @@
-pid: /tmp/agent.pid
-health_check_interval: 5
-health_check_timeout: 10
-core: 127.0.0.1:5001
+pid: /tmp/agent.pid # required
+core: 127.0.0.1:5001 # required
+
+auth:
+  username: username
+  password: password
 
 docker:
-  endpoint: unix:///var/run/docker.sock
+  endpoint: unix:///var/run/docker.sock # required
 metrics:
-  step: 30
+  step: 30 # required
   transfers:
     - 127.0.0.1:8125
 api:
@@ -15,6 +17,8 @@ log:
   forwards:
     - tcp://127.0.0.1:5144
   stdout: False
-auth:
-  username: username
-  password: password
+healthcheck:
+  interval: 15 # required
+  status_ttl: 0 # 0 forever
+  timeout: 10
+  cache_ttl: 300

@@ -150,7 +150,7 @@ func (m *Selfmon) report() {
 }
 
 func (m *Selfmon) detect(node *pb.Node) error {
-	timeout := time.Second * time.Duration(m.config.HealthCheckTimeout)
+	timeout := time.Second * time.Duration(m.config.HealthCheck.Timeout)
 
 	addr, err := m.parseEndpoint(node.Endpoint)
 	if err != nil {
