@@ -98,10 +98,8 @@ func (e *Engine) Run() error {
 	// start health check
 	go e.healthCheck()
 
-	// tell core this node is ready
-	if err := e.activated(true); err != nil {
-		return err
-	}
+	// not tell core this node is ready
+	// that's means keep node status
 	log.Info("[Engine] Node activated")
 
 	// wait for signal
