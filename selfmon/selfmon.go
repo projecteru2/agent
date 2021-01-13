@@ -2,7 +2,6 @@ package selfmon
 
 import (
 	"context"
-	"net"
 	"net/url"
 	"os"
 	"os/signal"
@@ -11,19 +10,31 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	etcdtypes "go.etcd.io/etcd/v3/clientv3"
+	"go.etcd.io/etcd/v3/mvcc/mvccpb"
 
 	"github.com/projecteru2/core/client"
 	pb "github.com/projecteru2/core/rpc/gen"
+	coremeta "github.com/projecteru2/core/store/etcdv3/meta"
+	coretypes "github.com/projecteru2/core/types"
 
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 )
+
+// ActiveKey .
+const ActiveKey = "/selfmon/active"
 
 // Selfmon .
 type Selfmon struct {
-	config *types.Config
-	nodes  sync.Map
-	deads  sync.Map
-	core   *client.Client
+	config        *types.Config
+	nodes         sync.Map
+	deads         sync.Map
+	rpc           pb.CoreRPCClient
+	etcd          coremeta.KV
+	active        utils.AtomicBool
+	checkInterval time.Duration
+	detector      Detector
 
 	exit struct {
 		sync.Once
@@ -34,9 +45,20 @@ type Selfmon struct {
 // New .
 func New(config *types.Config) (mon *Selfmon, err error) {
 	mon = &Selfmon{}
+	mon.checkInterval = time.Second * 8
 	mon.config = config
+	mon.detector = coreDetector{mon}
 	mon.exit.C = make(chan struct{}, 1)
-	mon.core, err = client.NewClient(context.Background(), mon.config.Core, config.Auth)
+	if mon.etcd, err = coremeta.NewETCD(config.Etcd, false); err != nil {
+		return
+	}
+
+	var cc *client.Client
+	if cc, err = client.NewClient(context.Background(), mon.config.Core, config.Auth); err != nil {
+		return
+	}
+	mon.rpc = cc.GetRPCClient()
+
 	return
 }
 
@@ -63,22 +85,28 @@ func (m *Selfmon) Run() {
 
 	ch := make(chan *pb.Node)
 	for i := 0; i < 10; i++ {
-		go m.detector(i, ch)
+		go m.detect(i, ch)
 	}
 
-	timer := time.NewTimer(time.Second)
+	timer := time.NewTimer(1)
 	defer timer.Stop()
 
 	dispatch := func() {
-		timer.Reset(time.Second * 16)
+		timer.Reset(m.checkInterval)
 
 		m.nodes.Range(func(key, value interface{}) bool {
-			if node, ok := value.(*pb.Node); ok {
-				ch <- node
-			} else {
+			node, ok := value.(*pb.Node)
+			if !ok {
 				log.Errorf("[selfmon] %p is not a *pb.Node, but %v", value, value)
+				return true
 			}
-			return true
+
+			select {
+			case ch <- node:
+				return true
+			case <-m.exit.C:
+				return false
+			}
 		})
 
 		m.report()
@@ -96,31 +124,33 @@ func (m *Selfmon) Run() {
 	}
 }
 
-func (m *Selfmon) detector(ident int, recv <-chan *pb.Node) {
+func (m *Selfmon) detect(ident int, recv <-chan *pb.Node) {
 	for {
 		select {
 		case node := <-recv:
-			log.Debugf("[self] detector %d recv node %s/%s", ident, node.Name, node.Endpoint)
-			if err := m.detect(node); err != nil {
+			log.Debugf("[selfmon] detector %d recv node %s/%s", ident, node.Name, node.Endpoint)
+			if err := m.detector.Detect(node); err != nil {
 				m.deads.Store(node.Name, node)
 			}
 
 		case <-m.exit.C:
+			log.Warnf("[selfmon] exit from detector %d", ident)
 			return
 		}
 	}
 }
 
 func (m *Selfmon) report() {
-	cli := m.core.GetRPCClient()
-
-	names := []string{}
+	keys := []interface{}{}
 
 	m.deads.Range(func(key, value interface{}) bool {
-		if nm, ok := key.(string); ok {
-			names = append(names, nm)
-		} else {
+		keys = append(keys, key)
+		if _, ok := key.(string); !ok {
 			log.Errorf("[selfmon] %v is not a string", key)
+			return true
+		}
+		if !m.active.Bool() {
+			log.Errorf("[selfmon] %p is not active yet", m)
 			return true
 		}
 
@@ -130,7 +160,7 @@ func (m *Selfmon) report() {
 			return true
 		}
 
-		if _, err := cli.SetNode(context.Background(), &pb.SetNodeOptions{
+		if _, err := m.rpc.SetNode(context.Background(), &pb.SetNodeOptions{
 			Nodename:      node.Name,
 			StatusOpt:     pb.TriOpt_FALSE,
 			WorkloadsDown: true,
@@ -144,42 +174,9 @@ func (m *Selfmon) report() {
 	})
 
 	// Clearing them all out after the report.
-	for _, nm := range names {
+	for _, nm := range keys {
 		m.deads.Delete(nm)
 	}
-}
-
-func (m *Selfmon) detect(node *pb.Node) error {
-	timeout := time.Second * time.Duration(m.config.HealthCheck.Timeout)
-
-	addr, err := m.parseEndpoint(node.Endpoint)
-	if err != nil {
-		return err
-	}
-
-	dial := func() error {
-		conn, err := net.DialTimeout("tcp", addr, timeout)
-		if err == nil {
-			conn.Close()
-		}
-		return err
-	}
-
-	last := 3
-	for i := 0; i <= last; i++ {
-		if err = dial(); err == nil {
-			log.Debugf("[selfmon] dial %s/%s ok", node.Name, node.Endpoint)
-			break
-		}
-
-		log.Debugf("[selfmon] %d dial %s failed %v", i, node.Name, err)
-
-		if i < last {
-			time.Sleep(time.Second * (1 << i))
-		}
-	}
-
-	return err
 }
 
 func (m *Selfmon) parseEndpoint(uri string) (string, error) {
@@ -191,24 +188,22 @@ func (m *Selfmon) parseEndpoint(uri string) (string, error) {
 }
 
 func (m *Selfmon) watch() {
-	timer := time.NewTimer(time.Second)
+	timer := time.NewTimer(1)
 	defer timer.Stop()
 
 	watch := func() {
-		defer timer.Reset(time.Second * 8)
+		defer timer.Reset(m.checkInterval * 8)
 
 		// Get all nodes which are active status, and regardless of pod.
-		podNodes, err := m.core.GetRPCClient().ListPodNodes(context.Background(), &pb.ListNodesOptions{})
+		podNodes, err := m.rpc.ListPodNodes(context.Background(), &pb.ListNodesOptions{})
 		if err != nil {
 			log.Errorf("[selfmon] get pod nodes from %s failed %v", m.config.Core, err)
 			return
 		}
 
-		var count int
 		for _, n := range podNodes.Nodes {
 			log.Debugf("[selfmon] watched %s/%s", n.Name, n.Endpoint)
 			m.nodes.LoadOrStore(n.Name, n)
-			count++
 		}
 	}
 
@@ -216,12 +211,119 @@ func (m *Selfmon) watch() {
 		select {
 		case <-timer.C:
 			watch()
-
 		case <-m.exit.C:
 			log.Warnf("[selfmon] exit from %p watch", m)
 			return
 		}
 	}
+}
+
+// Register .
+func (m *Selfmon) Register() (func(), error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	del := make(chan struct{}, 1)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	// Watching the active key permanently.
+	go func() {
+		defer wg.Done()
+		defer close(del)
+
+		handleResp := func(resp etcdtypes.WatchResponse) {
+			if err := resp.Err(); err != nil {
+				if resp.Canceled {
+					log.Infof("[Register] watching is canceled")
+					return
+				}
+				log.Errorf("[Register] watch failed: %v", err)
+				time.Sleep(time.Second)
+				return
+			}
+
+			for _, ev := range resp.Events {
+				if ev.Type == mvccpb.DELETE {
+					select {
+					case del <- struct{}{}:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				log.Infof("[Register] watching done")
+				return
+			case resp := <-m.etcd.Watch(ctx, ActiveKey):
+				handleResp(resp)
+			}
+		}
+	}()
+
+	wg.Add(1)
+	// Always trying to register if the selfmon is alive.
+	go func() {
+		var expiry <-chan struct{}
+		unregister := func() {}
+
+		defer func() {
+			m.active.Unset()
+			unregister()
+			wg.Done()
+		}()
+
+		for {
+			m.active.Unset()
+
+			// We have to put a single <-ctx.Done() here to avoid it may be starved
+			// while it combines with <-expiry and <-del.
+			select {
+			case <-ctx.Done():
+				log.Infof("[Register] register done: %v", ctx.Err())
+				return
+			default:
+			}
+
+			if ne, un, err := m.register(); err != nil {
+				if err != coretypes.ErrKeyExists {
+					log.Errorf("[Register] failed to re-register: %v", err)
+					time.Sleep(time.Second)
+					continue
+				}
+				log.Infof("[Register] there has been another active selfmon")
+			} else {
+				log.Infof("[Register] the agent has been active")
+				expiry = ne
+				unregister = un
+				m.active.Set()
+			}
+
+			// Though there's a standalone <-ctx.Done() above, we still need <-ctx.Done()
+			// in this select block to make sure the select could be terminated
+			// once the ctx is done during hang together.
+			select {
+			case <-ctx.Done():
+				log.Infof("[Register] register done: %v", ctx.Err())
+				return
+			case <-expiry:
+				log.Infof("[Register] the original active selfmon has been expired")
+			case <-del:
+				log.Infof("[Register] The original active Selfmon is terminated")
+			}
+		}
+	}()
+
+	return func() {
+		cancel()
+		wg.Wait()
+	}, nil
+}
+
+func (m *Selfmon) register() (<-chan struct{}, func(), error) {
+	return m.etcd.StartEphemeral(context.Background(), ActiveKey, time.Second*16)
 }
 
 // Monitor .
@@ -230,6 +332,12 @@ func Monitor(config *types.Config) error {
 	if err != nil {
 		return err
 	}
+
+	unregister, err := mon.Register()
+	if err != nil {
+		return err
+	}
+	defer unregister()
 
 	var wg sync.WaitGroup
 	wg.Add(1)

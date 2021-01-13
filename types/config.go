@@ -50,7 +50,8 @@ type Config struct {
 	Metrics     MetricsConfig
 	API         APIConfig
 	Log         LogConfig
-	HealthCheck HealthCheckConfig `yaml:"healcheck"`
+	HealthCheck HealthCheckConfig    `yaml:"healcheck"`
+	Etcd        coretypes.EtcdConfig `yaml:"etcd"`
 }
 
 // PrepareConfig 从cli覆写并做准备
