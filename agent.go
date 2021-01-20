@@ -175,6 +175,12 @@ func main() {
 				Usage:   "ttl for container's health status in local memory",
 				EnvVars: []string{"ERU_AGENT_HEALTH_CHECK_CACHE_TTL"},
 			},
+			&cli.IntFlag{
+				Name:    "heartbeat-interval",
+				Value:   0,
+				Usage:   "interval for agent to send heartbeat to core",
+				EnvVars: []string{"ERU_AGENT_HEARTBEAT_INTERVAL"},
+			},
 			&cli.StringFlag{
 				Name:    "hostname",
 				Value:   "",
