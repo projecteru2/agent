@@ -3,8 +3,6 @@ package engine
 import (
 	"context"
 	"os"
-	"os/signal"
-	"syscall"
 
 	engineapi "github.com/docker/docker/client"
 	"github.com/projecteru2/agent/common"
@@ -86,7 +84,9 @@ func NewEngine(ctx context.Context, config *types.Config) (*Engine, error) {
 }
 
 // Run will start agent
-func (e *Engine) Run() error {
+// blocks by ctx.Done()
+// either call this in a separated goroutine, or used in main to block main goroutine
+func (e *Engine) Run(ctx context.Context) error {
 	// load container
 	if err := e.load(); err != nil {
 		return err
@@ -96,21 +96,17 @@ func (e *Engine) Run() error {
 	go e.monitor(eventChan)
 
 	// start health check
-	go e.healthCheck()
+	go e.healthCheck(ctx)
 
 	// start node heartbeat
-	go e.heartbeat()
+	go e.heartbeat(ctx)
 
-	// not tell core this node is ready
-	// that's means keep node status
 	log.Info("[Engine] Node activated")
 
 	// wait for signal
-	var c = make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT)
 	select {
-	case s := <-c:
-		log.Infof("[Engine] Agent caught system signal %s, exiting", s)
+	case <-ctx.Done():
+		log.Info("[Engine] Agent caught system signal, exiting")
 		return nil
 	case err := <-errChan:
 		if err := e.crash(); err != nil {

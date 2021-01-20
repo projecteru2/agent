@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -28,10 +29,13 @@ func InitMonitor() {
 }
 
 // Serve start monitor
-func (w *Watcher) Serve() {
+func (w *Watcher) Serve(ctx context.Context) {
 	logrus.Info("[logServe] Log monitor started")
+	defer logrus.Info("[logServe] Log monitor stopped")
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case log := <-w.LogC:
 			if consumers, ok := w.consumer[log.Name]; ok {
 				data, err := json.Marshal(log)

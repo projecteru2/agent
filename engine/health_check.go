@@ -12,11 +12,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (e *Engine) healthCheck() {
+func (e *Engine) healthCheck(ctx context.Context) {
 	tick := time.NewTicker(time.Duration(e.config.HealthCheck.Interval) * time.Second)
 	defer tick.Stop()
-	for ; ; <-tick.C {
-		go e.checkAllContainers()
+
+	for {
+		select {
+		case <-tick.C:
+			go e.checkAllContainers()
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 
