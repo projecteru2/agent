@@ -47,3 +47,16 @@ func (c *CoreStore) UpdateNode(node *types.Node) error {
 	_, err := client.SetNode(context.Background(), opts)
 	return err
 }
+
+// SetNodeStatus reports the status of node
+// SetNodeStatus always reports alive status,
+// when not alive, TTL will cause expiration of node
+func (c *CoreStore) SetNodeStatus(ctx context.Context, ttl int64) error {
+	client := c.client.GetRPCClient()
+	opts := &pb.SetNodeStatusOptions{
+		Nodename: c.config.HostName,
+		Ttl:      ttl,
+	}
+	_, err := client.SetNodeStatus(ctx, opts)
+	return err
+}

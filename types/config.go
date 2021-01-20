@@ -32,10 +32,11 @@ type LogConfig struct {
 
 // HealthCheckConfig contain healthcheck config
 type HealthCheckConfig struct {
-	Interval  int `yaml:"interval" required:"true" default:"15"`
-	StatusTTL int `yaml:"status_ttl"`
-	Timeout   int `yaml:"timeout" default:"10"`
-	CacheTTL  int `yaml:"cache_ttl" default:"300"`
+	Interval           int `yaml:"interval" required:"true" default:"15"`
+	StatusTTL          int `yaml:"status_ttl"`
+	Timeout            int `yaml:"timeout" default:"10"`
+	CacheTTL           int `yaml:"cache_ttl" default:"300"`
+	NodeStatusInterval int `yaml:"node_status_interval" default:"180"`
 }
 
 // Config contain all configs
