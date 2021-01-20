@@ -31,5 +31,7 @@ func (e *Engine) nodeStatusReport() {
 	defer cancel()
 
 	ttl := int64(e.config.HealthCheck.NodeStatusInterval * 2)
-	e.store.SetNodeStatus(ctx, ttl)
+	if err := e.store.SetNodeStatus(ctx, ttl); err != nil {
+		log.Errorf("[nodeStatusReport] error when set node status: %v", err)
+	}
 }
