@@ -17,7 +17,7 @@ binary:
 
 unit-test:
 	go vet `go list ./... | grep -v '/vendor/'`
-	go test -v `go list ./... | grep -v '/vendor/'`
+	go test `go list ./... | grep -v '/vendor/'`
 
 build: deps binary
 
@@ -25,3 +25,7 @@ test: deps unit-test
 
 lint:
 	golangci-lint run
+
+.PHONY: mock
+mock:
+	mockery --dir store --output store/mocks --name Store
