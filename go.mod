@@ -15,6 +15,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/projecteru2/core v0.0.0-20210120020951-6aab2987c576
 	github.com/prometheus/client_golang v1.8.0
+	github.com/sethvargo/go-signalcontext v0.1.0
 	github.com/shirou/gopsutil v3.20.11+incompatible
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/objx v0.2.0 // indirect

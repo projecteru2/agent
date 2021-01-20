@@ -9,13 +9,17 @@ import (
 
 // heartbeat creates a new goroutine to report status every NodeStatusInterval seconds
 // by default it will be 180s
-func (e *Engine) heartbeat() {
+func (e *Engine) heartbeat(ctx context.Context) {
 	tick := time.NewTicker(time.Duration(e.config.HeartbeatInterval) * time.Second)
-	// TODO this Stop is never reached
-	// fix this in another PR
 	defer tick.Stop()
-	for range tick.C {
-		go e.nodeStatusReport()
+
+	for {
+		select {
+		case <-tick.C:
+			go e.nodeStatusReport()
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 

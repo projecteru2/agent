@@ -14,6 +14,7 @@ import (
 	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/version"
 	"github.com/projecteru2/agent/watcher"
+	"github.com/sethvargo/go-signalcontext"
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 )
@@ -53,8 +54,11 @@ func serve(c *cli.Context) error {
 		return selfmon.Monitor(config)
 	}
 
+	ctx, cancel := signalcontext.OnInterrupt()
+	defer cancel()
+
 	watcher.InitMonitor()
-	go watcher.LogMonitor.Serve()
+	go watcher.LogMonitor.Serve(ctx)
 
 	agent, err := engine.NewEngine(c.Context, config)
 	if err != nil {
@@ -62,7 +66,7 @@ func serve(c *cli.Context) error {
 	}
 
 	go api.Serve(config.API.Addr)
-	return agent.Run()
+	return agent.Run(ctx)
 }
 
 func main() {

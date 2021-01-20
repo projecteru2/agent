@@ -68,6 +68,8 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 }
 
 // Serve start a api service
+// blocks by http.ListenAndServe
+// run this in a seperated goroutine
 func Serve(addr string) {
 	if addr == "" {
 		return
@@ -92,10 +94,9 @@ func Serve(addr string) {
 	http.Handle("/", restfulAPIServer)
 	http.Handle("/metrics", promhttp.Handler())
 	log.Infof("[apiServe] http api started %s", addr)
-	go func() {
-		err := http.ListenAndServe(addr, nil)
-		if err != nil {
-			log.Panicf("http api failed %s", err)
-		}
-	}()
+
+	err := http.ListenAndServe(addr, nil)
+	if err != nil {
+		log.Panicf("http api failed %s", err)
+	}
 }
