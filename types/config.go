@@ -77,6 +77,9 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 	if c.String("pidfile") != "" {
 		config.PidFile = c.String("pidfile")
 	}
+	if c.Int("heartbeat-interval") > 0 {
+		config.HeartbeatInterval = c.Int("heartbeat-interval")
+	}
 	if c.Int("health-check-interval") > 0 {
 		config.HealthCheck.Interval = c.Int("health-check-interval")
 	}
@@ -108,6 +111,9 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 	// validate
 	if config.PidFile == "" {
 		log.Fatal("need to set pidfile")
+	}
+	if config.HeartbeatInterval == 0 {
+		config.HeartbeatInterval = 180
 	}
 	if config.HealthCheck.Interval == 0 {
 		config.HealthCheck.Interval = 15
