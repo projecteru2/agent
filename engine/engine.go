@@ -99,7 +99,7 @@ func (e *Engine) Run() error {
 	go e.healthCheck()
 
 	// start node heartbeat
-	go e.statusReport()
+	go e.heartbeat()
 
 	// not tell core this node is ready
 	// that's means keep node status

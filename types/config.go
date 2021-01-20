@@ -32,11 +32,10 @@ type LogConfig struct {
 
 // HealthCheckConfig contain healthcheck config
 type HealthCheckConfig struct {
-	Interval           int `yaml:"interval" required:"true" default:"15"`
-	StatusTTL          int `yaml:"status_ttl"`
-	Timeout            int `yaml:"timeout" default:"10"`
-	CacheTTL           int `yaml:"cache_ttl" default:"300"`
-	NodeStatusInterval int `yaml:"node_status_interval" default:"180"`
+	Interval  int `yaml:"interval" required:"true" default:"15"`
+	StatusTTL int `yaml:"status_ttl"`
+	Timeout   int `yaml:"timeout" default:"10"`
+	CacheTTL  int `yaml:"cache_ttl" default:"300"`
 }
 
 // Config contain all configs
@@ -45,12 +44,13 @@ type Config struct {
 	Core     string `yaml:"core" required:"true"`
 	HostName string `yaml:"-"`
 
-	Auth        coretypes.AuthConfig `yaml:"auth"`
-	Docker      DockerConfig
-	Metrics     MetricsConfig
-	API         APIConfig
-	Log         LogConfig
-	HealthCheck HealthCheckConfig `yaml:"healcheck"`
+	Auth              coretypes.AuthConfig `yaml:"auth"`
+	Docker            DockerConfig
+	Metrics           MetricsConfig
+	API               APIConfig
+	Log               LogConfig
+	HealthCheck       HealthCheckConfig `yaml:"healcheck"`
+	HeartbeatInterval int               `yaml:"heartbeat_interval" default:"180"`
 }
 
 // PrepareConfig 从cli覆写并做准备

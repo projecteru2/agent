@@ -22,3 +22,4 @@ healthcheck:
   status_ttl: 0 # 0 forever
   timeout: 10
   cache_ttl: 300
+heartbeat_interval: 120
