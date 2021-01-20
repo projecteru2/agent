@@ -1,5 +1,6 @@
 pid: /tmp/agent.pid # required
 core: 127.0.0.1:5001 # required
+heartbeat_interval: 120
 
 auth:
   username: username
@@ -22,4 +23,3 @@ healthcheck:
   status_ttl: 0 # 0 forever
   timeout: 10
   cache_ttl: 300
-heartbeat_interval: 120

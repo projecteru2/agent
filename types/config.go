@@ -40,17 +40,17 @@ type HealthCheckConfig struct {
 
 // Config contain all configs
 type Config struct {
-	PidFile  string `yaml:"pid" required:"true" default:"/tmp/agent.pid"`
-	Core     string `yaml:"core" required:"true"`
-	HostName string `yaml:"-"`
+	PidFile           string `yaml:"pid" required:"true" default:"/tmp/agent.pid"`
+	Core              string `yaml:"core" required:"true"`
+	HostName          string `yaml:"-"`
+	HeartbeatInterval int    `yaml:"heartbeat_interval" default:"180"`
 
-	Auth              coretypes.AuthConfig `yaml:"auth"`
-	Docker            DockerConfig
-	Metrics           MetricsConfig
-	API               APIConfig
-	Log               LogConfig
-	HealthCheck       HealthCheckConfig `yaml:"healcheck"`
-	HeartbeatInterval int               `yaml:"heartbeat_interval" default:"180"`
+	Auth        coretypes.AuthConfig `yaml:"auth"`
+	Docker      DockerConfig
+	Metrics     MetricsConfig
+	API         APIConfig
+	Log         LogConfig
+	HealthCheck HealthCheckConfig `yaml:"healcheck"`
 }
 
 // PrepareConfig 从cli覆写并做准备
