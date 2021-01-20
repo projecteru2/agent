@@ -85,7 +85,7 @@ func NewEngine(ctx context.Context, config *types.Config) (*Engine, error) {
 
 // Run will start agent
 // blocks by ctx.Done()
-// either call this in a seperated goroutine, or used in main to block main goroutine
+// either call this in a separated goroutine, or used in main to block main goroutine
 func (e *Engine) Run(ctx context.Context) error {
 	// load container
 	if err := e.load(); err != nil {

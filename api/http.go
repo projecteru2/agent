@@ -69,7 +69,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 
 // Serve start a api service
 // blocks by http.ListenAndServe
-// run this in a seperated goroutine
+// run this in a separated goroutine
 func Serve(addr string) {
 	if addr == "" {
 		return
