@@ -12,5 +12,6 @@ type Store interface {
 	GetNode(nodename string) (*coretypes.Node, error)
 	UpdateNode(node *coretypes.Node) error
 
+	SetNodeStatus(context.Context, int64) error
 	SetContainerStatus(context.Context, *types.Container, *coretypes.Node) error
 }

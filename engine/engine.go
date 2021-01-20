@@ -98,6 +98,9 @@ func (e *Engine) Run() error {
 	// start health check
 	go e.healthCheck()
 
+	// start node heartbeat
+	go e.heartbeat()
+
 	// not tell core this node is ready
 	// that's means keep node status
 	log.Info("[Engine] Node activated")

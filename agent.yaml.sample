@@ -1,5 +1,6 @@
 pid: /tmp/agent.pid # required
 core: 127.0.0.1:5001 # required
+heartbeat_interval: 120
 
 auth:
   username: username

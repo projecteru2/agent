@@ -13,13 +13,14 @@ require (
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/jinzhu/configor v1.2.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/projecteru2/core v0.0.0-20210115082536-a32f71c5432e
+	github.com/projecteru2/core v0.0.0-20210120020951-6aab2987c576
 	github.com/prometheus/client_golang v1.8.0
 	github.com/shirou/gopsutil v3.20.11+incompatible
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/urfave/cli/v2 v2.3.0
+	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5 // indirect
 	go.uber.org/automaxprocs v1.3.0
 	golang.org/x/mod v0.3.0 // indirect
 	golang.org/x/tools v0.0.0-20200612022331-742c5eb664c2 // indirect
