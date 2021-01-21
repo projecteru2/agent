@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -16,7 +17,6 @@ import (
 	"github.com/projecteru2/core/client"
 	pb "github.com/projecteru2/core/rpc/gen"
 	coremeta "github.com/projecteru2/core/store/etcdv3/meta"
-	coretypes "github.com/projecteru2/core/types"
 
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
@@ -288,7 +288,7 @@ func (m *Selfmon) Register() (func(), error) {
 			}
 
 			if ne, un, err := m.register(); err != nil {
-				if err != coretypes.ErrKeyExists {
+				if !strings.HasPrefix(err.Error(), "Key exists: ") {
 					log.Errorf("[Register] failed to re-register: %v", err)
 					time.Sleep(time.Second)
 					continue
