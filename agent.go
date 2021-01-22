@@ -195,5 +195,7 @@ func main() {
 		},
 		Action: serve,
 	}
-	_ = app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		log.Errorf("Error running agent: %v", err)
+	}
 }
