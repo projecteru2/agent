@@ -27,6 +27,7 @@ type Engine struct {
 	nodeIP  string
 	cpuCore float64 // 因为到时候要乘以 float64 所以就直接转换成 float64 吧
 	memory  int64
+	cas     utils.GroupCAS
 
 	transfers *utils.HashBackends
 	forwards  *utils.HashBackends

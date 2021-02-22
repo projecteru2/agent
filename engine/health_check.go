@@ -55,6 +55,12 @@ func (e *Engine) checkAllContainers() {
 
 // 检查一个容器
 func (e *Engine) checkOneContainer(container *types.Container) {
+	free, acquired := e.cas.Acquire(container.ID)
+	if !acquired {
+		return
+	}
+	defer free()
+
 	// 理论上这里都是 running 的容器，因为 listContainers 标记为 all=false 了
 	// 并且都有 healthcheck 标记
 	// 检查现在是不是还健康
