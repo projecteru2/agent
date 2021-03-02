@@ -2,7 +2,7 @@ package selfmon
 
 import (
 	"context"
-	"net/url"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -27,14 +27,11 @@ const ActiveKey = "/selfmon/active"
 
 // Selfmon .
 type Selfmon struct {
-	config        *types.Config
-	nodes         sync.Map
-	deads         sync.Map
-	rpc           pb.CoreRPCClient
-	etcd          coremeta.KV
-	active        utils.AtomicBool
-	checkInterval time.Duration
-	detector      Detector
+	config *types.Config
+	status sync.Map
+	rpc    pb.CoreRPCClient
+	etcd   coremeta.KV
+	active utils.AtomicBool
 
 	exit struct {
 		sync.Once
@@ -45,9 +42,7 @@ type Selfmon struct {
 // New .
 func New(config *types.Config) (mon *Selfmon, err error) {
 	mon = &Selfmon{}
-	mon.checkInterval = time.Second * 8
 	mon.config = config
-	mon.detector = coreDetector{mon}
 	mon.exit.C = make(chan struct{}, 1)
 	if mon.etcd, err = coremeta.NewETCD(config.Etcd, false); err != nil {
 		return
@@ -81,119 +76,20 @@ func (m *Selfmon) Reload() error {
 
 // Run .
 func (m *Selfmon) Run() {
-	go m.watch()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	ch := make(chan *pb.Node)
-	for i := 0; i < 10; i++ {
-		go m.detect(i, ch)
-	}
+	go m.initNodeStatus(ctx)
+	go m.watchNodeStatus(ctx)
 
-	timer := time.NewTimer(1)
-	defer timer.Stop()
-
-	dispatch := func() {
-		timer.Reset(m.checkInterval)
-
-		m.nodes.Range(func(key, value interface{}) bool {
-			node, ok := value.(*pb.Node)
-			if !ok {
-				log.Errorf("[selfmon] %p is not a *pb.Node, but %v", value, value)
-				return true
-			}
-
-			select {
-			case ch <- node:
-				return true
-			case <-m.exit.C:
-				return false
-			}
-		})
-
-		m.report()
-	}
-
-	for {
-		select {
-		case <-timer.C:
-			dispatch()
-
-		case <-m.exit.C:
-			log.Warnf("[selfmon] exit from %p main loop", m)
-			return
-		}
-	}
+	<-m.Exit()
+	log.Warnf("[selfmon] exit from %p main loop", m)
 }
 
-func (m *Selfmon) detect(ident int, recv <-chan *pb.Node) {
-	for {
-		select {
-		case node := <-recv:
-			log.Debugf("[selfmon] detector %d recv node %s/%s", ident, node.Name, node.Endpoint)
-			if err := m.detector.Detect(node); err != nil {
-				m.deads.Store(node.Name, node)
-			}
-
-		case <-m.exit.C:
-			log.Warnf("[selfmon] exit from detector %d", ident)
-			return
-		}
-	}
-}
-
-func (m *Selfmon) report() {
-	keys := []interface{}{}
-
-	m.deads.Range(func(key, value interface{}) bool {
-		keys = append(keys, key)
-		if _, ok := key.(string); !ok {
-			log.Errorf("[selfmon] %v is not a string", key)
-			return true
-		}
-		if !m.active.Bool() {
-			log.Errorf("[selfmon] %p is not active yet", m)
-			return true
-		}
-
-		node, ok := value.(*pb.Node)
-		if !ok {
-			log.Errorf("[selfmon] %p is not a *pb.Node, but %v", value, value)
-			return true
-		}
-
-		if _, err := m.rpc.SetNode(context.Background(), &pb.SetNodeOptions{
-			Nodename:      node.Name,
-			StatusOpt:     pb.TriOpt_FALSE,
-			WorkloadsDown: true,
-		}); err != nil {
-			log.Errorf("[selfmon] set node %s down failed %v", node.Name, err)
-			return true
-		}
-
-		log.Infof("[selfmon] report %s/%s is dead", node.Name, node.Endpoint)
-		return true
-	})
-
-	// Clearing them all out after the report.
-	for _, nm := range keys {
-		m.deads.Delete(nm)
-	}
-}
-
-func (m *Selfmon) parseEndpoint(uri string) (string, error) {
-	u, err := url.Parse(uri)
-	if err != nil {
-		return "", err
-	}
-	return u.Host, nil
-}
-
-func (m *Selfmon) watch() {
-	timer := time.NewTimer(1)
-	defer timer.Stop()
-
-	watch := func() {
-		defer timer.Reset(m.checkInterval * 8)
-
+func (m *Selfmon) initNodeStatus(ctx context.Context) {
+	nodes := make(chan *pb.Node)
+	go func() {
+		defer close(nodes)
 		// Get all nodes which are active status, and regardless of pod.
 		podNodes, err := m.rpc.ListPodNodes(context.Background(), &pb.ListNodesOptions{})
 		if err != nil {
@@ -203,18 +99,75 @@ func (m *Selfmon) watch() {
 
 		for _, n := range podNodes.Nodes {
 			log.Debugf("[selfmon] watched %s/%s", n.Name, n.Endpoint)
-			m.nodes.LoadOrStore(n.Name, n)
+			nodes <- n
 		}
+	}()
+
+	for n := range nodes {
+		status, err := m.rpc.GetNodeStatus(ctx, &pb.GetNodeStatusOptions{Nodename: n.Name})
+		fakeMessage := &pb.NodeStatusStreamMessage{
+			Nodename: n.Name,
+			Podname:  n.Podname,
+		}
+		if err != nil || status == nil {
+			fakeMessage.Alive = false
+		} else {
+			fakeMessage.Alive = status.Alive
+		}
+		m.dealNodeStatusMessage(fakeMessage)
+	}
+}
+
+func (m *Selfmon) watchNodeStatus(ctx context.Context) {
+	client, err := m.rpc.NodeStatusStream(ctx, &pb.Empty{})
+	if err != nil {
+		log.Errorf("[selfmon] watch node status failed %v", err)
+		return
 	}
 
 	for {
-		select {
-		case <-timer.C:
-			watch()
-		case <-m.exit.C:
-			log.Warnf("[selfmon] exit from %p watch", m)
+		message, err := client.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Errorf("[selfmon] read node events failed %v", err)
+		}
+		go m.dealNodeStatusMessage(message)
+	}
+}
+
+func (m *Selfmon) dealNodeStatusMessage(message *pb.NodeStatusStreamMessage) {
+	if message.Error != "" {
+		log.Errorf("[selfmon] deal with node status stream message failed %v", message.Error)
+		return
+	}
+
+	defer m.status.Store(message.Nodename, message.Alive)
+
+	lastValue, ok := m.status.Load(message.Nodename)
+	if ok {
+		last, o := lastValue.(bool)
+		if o && last == message.Alive {
 			return
 		}
+	}
+
+	var opt pb.TriOpt
+	if message.Alive {
+		opt = pb.TriOpt_TRUE
+	} else {
+		opt = pb.TriOpt_FALSE
+	}
+
+	// TODO maybe we need a distributed lock to control concurrency
+	if _, err := m.rpc.SetNode(context.Background(), &pb.SetNodeOptions{
+		Nodename:      message.Nodename,
+		StatusOpt:     opt,
+		WorkloadsDown: !message.Alive,
+	}); err != nil {
+		log.Errorf("[selfmon] set node %s down failed %v", message.Nodename, err)
+		return
 	}
 }
 
