@@ -132,6 +132,7 @@ func (m *Selfmon) watchNodeStatus(ctx context.Context) {
 		}
 		if err != nil {
 			log.Errorf("[selfmon] read node events failed %v", err)
+			return
 		}
 		go m.dealNodeStatusMessage(message)
 	}
