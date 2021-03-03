@@ -242,7 +242,7 @@ func (m *Selfmon) Register() (func(), error) {
 			}
 
 			if ne, un, err := m.register(); err != nil {
-				if !strings.HasPrefix(err.Error(), "Key exists: ") {
+				if !strings.Contains(err.Error(), "Key exists") {
 					log.Errorf("[Register] failed to re-register: %v", err)
 					time.Sleep(time.Second)
 					continue
