@@ -13,6 +13,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/jinzhu/configor v1.2.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
+	github.com/pkg/errors v0.9.1
 	github.com/projecteru2/core v0.0.0-20210302082338-f44a0e05990c
 	github.com/prometheus/client_golang v1.8.0
 	github.com/sethvargo/go-signalcontext v0.1.0

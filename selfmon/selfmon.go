@@ -5,21 +5,21 @@ import (
 	"io"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	etcdtypes "go.etcd.io/etcd/v3/clientv3"
 	"go.etcd.io/etcd/v3/mvcc/mvccpb"
 
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/core/client"
 	pb "github.com/projecteru2/core/rpc/gen"
 	coremeta "github.com/projecteru2/core/store/etcdv3/meta"
-
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
+	coretypes "github.com/projecteru2/core/types"
 )
 
 // ActiveKey .
@@ -242,7 +242,7 @@ func (m *Selfmon) Register() (func(), error) {
 			}
 
 			if ne, un, err := m.register(); err != nil {
-				if !strings.Contains(err.Error(), "Key exists") {
+				if !errors.Is(err, coretypes.ErrKeyExists) {
 					log.Errorf("[Register] failed to re-register: %v", err)
 					time.Sleep(time.Second)
 					continue
