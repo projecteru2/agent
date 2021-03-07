@@ -43,9 +43,10 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	log.Infof("[stat] container %s %s metric report start", container.Name, coreutils.ShortID(container.ID))
 
 	updateMetrics := func() {
-		container, err = e.detectContainer(container.ID)
+		id := container.ID
+		container, err = e.detectContainer(id)
 		if err != nil {
-			log.Errorf("[stat] can not refresh container meta %s", container.ID)
+			log.Errorf("[stat] can not refresh container meta %s", id)
 			return
 		}
 		containerCPUCount := container.CPUNum * period
