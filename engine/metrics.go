@@ -46,12 +46,11 @@ type MetricsClient struct {
 // NewMetricsClient new a metrics client
 func NewMetricsClient(statsd, hostname string, container *types.Container) *MetricsClient {
 	clables := []string{}
-	labeList := container.Labels
-	delete(labeList, cluster.ERUMark)
-	delete(labeList, cluster.LabelMeta)
-	for k, v := range labeList {
-		l := fmt.Sprintf("%s=%s", k, v)
-		clables = append(clables, l)
+	for k, v := range container.Labels {
+		if strings.HasPrefix(k, cluster.ERUMark) || strings.HasPrefix(k, cluster.LabelMeta) {
+			continue
+		}
+		clables = append(clables, fmt.Sprintf("%s=%s", k, v))
 	}
 	labels := map[string]string{
 		"containerID":  container.ID,

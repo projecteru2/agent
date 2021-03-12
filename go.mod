@@ -14,7 +14,7 @@ require (
 	github.com/jinzhu/configor v1.2.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/projecteru2/core v0.0.0-20210302082338-f44a0e05990c
+	github.com/projecteru2/core v0.0.0-20210311040349-da7a7e392e94
 	github.com/prometheus/client_golang v1.8.0
 	github.com/sethvargo/go-signalcontext v0.1.0
 	github.com/shirou/gopsutil v3.20.11+incompatible
@@ -22,7 +22,6 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/urfave/cli/v2 v2.3.0
-	go.etcd.io/etcd v0.5.0-alpha.5.0.20200819165624-17cef6e3e9d5 // indirect
 	go.etcd.io/etcd/v3 v3.3.0-rc.0.0.20200925060232-add86bbd1a7a
 	go.uber.org/automaxprocs v1.3.0
 	golang.org/x/mod v0.3.0 // indirect
