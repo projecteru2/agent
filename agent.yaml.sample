@@ -24,6 +24,8 @@ healthcheck:
   timeout: 10
   cache_ttl: 300
 
+global_connection_timeout: 15s
+
 etcd:
   machines:
     - 127.0.0.1:2379

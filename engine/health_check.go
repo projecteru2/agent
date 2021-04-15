@@ -71,7 +71,9 @@ func (e *Engine) checkOneContainer(container *types.Container) {
 		container.Healthy = checkSingleContainerHealthy(container, timeout)
 	}
 
-	if err := e.store.SetContainerStatus(context.Background(), container, e.node); err != nil {
+	cctx, cancel := context.WithTimeout(context.Background(), e.config.GlobalConnectionTimeout)
+	defer cancel()
+	if err := e.store.SetContainerStatus(cctx, container, e.node); err != nil {
 		log.Errorf("[checkOneContainer] update deploy status failed %v", err)
 	}
 }

@@ -2,6 +2,7 @@ package types
 
 import (
 	"os"
+	"time"
 
 	coretypes "github.com/projecteru2/core/types"
 	log "github.com/sirupsen/logrus"
@@ -52,6 +53,8 @@ type Config struct {
 	Log         LogConfig
 	HealthCheck HealthCheckConfig    `yaml:"healcheck"`
 	Etcd        coretypes.EtcdConfig `yaml:"etcd"`
+
+	GlobalConnectionTimeout time.Duration `yaml:"global_connection_timeout" default:"5s"`
 }
 
 // PrepareConfig 从cli覆写并做准备

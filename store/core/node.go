@@ -10,7 +10,10 @@ import (
 // GetNode return a node by core
 func (c *CoreStore) GetNode(nodename string) (*types.Node, error) {
 	client := c.client.GetRPCClient()
-	resp, err := client.GetNode(context.Background(), &pb.GetNodeOptions{Nodename: nodename})
+
+	ctx, cancel := context.WithTimeout(context.Background(), c.config.GlobalConnectionTimeout)
+	defer cancel()
+	resp, err := client.GetNode(ctx, &pb.GetNodeOptions{Nodename: nodename})
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +47,10 @@ func (c *CoreStore) UpdateNode(node *types.Node) error {
 	} else {
 		opts.StatusOpt = types.TriFalse
 	}
-	_, err := client.SetNode(context.Background(), opts)
+
+	ctx, cancel := context.WithTimeout(context.Background(), c.config.GlobalConnectionTimeout)
+	defer cancel()
+	_, err := client.SetNode(ctx, opts)
 	return err
 }
 
