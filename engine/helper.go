@@ -27,7 +27,10 @@ func getFilter(extend map[string]string) enginefilters.Args {
 func (e *Engine) listContainers(all bool, extend map[string]string) ([]enginetypes.Container, error) {
 	f := getFilter(extend)
 	opts := enginetypes.ContainerListOptions{Filters: f, All: all}
-	return e.docker.ContainerList(context.Background(), opts)
+
+	ctx, cancel := context.WithTimeout(context.Background(), e.config.GlobalConnectionTimeout)
+	defer cancel()
+	return e.docker.ContainerList(ctx, opts)
 }
 
 func (e *Engine) activated(f bool) error {
@@ -35,16 +38,18 @@ func (e *Engine) activated(f bool) error {
 	return e.store.UpdateNode(e.node)
 }
 
-func (e *Engine) detectContainer(ID string) (*types.Container, error) {
+func (e *Engine) detectContainer(id string) (*types.Container, error) {
 	// 标准化为 inspect 的数据
-	c, err := e.docker.ContainerInspect(context.Background(), ID)
+	ctx, cancel := context.WithTimeout(context.Background(), e.config.GlobalConnectionTimeout)
+	defer cancel()
+	c, err := e.docker.ContainerInspect(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	label := c.Config.Labels
 
 	if _, ok := label[cluster.ERUMark]; !ok {
-		return nil, fmt.Errorf("not a eru container %s", coreutils.ShortID(ID))
+		return nil, fmt.Errorf("not a eru container %s", coreutils.ShortID(id))
 	}
 
 	// 生成基准 meta

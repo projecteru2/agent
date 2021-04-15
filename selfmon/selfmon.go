@@ -91,7 +91,9 @@ func (m *Selfmon) initNodeStatus(ctx context.Context) {
 	go func() {
 		defer close(nodes)
 		// Get all nodes which are active status, and regardless of pod.
-		podNodes, err := m.rpc.ListPodNodes(context.Background(), &pb.ListNodesOptions{})
+		cctx, cancel := context.WithTimeout(ctx, m.config.GlobalConnectionTimeout)
+		defer cancel()
+		podNodes, err := m.rpc.ListPodNodes(cctx, &pb.ListNodesOptions{})
 		if err != nil {
 			log.Errorf("[selfmon] get pod nodes from %s failed %v", m.config.Core, err)
 			return
@@ -162,7 +164,9 @@ func (m *Selfmon) dealNodeStatusMessage(message *pb.NodeStatusStreamMessage) {
 	}
 
 	// TODO maybe we need a distributed lock to control concurrency
-	if _, err := m.rpc.SetNode(context.Background(), &pb.SetNodeOptions{
+	ctx, cancel := context.WithTimeout(context.Background(), m.config.GlobalConnectionTimeout)
+	defer cancel()
+	if _, err := m.rpc.SetNode(ctx, &pb.SetNodeOptions{
 		Nodename:      message.Nodename,
 		StatusOpt:     opt,
 		WorkloadsDown: !message.Alive,
