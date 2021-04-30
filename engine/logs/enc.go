@@ -57,6 +57,11 @@ func CreateJournalEncoder() (*JournalEncoder, error) {
 
 // Encode .
 func (c *JournalEncoder) Encode(logline *types.Log) error {
+	extra, err := json.Marshal(logline.Extra)
+	if err != nil {
+		return err
+	}
+
 	vars := map[string]string{
 		"SYSLOG_IDENTIFIER": logline.Name,
 		"ID":                logline.ID,
@@ -64,7 +69,7 @@ func (c *JournalEncoder) Encode(logline *types.Log) error {
 		"ENTRY_POINT":       logline.EntryPoint,
 		"IDENT":             logline.Ident,
 		"DATE_TIME":         logline.Datetime,
-		"EXTRA":             fmt.Sprintf("%v", logline.Extra),
+		"EXTRA":             string(extra),
 	}
 
 	c.Lock()

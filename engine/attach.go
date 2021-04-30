@@ -63,6 +63,8 @@ func (e *Engine) attach(container *types.Container) {
 	log.Infof("[attach] attach %s container %s success", container.Name, coreutils.ShortID(container.ID))
 	// attach metrics
 	go e.stat(cancelCtx, container)
+
+	extra := container.LogFieldExtra()
 	pump := func(typ string, source io.Reader) {
 		buf := bufio.NewReader(source)
 		for {
@@ -83,7 +85,7 @@ func (e *Engine) attach(container *types.Container) {
 				Ident:      container.Ident,
 				Data:       data,
 				Datetime:   time.Now().Format(common.DateTimeFormat),
-				// TODO extra info
+				Extra:      extra,
 			}
 			watcher.LogMonitor.LogC <- l
 			if err := writer.Write(l); err != nil && !(container.EntryPoint == "agent" && e.dockerized) {
