@@ -1,6 +1,8 @@
 package status
 
 import (
+	"strings"
+
 	enginetypes "github.com/docker/docker/api/types"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
@@ -18,6 +20,19 @@ func CalcuateCPUNum(container *types.Container, containerJSON enginetypes.Contai
 	return container
 }
 
+func normalizeEnv(env []string) map[string]string {
+	em := make(map[string]string)
+	for _, e := range env {
+		ps := strings.SplitN(e, "=", 2)
+		if len(ps) == 2 {
+			em[ps[0]] = ps[1]
+		} else {
+			em[ps[0]] = ""
+		}
+	}
+	return em
+}
+
 // GenerateContainerMeta make meta obj
 func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.LabelMeta, labels map[string]string) (*types.Container, error) {
 	name, entrypoint, ident, err := utils.GetAppInfo(c.Name)
@@ -31,6 +46,7 @@ func GenerateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.LabelMet
 		EntryPoint:  entrypoint,
 		Ident:       ident,
 		Labels:      labels,
+		Env:         normalizeEnv(c.Config.Env),
 		HealthCheck: meta.HealthCheck,
 		CPUQuota:    c.HostConfig.Resources.CPUQuota,
 		CPUPeriod:   c.HostConfig.Resources.CPUPeriod,
