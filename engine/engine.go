@@ -33,6 +33,11 @@ type Engine struct {
 	forwards  *utils.HashBackends
 
 	dockerized bool
+
+	// coreIdentifier indicates which eru this agent belongs to
+	// it can be used to identify the corresponding core
+	// and all containers that belong to this core
+	coreIdentifier string
 }
 
 // NewEngine make a engine instance
@@ -48,6 +53,9 @@ func NewEngine(ctx context.Context, config *types.Config) (*Engine, error) {
 		return nil, err
 	}
 
+	// set core identifier
+	engine.coreIdentifier = store.GetCoreIdentifier()
+
 	// get self
 	node, err := store.GetNode(config.HostName)
 	if err != nil {
@@ -58,7 +66,7 @@ func NewEngine(ctx context.Context, config *types.Config) (*Engine, error) {
 	engine.store = store
 	engine.docker = docker
 	engine.node = node
-	engine.nodeIP = dockerengine.GetIP(node.Endpoint)
+	engine.nodeIP = dockerengine.GetIP(context.TODO(), node.Endpoint)
 	if engine.nodeIP == "" {
 		engine.nodeIP = common.LocalIP
 	}

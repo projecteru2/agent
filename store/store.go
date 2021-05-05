@@ -14,4 +14,6 @@ type Store interface {
 
 	SetNodeStatus(context.Context, int64) error
 	SetContainerStatus(context.Context, *types.Container, *coretypes.Node) error
+
+	GetCoreIdentifier() string
 }
