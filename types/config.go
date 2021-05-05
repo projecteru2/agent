@@ -46,6 +46,8 @@ type Config struct {
 	HostName          string `yaml:"-"`
 	HeartbeatInterval int    `yaml:"heartbeat_interval" default:"180"`
 
+	CheckOnlyMine bool `yaml:"check_only_mine" default:"false"`
+
 	Auth        coretypes.AuthConfig `yaml:"auth"`
 	Docker      DockerConfig
 	Metrics     MetricsConfig
@@ -111,6 +113,9 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 	}
 	if c.String("log-stdout") != "" {
 		config.Log.Stdout = c.String("log-stdout") == "yes"
+	}
+	if c.Bool("check-only-mine") {
+		config.CheckOnlyMine = true
 	}
 	// validate
 	if config.PidFile == "" {

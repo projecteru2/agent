@@ -192,6 +192,11 @@ func main() {
 				Value: false,
 				Usage: "run this agent as a selfmon daemon",
 			},
+			&cli.BoolFlag{
+				Name:  "check-only-mine",
+				Value: false,
+				Usage: "will only check containers belong to this node if set",
+			},
 		},
 		Action: serve,
 	}

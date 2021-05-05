@@ -14,20 +14,17 @@ require (
 	github.com/jinzhu/configor v1.2.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/projecteru2/core v0.0.0-20210311040349-da7a7e392e94
+	github.com/projecteru2/core v0.0.0-20210503024035-d46fd0bcdc3a
 	github.com/prometheus/client_golang v1.8.0
 	github.com/sethvargo/go-signalcontext v0.1.0
 	github.com/shirou/gopsutil v3.20.11+incompatible
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/objx v0.2.0 // indirect
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.3.0
 	go.etcd.io/etcd/v3 v3.3.0-rc.0.0.20200925060232-add86bbd1a7a
 	go.uber.org/automaxprocs v1.3.0
-	golang.org/x/mod v0.3.0 // indirect
-	golang.org/x/tools v0.0.0-20200612022331-742c5eb664c2 // indirect
 	google.golang.org/grpc v1.29.1
-	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200605160147-a5ece683394c // indirect
 	gotest.tools/v3 v3.0.3 // indirect
 )
