@@ -47,7 +47,7 @@ func (c *Container) LogFieldExtra() map[string]string {
 		"coreid":   c.Labels[fieldCoreIdentifier],
 	}
 	for name, addr := range c.Networks {
-		extra[fmt.Sprintf("networks.%s", name)] = addr
+		extra[fmt.Sprintf("networks_%s", name)] = addr
 	}
 	return extra
 }
