@@ -76,7 +76,7 @@ func (c *JournalEncoder) Encode(logline *types.Log) error {
 	defer c.Unlock()
 
 	p := fmt.Sprintf("message %s", logline.Data)
-	return journal.Send(p, journal.PriErr, vars)
+	return journal.Send(p, journal.PriInfo, vars)
 }
 
 // Close .
