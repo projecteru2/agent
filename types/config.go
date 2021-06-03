@@ -137,4 +137,9 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 	if config.HealthCheck.CacheTTL == 0 {
 		config.HealthCheck.CacheTTL = 300
 	}
+	// status ttl cannot be less than health check interval
+	// unless it's intended to be 0.
+	if config.HealthCheck.StatusTTL > 0 && config.HealthCheck.StatusTTL < config.HealthCheck.Interval {
+		config.HealthCheck.StatusTTL = config.HealthCheck.Interval
+	}
 }
