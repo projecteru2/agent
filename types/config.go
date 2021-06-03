@@ -53,7 +53,7 @@ type Config struct {
 	Metrics     MetricsConfig
 	API         APIConfig
 	Log         LogConfig
-	HealthCheck HealthCheckConfig    `yaml:"healcheck"`
+	HealthCheck HealthCheckConfig    `yaml:"healthcheck"`
 	Etcd        coretypes.EtcdConfig `yaml:"etcd"`
 
 	GlobalConnectionTimeout time.Duration `yaml:"global_connection_timeout" default:"5s"`
@@ -89,7 +89,11 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 	if c.Int("health-check-interval") > 0 {
 		config.HealthCheck.Interval = c.Int("health-check-interval")
 	}
-	config.HealthCheck.StatusTTL = c.Int("health-check-status-ttl") // status ttl can be 0
+	// status ttl can be 0
+	// but we need to check if it's set
+	if c.IsSet("health-check-status-ttl") {
+		config.HealthCheck.StatusTTL = c.Int("health-check-status-ttl")
+	}
 	if c.Int("health-check-timeout") > 0 {
 		config.HealthCheck.Timeout = c.Int("health-check-timeout")
 	}
