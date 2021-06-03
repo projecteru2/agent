@@ -5,17 +5,30 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"os/exec"
+	"regexp"
 	"strings"
 
 	enginetypes "github.com/docker/docker/api/types"
 	enginecontainer "github.com/docker/docker/api/types/container"
 	enginefilters "github.com/docker/docker/api/types/filters"
+	"github.com/pkg/errors"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine/status"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/core/cluster"
 	coreutils "github.com/projecteru2/core/utils"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
+
+var (
+	ipv4Pattern *regexp.Regexp
+)
+
+func init() {
+	ipv4Pattern = regexp.MustCompile(`\d+\.\d+\.\d+\.\d+`)
+}
 
 func useLabelAsFilter() bool {
 	return os.Getenv("ERU_AGENT_EXPERIMENTAL_FILTER") == "label"
@@ -116,5 +129,61 @@ func (e *Engine) detectContainer(id string) (*types.Container, error) {
 		container.Networks = networks
 	}
 
+	if useCNI(label) {
+		cniIPv4, err := fetchCNIIPv4(c.State.Pid)
+		if err == nil && cniIPv4 != "" {
+			container.Networks = map[string]string{
+				"cni": cniIPv4,
+			}
+		}
+	}
+
 	return container, nil
+}
+
+func useCNI(label map[string]string) bool {
+	for k, v := range label {
+		if k == "cni" && v == "1" {
+			return true
+		}
+	}
+	return false
+}
+
+func fetchCNIIPv4(pid int) (ipv4 string, err error) {
+	if pid == 0 {
+		return
+	}
+
+	args := []string{"ip", "-4", "a", "sh", "eth0"}
+	var out []byte
+	if err = WithNetns(fmt.Sprintf("/proc/%d/ns/net", pid), func() error {
+		out, err = exec.Command(args[0], args[1:]...).Output()
+		return errors.WithStack(err)
+	}); err != nil {
+		return
+	}
+	return string(ipv4Pattern.Find(out)), nil
+}
+
+func WithNetns(netnsPath string, f func() error) (err error) {
+	file, err := os.Open(netnsPath)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	origin, err := os.Open("/proc/self/ns/net")
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	if err = unix.Setns(int(file.Fd()), unix.CLONE_NEWNET); err != nil {
+		return errors.WithStack(err)
+	}
+	defer func() {
+		if e := unix.Setns(int(origin.Fd()), unix.CLONE_NEWNET); e != nil {
+			log.Errorf("failed to recover netns: %+v", e)
+		}
+	}()
+	return f()
 }

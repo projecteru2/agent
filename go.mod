@@ -24,6 +24,7 @@ require (
 	github.com/urfave/cli/v2 v2.3.0
 	go.etcd.io/etcd/v3 v3.3.0-rc.0.0.20200925060232-add86bbd1a7a
 	go.uber.org/automaxprocs v1.3.0
+	golang.org/x/sys v0.0.0-20210112080510-489259a85091
 	google.golang.org/grpc v1.29.1
 	gopkg.in/yaml.v3 v3.0.0-20200605160147-a5ece683394c // indirect
 	gotest.tools/v3 v3.0.3 // indirect
