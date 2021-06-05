@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 
@@ -17,6 +19,7 @@ import (
 	"github.com/sethvargo/go-signalcontext"
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v3"
 )
 
 func setupLogLevel(l string) error {
@@ -37,7 +40,22 @@ func initConfig(c *cli.Context) *types.Config {
 	}
 
 	config.PrepareConfig(c)
+	printConfig(config)
 	return config
+}
+
+func printConfig(c *types.Config) {
+	bs, err := yaml.Marshal(c)
+	if err != nil {
+		log.Fatalf("[main] print config failed %v", err)
+	}
+
+	log.Info("---- current config ----")
+	scanner := bufio.NewScanner(bytes.NewBuffer(bs))
+	for scanner.Scan() {
+		log.Info(scanner.Text())
+	}
+	log.Info("------------------------")
 }
 
 func serve(c *cli.Context) error {
@@ -46,7 +64,6 @@ func serve(c *cli.Context) error {
 	}
 
 	config := initConfig(c)
-	log.Debugf("[config] %v", config)
 	utils.WritePid(config.PidFile)
 	defer os.Remove(config.PidFile)
 
@@ -153,31 +170,21 @@ func main() {
 			},
 			&cli.IntFlag{
 				Name:    "health-check-interval",
-				Value:   0,
 				Usage:   "interval for agent to check container's health status",
 				EnvVars: []string{"ERU_AGENT_HEALTH_CHECK_INTERVAL"},
 			},
 			&cli.IntFlag{
-				Name:    "health-check-status-ttl",
-				Value:   0,
-				Usage:   "ttl for container's health status in remote store",
-				EnvVars: []string{"ERU_AGENT_HEALTH_CHECK_STATUS_TTL"},
-			},
-			&cli.IntFlag{
 				Name:    "health-check-timeout",
-				Value:   0,
 				Usage:   "timeout for agent to check container's health status",
 				EnvVars: []string{"ERU_AGENT_HEALTH_CHECK_TIMEOUT"},
 			},
 			&cli.IntFlag{
 				Name:    "health-check-cache-ttl",
-				Value:   0,
 				Usage:   "ttl for container's health status in local memory",
 				EnvVars: []string{"ERU_AGENT_HEALTH_CHECK_CACHE_TTL"},
 			},
 			&cli.IntFlag{
 				Name:    "heartbeat-interval",
-				Value:   0,
 				Usage:   "interval for agent to send heartbeat to core",
 				EnvVars: []string{"ERU_AGENT_HEARTBEAT_INTERVAL"},
 			},

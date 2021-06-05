@@ -11,6 +11,8 @@ ifneq ($(KEEP_SYMBOL), 1)
 	GO_LDFLAGS += -s
 endif
 
+all: build
+
 deps:
 	env GO111MODULE=on go mod download
 	env GO111MODULE=on go mod vendor

@@ -7,9 +7,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// heartbeat creates a new goroutine to report status every NodeStatusInterval seconds
-// by default it will be 180s
+// heartbeat creates a new goroutine to report status every HeartbeatInterval seconds
+// By default HeartbeatInterval is 0, will not do heartbeat.
 func (e *Engine) heartbeat(ctx context.Context) {
+	if e.config.HeartbeatInterval <= 0 {
+		return
+	}
+
 	tick := time.NewTicker(time.Duration(e.config.HeartbeatInterval) * time.Second)
 	defer tick.Stop()
 

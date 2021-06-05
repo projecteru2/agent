@@ -13,7 +13,7 @@ type Store interface {
 	UpdateNode(node *coretypes.Node) error
 
 	SetNodeStatus(context.Context, int64) error
-	SetContainerStatus(context.Context, *types.Container, *coretypes.Node) error
+	SetContainerStatus(context.Context, *types.Container, *coretypes.Node, int64) error
 
 	GetCoreIdentifier() string
 }

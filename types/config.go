@@ -16,7 +16,7 @@ type DockerConfig struct {
 
 // MetricsConfig contain metrics config
 type MetricsConfig struct {
-	Step      int64    `yaml:"step" required:"true" default:"10"`
+	Step      int64    `yaml:"step" default:"10"`
 	Transfers []string `yaml:"transfers"`
 }
 
@@ -33,18 +33,18 @@ type LogConfig struct {
 
 // HealthCheckConfig contain healthcheck config
 type HealthCheckConfig struct {
-	Interval  int `yaml:"interval" required:"true" default:"15"`
-	StatusTTL int `yaml:"status_ttl"`
-	Timeout   int `yaml:"timeout" default:"10"`
-	CacheTTL  int `yaml:"cache_ttl" default:"300"`
+	Interval      int  `yaml:"interval" default:"60"`
+	Timeout       int  `yaml:"timeout" default:"10"`
+	CacheTTL      int  `yaml:"cache_ttl" default:"300"`
+	EnableSelfmon bool `yaml:"enable_selfmon" default:"false"`
 }
 
 // Config contain all configs
 type Config struct {
-	PidFile           string `yaml:"pid" required:"true" default:"/tmp/agent.pid"`
+	PidFile           string `yaml:"pid" default:"/tmp/agent.pid"`
 	Core              string `yaml:"core" required:"true"`
 	HostName          string `yaml:"-"`
-	HeartbeatInterval int    `yaml:"heartbeat_interval" default:"180"`
+	HeartbeatInterval int    `yaml:"heartbeat_interval" default:"0"`
 
 	CheckOnlyMine bool `yaml:"check_only_mine" default:"false"`
 
@@ -57,6 +57,16 @@ type Config struct {
 	Etcd        coretypes.EtcdConfig `yaml:"etcd"`
 
 	GlobalConnectionTimeout time.Duration `yaml:"global_connection_timeout" default:"5s"`
+}
+
+// GetHealthCheckStatusTTL returns the TTL for health check status.
+// If selfmon is enabled, will return 0.
+// Otherwise will use 2.5 * interval.
+func (config *Config) GetHealthCheckStatusTTL() int64 {
+	if config.HealthCheck.EnableSelfmon {
+		return 0
+	}
+	return int64(2*config.HealthCheck.Interval + config.HealthCheck.Interval/2)
 }
 
 // PrepareConfig 从cli覆写并做准备
@@ -89,11 +99,6 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 	if c.Int("health-check-interval") > 0 {
 		config.HealthCheck.Interval = c.Int("health-check-interval")
 	}
-	// status ttl can be 0
-	// but we need to check if it's set
-	if c.IsSet("health-check-status-ttl") {
-		config.HealthCheck.StatusTTL = c.Int("health-check-status-ttl")
-	}
 	if c.Int("health-check-timeout") > 0 {
 		config.HealthCheck.Timeout = c.Int("health-check-timeout")
 	}
@@ -125,21 +130,13 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 	if config.PidFile == "" {
 		log.Fatal("need to set pidfile")
 	}
-	if config.HeartbeatInterval == 0 {
-		config.HeartbeatInterval = 180
-	}
 	if config.HealthCheck.Interval == 0 {
-		config.HealthCheck.Interval = 15
+		log.Fatal("healthcheck.interval == 0, this is not allowed")
 	}
 	if config.HealthCheck.Timeout == 0 {
 		config.HealthCheck.Timeout = 10
 	}
 	if config.HealthCheck.CacheTTL == 0 {
 		config.HealthCheck.CacheTTL = 300
-	}
-	// status ttl cannot be less than health check interval
-	// unless it's intended to be 0.
-	if config.HealthCheck.StatusTTL > 0 && config.HealthCheck.StatusTTL < config.HealthCheck.Interval {
-		config.HealthCheck.StatusTTL = config.HealthCheck.Interval
 	}
 }

@@ -25,6 +25,6 @@ require (
 	go.etcd.io/etcd/v3 v3.3.0-rc.0.0.20200925060232-add86bbd1a7a
 	go.uber.org/automaxprocs v1.3.0
 	google.golang.org/grpc v1.29.1
-	gopkg.in/yaml.v3 v3.0.0-20200605160147-a5ece683394c // indirect
+	gopkg.in/yaml.v3 v3.0.0-20200605160147-a5ece683394c
 	gotest.tools/v3 v3.0.3 // indirect
 )

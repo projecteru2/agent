@@ -20,7 +20,7 @@ func TestLoad(t *testing.T) {
 	n := new(coretypes.Node)
 	mockStore.On("GetNode", mock.AnythingOfType("string")).Return(n, nil)
 	mockStore.On("UpdateNode", mock.Anything).Return(nil)
-	mockStore.On("SetContainerStatus", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	mockStore.On("SetContainerStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 	err := e.load()
 	assert.NoError(t, err)

@@ -13,8 +13,8 @@ import (
 )
 
 // SetContainerStatus deploy containers
-func (c *CoreStore) SetContainerStatus(ctx context.Context, container *types.Container, node *coretypes.Node) error {
-	if c.config.HealthCheck.StatusTTL == 0 {
+func (c *CoreStore) SetContainerStatus(ctx context.Context, container *types.Container, node *coretypes.Node, ttl int64) error {
+	if ttl == 0 {
 		status := fmt.Sprintf("%s|%v|%v", container.ID, container.Running, container.Healthy)
 		cached, ok := c.cache.Get(container.ID)
 		c.cache.Set(container.ID, status, time.Duration(c.config.HealthCheck.CacheTTL)*time.Second)
@@ -36,7 +36,7 @@ func (c *CoreStore) SetContainerStatus(ctx context.Context, container *types.Con
 		Healthy:   container.Healthy,
 		Networks:  container.Networks,
 		Extension: bytes,
-		Ttl:       int64(2*c.config.HealthCheck.StatusTTL + c.config.HealthCheck.StatusTTL/2),
+		Ttl:       ttl,
 	}
 
 	opts := &pb.SetWorkloadsStatusOptions{
