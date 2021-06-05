@@ -28,7 +28,7 @@ func (e *Engine) load() error {
 
 		ctx, cancel := context.WithTimeout(context.Background(), e.config.GlobalConnectionTimeout)
 		defer cancel()
-		if err := e.store.SetContainerStatus(ctx, c, e.node); err != nil {
+		if err := e.store.SetContainerStatus(ctx, c, e.node, e.config.GetHealthCheckStatusTTL()); err != nil {
 			log.Errorf("[load] update deploy status failed %v", err)
 		}
 	}

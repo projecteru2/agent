@@ -8,21 +8,24 @@ auth:
 
 docker:
   endpoint: unix:///var/run/docker.sock # required
+
 metrics:
   step: 30 # required
   transfers:
     - 127.0.0.1:8125
 api:
   addr: 127.0.0.1:12345
+
 log:
   forwards:
     - tcp://127.0.0.1:5144
-  stdout: False
+  stdout: false
+
 healthcheck:
-  interval: 15 # required
-  status_ttl: 0 # 0 forever
+  interval: 120 # required
   timeout: 10
   cache_ttl: 300
+  enable_selfmon: false
 
 global_connection_timeout: 15s
 
