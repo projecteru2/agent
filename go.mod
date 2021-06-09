@@ -14,7 +14,7 @@ require (
 	github.com/jinzhu/configor v1.2.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/projecteru2/core v0.0.0-20210503024035-d46fd0bcdc3a
+	github.com/projecteru2/core v0.0.0-20210609103900-b2f866c6991b
 	github.com/prometheus/client_golang v1.8.0
 	github.com/sethvargo/go-signalcontext v0.1.0
 	github.com/shirou/gopsutil v3.20.11+incompatible

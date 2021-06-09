@@ -37,8 +37,8 @@ type Container struct {
 //   "podname": "testpod",
 //   "nodename": "testnode",
 //   "coreid": "b60d121b438a380c343d5ec3c2037564b82ffef3",
-//   "networks.test_calico_pool1": "10.243.122.1",
-//   "networks.test_calico_pool2": "10.233.0.1",
+//   "networks_test_calico_pool1": "10.243.122.1",
+//   "networks_test_calico_pool2": "10.233.0.1",
 // }
 func (c *Container) LogFieldExtra() map[string]string {
 	extra := map[string]string{

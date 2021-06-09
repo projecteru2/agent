@@ -37,6 +37,10 @@ func (c *CoreStore) SetContainerStatus(ctx context.Context, container *types.Con
 		Networks:  container.Networks,
 		Extension: bytes,
 		Ttl:       ttl,
+
+		Appname:    container.Name,
+		Entrypoint: container.EntryPoint,
+		Nodename:   c.config.HostName,
 	}
 
 	opts := &pb.SetWorkloadsStatusOptions{
