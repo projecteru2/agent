@@ -46,7 +46,7 @@ func (e *Engine) attach(container *types.Container) {
 			Stderr: true,
 		}
 		resp, err := e.docker.ContainerAttach(ctx, container.ID, options)
-		if err != nil && err != httputil.ErrPersistEOF {
+		if err != nil && err != httputil.ErrPersistEOF { // nolint
 			log.Errorf("[attach] attach %s container %s failed %s", container.Name, coreutils.ShortID(container.ID), err)
 			return
 		}

@@ -1,6 +1,6 @@
 module github.com/projecteru2/agent
 
-go 1.13
+go 1.16
 
 require (
 	github.com/CMGS/statsd v0.0.0-20160223095033-48c421b3c1ab
@@ -10,21 +10,22 @@ require (
 	github.com/docker/docker v20.10.0+incompatible
 	github.com/docker/go-units v0.4.0
 	github.com/go-ole/go-ole v0.0.0-20180213002836-a1ec82a652eb // indirect
-	github.com/golang/groupcache v0.0.0-20191027212112-611e8accdfc9 // indirect
 	github.com/jinzhu/configor v1.2.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/projecteru2/core v0.0.0-20210609103900-b2f866c6991b
-	github.com/prometheus/client_golang v1.8.0
+	github.com/projecteru2/core v0.0.0-20210618045145-314d3a292929
+	github.com/prometheus/client_golang v1.11.0
 	github.com/sethvargo/go-signalcontext v0.1.0
 	github.com/shirou/gopsutil v3.20.11+incompatible
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.3.0
-	go.etcd.io/etcd/v3 v3.3.0-rc.0.0.20200925060232-add86bbd1a7a
+	go.etcd.io/etcd/api/v3 v3.5.0
+	go.etcd.io/etcd/client/v3 v3.5.0
+	go.opencensus.io v0.22.2 // indirect
 	go.uber.org/automaxprocs v1.3.0
-	google.golang.org/grpc v1.29.1
-	gopkg.in/yaml.v3 v3.0.0-20200605160147-a5ece683394c
+	google.golang.org/grpc v1.38.0
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	gotest.tools/v3 v3.0.3 // indirect
 )

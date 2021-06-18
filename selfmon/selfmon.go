@@ -11,8 +11,8 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	etcdtypes "go.etcd.io/etcd/v3/clientv3"
-	"go.etcd.io/etcd/v3/mvcc/mvccpb"
+	"go.etcd.io/etcd/api/v3/mvccpb"
+	etcdtypes "go.etcd.io/etcd/client/v3"
 
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
@@ -44,7 +44,7 @@ func New(config *types.Config) (mon *Selfmon, err error) {
 	mon = &Selfmon{}
 	mon.config = config
 	mon.exit.C = make(chan struct{}, 1)
-	if mon.etcd, err = coremeta.NewETCD(config.Etcd, false); err != nil {
+	if mon.etcd, err = coremeta.NewETCD(config.Etcd, nil); err != nil {
 		return
 	}
 

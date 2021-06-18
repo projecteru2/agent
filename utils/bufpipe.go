@@ -112,7 +112,7 @@ func (w *PipeWriter) Close() error {
 	return w.CloseWithError(nil)
 }
 
-// Close closes the writer
+// CloseWithError closes the writer
 func (w *PipeWriter) CloseWithError(err error) error {
 	w.cond.L.Lock()
 	defer w.cond.L.Unlock()
