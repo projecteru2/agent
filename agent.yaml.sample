@@ -1,34 +1,127 @@
-pid: /tmp/agent.pid # required
+# vim: ft=yaml
+
+# pid defines the path to pid file.
+# This option is not required as the default value is "/tmp/agent.pid".
+pid: /tmp/agent.pid
+
+# core defines the address of eru-core component.
+# This option is not required as the default value is "127.0.0.1:5001".
 core: 127.0.0.1:5001 # required
+
+# heartbeat_interval defines the interval for eru-agent to
+# report health status of the node to eru-core.
+# This option is not required, and is only useful when enabling
+# selfmon mode.
+# If you don't want eru-agent to report this status, set it to 0.
+# The default value of this option is 0.
 heartbeat_interval: 120
 
+# auth defines the authentication values for eru-core.
+#
+# auth.username and auth.password are the username and password required by eru-core.
+# If eru-core doesn't require authentication, you can remove this option.
 auth:
   username: username
   password: password
 
+# docker defines docker config.
+#
+# docker.endpoint is the url that eru-agent will use to connect to.
+# This URL can be a tcp address like "tcp://10.233.10.14:2376",
+# or a unix socket file path like "unix:///var/run/docker/sock",
+# this option is required and has no default value, you must set it.
+# Note that this endpoint is usually the API URL of docker on local machine.
 docker:
-  endpoint: unix:///var/run/docker.sock # required
+  endpoint: unix:///var/run/docker.sock
 
+# metrics defines where should eru-agent send metrics of containers to.
+#
+# metrics.step defines the interval of collecting metrics action. eru-agent
+# will collect metrics every `metrics.step` seconds. The default value is 10.
+#
+# metrics.transfers defines where eru-agent will send metrics to.
+# Currently it supports Statsd and Prometheus. The default value is empty,
+# which means eru-agent will not send metrics.
 metrics:
-  step: 30 # required
+  step: 30
   transfers:
     - 127.0.0.1:8125
+
+# api defines the API interface for eru-agent.
+#
+# api.addr defines the address of HTTP API service.
+# API provides these APIs:
+#   - /profile/, will do pprof for eru-agent process and return the statistics;
+#   - /version/, will return the version of this eru-agent instance;
+#   - /log/?app=$APPNAME, will return the log stream of corresponding app;
+#   - /metrics/, default metrics handler for Prometheus to collect.
+# If you don't need any of the functions above, you can remove this option,
+# then eru-agent will not provide HTTP API service.
 api:
   addr: 127.0.0.1:12345
 
+# log defines where should eru-agent forward logs of containers to.
+#
+# log.forwards defines the targets.
+# Currently we support these kinds of targets:
+#   - tcp stream, like rsyslog with tcp protocol, e.g. "tcp://127.0.0.1:5144";
+#   - udp stream, like rsyslog with udp protocol, e.g. "udp://127.0.0.1:5144";
+#   - journald, e.g. "journal://".
+#
+# log.stdout defines whether eru-agent will also write log to STDOUT
+# while forwarding to remote logging facility.
+# The default value is false if you don't define this option.
+# Which means you can check the log of containers in remote logging facility,
+# but you can't see the log of containers in eru-agent's log.
 log:
   forwards:
     - tcp://127.0.0.1:5144
   stdout: false
 
+# healthcheck defines how eru-agent does healthcheck.
+#
+# healthcheck.interval defines the interval for eru-agent to check health status of all containers.
+# The default value is 60, which means every 60 seconds, eru-agent will check health status of all
+# containers, and report these data to eru-core. If these data should expire, the time to expire
+# will be 2.5 * healthcheck.interval, in case that eru-agent failed to report for current round
+# but succeeded to report in next round. E.g. if you set healthcheck.interval to 60, the TTL will be
+# 2.5 * 60 = 150 (in seconds).
+#
+# healthcheck.timeout defines the timeout for eru-agent to check health status.
+# eru-agent will connect to the port container publishes and then check (either layer-2 connectivity or layer-7 application provided scenarios),
+# timeout is used for this connection and check. The default value is 10 (in seconds).
+#
+# healthcheck.cache_ttl defines how long will eru-agent cache an unchanged status locally.
+# This is only used when selfmon mode is switched on. The default value is 300 (in seconds).
+#
+# healthcheck.enable_selfmon defines whether selfmon is switched on.
+# This should be true if there's at least one eru-agent is in mode selfmon.
+# When this is true, healthcheck.enable_selfmon and heartbeat_interval is meaningful.
 healthcheck:
-  interval: 120 # required
+  interval: 120
   timeout: 10
   cache_ttl: 300
   enable_selfmon: false
 
+# global_connection_timeout defines the timeout for eru-agent other than healthcheck.
+# E.g. the timeout for reporting action of eru-agent, or the timeout for eru-agent to
+# connect to docker.
+# The default value is "5s", note that "s" in the end.
 global_connection_timeout: 15s
 
+# etcd defines the etcd configuration.
+# This option is required and has no default value.
+# If you don't plan to run this eru-agent in selfmon mode,
+# you can give a mocked value e.g. 127.0.0.1:1111,
+# this value won't be used to connect, it's only to pass
+# the validation of this option (it's tricky).
+# Will plan to improve this in next release.
+#
+# etcd.machines defines the addresses of etcd machines.
+#
+# etcd.prefix defines the prefix for eru-agents in selfmon mode.
+# This prefix should be the same for all eru-agents in selfmon mode,
+# and also distinguished for different ERU clusters.
 etcd:
   machines:
     - 127.0.0.1:2379
