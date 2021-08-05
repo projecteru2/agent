@@ -96,7 +96,7 @@ log:
 #
 # healthcheck.enable_selfmon defines whether selfmon is switched on.
 # This should be true if there's at least one eru-agent is in mode selfmon.
-# When this is true, healthcheck.enable_selfmon and heartbeat_interval is meaningful.
+# When this is true, healthcheck.enable_selfmon and heartbeat_interval is meaningless.
 healthcheck:
   interval: 120
   timeout: 10
