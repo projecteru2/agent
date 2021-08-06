@@ -1,11 +1,10 @@
 package corestore
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
-
-	"context"
 
 	"github.com/projecteru2/agent/types"
 	pb "github.com/projecteru2/core/rpc/gen"
@@ -14,10 +13,9 @@ import (
 
 // SetContainerStatus deploy containers
 func (c *CoreStore) SetContainerStatus(ctx context.Context, container *types.Container, node *coretypes.Node, ttl int64) error {
+	status := fmt.Sprintf("%s|%v|%v", container.ID, container.Running, container.Healthy)
 	if ttl == 0 {
-		status := fmt.Sprintf("%s|%v|%v", container.ID, container.Running, container.Healthy)
 		cached, ok := c.cache.Get(container.ID)
-		c.cache.Set(container.ID, status, time.Duration(c.config.HealthCheck.CacheTTL)*time.Second)
 		if ok {
 			str := cached.(string)
 			if str == status {
@@ -47,5 +45,14 @@ func (c *CoreStore) SetContainerStatus(ctx context.Context, container *types.Con
 		Status: []*pb.WorkloadStatus{containerStatus},
 	}
 	_, err = c.client.GetRPCClient().SetWorkloadsStatus(ctx, opts)
+
+	if ttl == 0 {
+		if err != nil {
+			c.cache.Delete(container.ID)
+		} else {
+			c.cache.Set(container.ID, status, time.Duration(c.config.HealthCheck.CacheTTL)*time.Second)
+		}
+	}
+
 	return err
 }

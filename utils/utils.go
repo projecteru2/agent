@@ -6,11 +6,12 @@ import (
 	"os"
 	"strconv"
 
-	engineapi "github.com/docker/docker/client"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/version"
 	coreutils "github.com/projecteru2/core/utils"
+
+	engineapi "github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 )
 

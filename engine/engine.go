@@ -137,9 +137,8 @@ func (e *Engine) crash() error {
 			return err
 		}
 		container.Healthy = false
-		ctx, cancel := context.WithTimeout(context.Background(), e.config.GlobalConnectionTimeout)
-		defer cancel()
-		if err := e.store.SetContainerStatus(ctx, container, e.node, e.config.GetHealthCheckStatusTTL()); err != nil {
+
+		if err := e.setContainerStatus(container); err != nil {
 			return err
 		}
 		log.Infof("[crash] mark %s unhealthy", coreutils.ShortID(container.ID))
