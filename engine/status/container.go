@@ -3,10 +3,11 @@ package status
 import (
 	"strings"
 
-	enginetypes "github.com/docker/docker/api/types"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	coretypes "github.com/projecteru2/core/types"
+
+	enginetypes "github.com/docker/docker/api/types"
 	log "github.com/sirupsen/logrus"
 )
 
