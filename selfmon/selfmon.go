@@ -2,6 +2,7 @@ package selfmon
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/signal"
@@ -86,38 +87,77 @@ func (m *Selfmon) Run() {
 	log.Warnf("[selfmon] exit from %p main loop", m)
 }
 
-func (m *Selfmon) initNodeStatus(ctx context.Context) {
-	nodes := make(chan *pb.Node)
-	go func() {
-		defer close(nodes)
-		// Get all nodes which are active status, and regardless of pod.
-		cctx, cancel := context.WithTimeout(ctx, m.config.GlobalConnectionTimeout)
-		defer cancel()
-		podNodes, err := m.rpc.ListPodNodes(cctx, &pb.ListNodesOptions{})
-		if err != nil {
-			log.Errorf("[selfmon] get pod nodes from %s failed %v", m.config.Core, err)
-			return
-		}
-
-		for _, n := range podNodes.Nodes {
-			log.Debugf("[selfmon] watched %s/%s", n.Name, n.Endpoint)
-			nodes <- n
-		}
-	}()
-
-	for n := range nodes {
-		status, err := m.rpc.GetNodeStatus(ctx, &pb.GetNodeStatusOptions{Nodename: n.Name})
-		fakeMessage := &pb.NodeStatusStreamMessage{
-			Nodename: n.Name,
-			Podname:  n.Podname,
-		}
-		if err != nil || status == nil {
-			fakeMessage.Alive = false
-		} else {
-			fakeMessage.Alive = status.Alive
-		}
-		m.dealNodeStatusMessage(fakeMessage)
+func (m *Selfmon) getAllNodes(ctx context.Context) ([]*pb.Node, error) {
+	getPodsCtx, getPodsCancel := context.WithTimeout(ctx, m.config.GlobalConnectionTimeout)
+	defer getPodsCancel()
+	pods, err := m.rpc.ListPods(getPodsCtx, &pb.Empty{})
+	if err != nil {
+		log.Errorf("[selfmon] get pods from %s failed %v", m.config.Core, err)
+		return nil, err
 	}
+
+	wg := &sync.WaitGroup{}
+	errChan := make(chan error, len(pods.Pods))
+	resChan := make(chan *pb.Nodes, len(pods.Pods))
+	for _, pod := range pods.Pods {
+		wg.Add(1)
+		go func(podName string) {
+			defer wg.Done()
+			listPodNodesCtx, listPodNodesCancel := context.WithTimeout(ctx, m.config.GlobalConnectionTimeout)
+			defer listPodNodesCancel()
+			nodes, err := m.rpc.ListPodNodes(listPodNodesCtx, &pb.ListNodesOptions{Podname: podName})
+			if err != nil {
+				errChan <- err
+				return
+			}
+			resChan <- nodes
+		}(pod.Name)
+	}
+	wg.Wait()
+	close(errChan)
+	close(resChan)
+
+	if len(errChan) != 0 {
+		for err := range errChan {
+			log.Errorf("[selfmon] get nodes from %s failed, %v", m.config.Core, err)
+		}
+		return nil, fmt.Errorf("get nodes failed")
+	}
+
+	var res []*pb.Node
+	for nodes := range resChan {
+		res = append(res, nodes.Nodes...)
+	}
+	return res, nil
+}
+
+func (m *Selfmon) initNodeStatus(ctx context.Context) {
+	nodes, err := m.getAllNodes(ctx)
+	if err != nil {
+		return
+	}
+
+	wg := &sync.WaitGroup{}
+	for _, n := range nodes {
+		wg.Add(1)
+		go func(n *pb.Node) {
+			defer wg.Done()
+			cancelCtx, cancel := context.WithTimeout(ctx, m.config.GlobalConnectionTimeout)
+			defer cancel()
+			status, err := m.rpc.GetNodeStatus(cancelCtx, &pb.GetNodeStatusOptions{Nodename: n.Name})
+			fakeMessage := &pb.NodeStatusStreamMessage{
+				Nodename: n.Name,
+				Podname:  n.Podname,
+			}
+			if err != nil || status == nil {
+				fakeMessage.Alive = false
+			} else {
+				fakeMessage.Alive = status.Alive
+			}
+			m.dealNodeStatusMessage(fakeMessage)
+		}(n)
+	}
+	wg.Wait()
 }
 
 func (m *Selfmon) watchNodeStatus(ctx context.Context) {
