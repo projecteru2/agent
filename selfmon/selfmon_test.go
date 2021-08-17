@@ -85,13 +85,15 @@ func newTestSelfmon(t *testing.T) (*Selfmon, func()) {
 		},
 	}
 
-	m, err := New(config)
-	require.NoError(t, err)
+	m := &Selfmon{}
+	m.config = config
+	m.exit.C = make(chan struct{}, 1)
 	m.rpc = &mocks.CoreRPCClient{}
 
 	// Uses an embedded one instead of the real one.
-	m.etcd, err = coremeta.NewETCD(config.Etcd, t)
+	etcd, err := coremeta.NewETCD(config.Etcd, t)
 	require.NoError(t, err)
+	m.etcd = etcd
 
 	m.rpc.(*mocks.CoreRPCClient).On("NodeStatusStream", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("mock"))
 	m.rpc.(*mocks.CoreRPCClient).On("GetNodeStatus", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("mock"))

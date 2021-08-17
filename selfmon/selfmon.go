@@ -49,7 +49,9 @@ func New(config *types.Config) (mon *Selfmon, err error) {
 	}
 
 	var cc *client.Client
-	if cc, err = client.NewClient(context.Background(), mon.config.Core, config.Auth); err != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), config.GlobalConnectionTimeout)
+	defer cancel()
+	if cc, err = client.NewClient(ctx, mon.config.Core, config.Auth); err != nil {
 		return
 	}
 	mon.rpc = cc.GetRPCClient()
@@ -281,7 +283,9 @@ func (m *Selfmon) Register() (func(), error) {
 }
 
 func (m *Selfmon) register() (<-chan struct{}, func(), error) {
-	return m.etcd.StartEphemeral(context.Background(), ActiveKey, time.Second*16)
+	ctx, cancel := context.WithTimeout(context.Background(), m.config.GlobalConnectionTimeout*2)
+	defer cancel()
+	return m.etcd.StartEphemeral(ctx, ActiveKey, time.Second*16)
 }
 
 // Monitor .
