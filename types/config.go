@@ -41,10 +41,10 @@ type HealthCheckConfig struct {
 
 // Config contain all configs
 type Config struct {
-	PidFile           string `yaml:"pid" default:"/tmp/agent.pid"`
-	Core              string `yaml:"core" required:"true"`
-	HostName          string `yaml:"-"`
-	HeartbeatInterval int    `yaml:"heartbeat_interval" default:"0"`
+	PidFile           string   `yaml:"pid" default:"/tmp/agent.pid"`
+	Core              []string `yaml:"core" required:"true"`
+	HostName          string   `yaml:"-"`
+	HeartbeatInterval int      `yaml:"heartbeat_interval" default:"0"`
 
 	CheckOnlyMine bool `yaml:"check_only_mine" default:"false"`
 
@@ -82,7 +82,7 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 	}
 
 	if c.String("core-endpoint") != "" {
-		config.Core = c.String("core-endpoint")
+		config.Core = c.StringSlice("core-endpoint")
 	}
 	if c.String("core-username") != "" {
 		config.Auth.Username = c.String("core-username")

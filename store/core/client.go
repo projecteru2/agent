@@ -1,32 +1,33 @@
 package corestore
 
 import (
-	"fmt"
+	"context"
 	"time"
 
-	"context"
+	"github.com/projecteru2/agent/types"
+	pb "github.com/projecteru2/core/rpc/gen"
 
 	"github.com/patrickmn/go-cache"
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/core/client"
 )
 
 // CoreStore use core to store meta
 type CoreStore struct {
-	client *client.Client
-	config *types.Config
-	cache  *cache.Cache
+	clientPool RPCClientPool
+	config     *types.Config
+	cache      *cache.Cache
 }
 
-// NewClient new a client
-func NewClient(ctx context.Context, config *types.Config) (*CoreStore, error) {
-	if config.Core == "" {
-		return nil, fmt.Errorf("Core addr not set")
-	}
-	coreClient, err := client.NewClient(ctx, config.Core, config.Auth)
+// New new a CoreStore
+func New(ctx context.Context, config *types.Config) (*CoreStore, error) {
+	clientPool, err := NewCoreRPCClientPool(ctx, config)
 	if err != nil {
 		return nil, err
 	}
 	cache := cache.New(time.Duration(config.HealthCheck.CacheTTL)*time.Second, 24*time.Hour)
-	return &CoreStore{coreClient, config, cache}, nil
+	return &CoreStore{clientPool, config, cache}, nil
+}
+
+// GetClient returns a gRPC client
+func (c *CoreStore) GetClient() pb.CoreRPCClient {
+	return c.clientPool.GetClient()
 }

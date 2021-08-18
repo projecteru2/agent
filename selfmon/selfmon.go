@@ -9,17 +9,17 @@ import (
 	"syscall"
 	"time"
 
+	corestore "github.com/projecteru2/agent/store/core"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
+	pb "github.com/projecteru2/core/rpc/gen"
+	coremeta "github.com/projecteru2/core/store/etcdv3/meta"
+	coretypes "github.com/projecteru2/core/types"
+
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"go.etcd.io/etcd/api/v3/mvccpb"
 	etcdtypes "go.etcd.io/etcd/client/v3"
-
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
-	"github.com/projecteru2/core/client"
-	pb "github.com/projecteru2/core/rpc/gen"
-	coremeta "github.com/projecteru2/core/store/etcdv3/meta"
-	coretypes "github.com/projecteru2/core/types"
 )
 
 // ActiveKey .
@@ -29,7 +29,7 @@ const ActiveKey = "/selfmon/active"
 type Selfmon struct {
 	config *types.Config
 	status sync.Map
-	rpc    pb.CoreRPCClient
+	rpc    corestore.RPCClientPool
 	etcd   coremeta.KV
 	active utils.AtomicBool
 
@@ -48,13 +48,10 @@ func New(config *types.Config) (mon *Selfmon, err error) {
 		return
 	}
 
-	var cc *client.Client
-	ctx, cancel := context.WithTimeout(context.Background(), config.GlobalConnectionTimeout)
-	defer cancel()
-	if cc, err = client.NewClient(ctx, mon.config.Core, config.Auth); err != nil {
+	if mon.rpc, err = corestore.NewCoreRPCClientPool(context.TODO(), mon.config); err != nil {
+		log.Errorf("[selfmon] no core rpc connection")
 		return
 	}
-	mon.rpc = cc.GetRPCClient()
 
 	return
 }
@@ -81,7 +78,6 @@ func (m *Selfmon) Run() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go m.initNodeStatus(ctx)
 	go m.watchNodeStatus(ctx)
 
 	<-m.Exit()
@@ -90,12 +86,13 @@ func (m *Selfmon) Run() {
 
 func (m *Selfmon) initNodeStatus(ctx context.Context) {
 	nodes := make(chan *pb.Node)
+
 	go func() {
 		defer close(nodes)
 		// Get all nodes which are active status, and regardless of pod.
 		cctx, cancel := context.WithTimeout(ctx, m.config.GlobalConnectionTimeout)
 		defer cancel()
-		podNodes, err := m.rpc.ListPodNodes(cctx, &pb.ListNodesOptions{})
+		podNodes, err := m.rpc.GetClient().ListPodNodes(cctx, &pb.ListNodesOptions{})
 		if err != nil {
 			log.Errorf("[selfmon] get pod nodes from %s failed %v", m.config.Core, err)
 			return
@@ -108,7 +105,7 @@ func (m *Selfmon) initNodeStatus(ctx context.Context) {
 	}()
 
 	for n := range nodes {
-		status, err := m.rpc.GetNodeStatus(ctx, &pb.GetNodeStatusOptions{Nodename: n.Name})
+		status, err := m.rpc.GetClient().GetNodeStatus(ctx, &pb.GetNodeStatusOptions{Nodename: n.Name})
 		fakeMessage := &pb.NodeStatusStreamMessage{
 			Nodename: n.Name,
 			Podname:  n.Podname,
@@ -123,20 +120,39 @@ func (m *Selfmon) initNodeStatus(ctx context.Context) {
 }
 
 func (m *Selfmon) watchNodeStatus(ctx context.Context) {
-	client, err := m.rpc.NodeStatusStream(ctx, &pb.Empty{})
+	for {
+		select {
+		case <-ctx.Done():
+			log.Infof("[selfmon] stop watching node status")
+			return
+		default:
+			go m.initNodeStatus(ctx)
+			if m.watch(ctx) != nil {
+				log.Debugf("[selfmon] retry to watch node status")
+				time.Sleep(m.config.GlobalConnectionTimeout)
+			}
+		}
+	}
+}
+
+func (m *Selfmon) watch(ctx context.Context) error {
+	client, err := m.rpc.GetClient().NodeStatusStream(ctx, &pb.Empty{})
 	if err != nil {
 		log.Errorf("[selfmon] watch node status failed %v", err)
-		return
+		return err
 	}
+	log.Debugf("[selfmon] watch node status started")
+	defer log.Debugf("[selfmon] stop watching node status")
 
 	for {
 		message, err := client.Recv()
 		if err == io.EOF {
-			break
+			log.Debugf("[selfmon] server closed the stream")
+			return err
 		}
 		if err != nil {
 			log.Errorf("[selfmon] read node events failed %v", err)
-			return
+			return err
 		}
 		go m.dealNodeStatusMessage(message)
 	}
@@ -168,7 +184,7 @@ func (m *Selfmon) dealNodeStatusMessage(message *pb.NodeStatusStreamMessage) {
 	// TODO maybe we need a distributed lock to control concurrency
 	ctx, cancel := context.WithTimeout(context.Background(), m.config.GlobalConnectionTimeout)
 	defer cancel()
-	if _, err := m.rpc.SetNode(ctx, &pb.SetNodeOptions{
+	if _, err := m.rpc.GetClient().SetNode(ctx, &pb.SetNodeOptions{
 		Nodename:      message.Nodename,
 		StatusOpt:     opt,
 		WorkloadsDown: !message.Alive,

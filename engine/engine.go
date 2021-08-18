@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 
-	engineapi "github.com/docker/docker/client"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/store"
 	corestore "github.com/projecteru2/agent/store/core"
@@ -13,6 +12,8 @@ import (
 	dockerengine "github.com/projecteru2/core/engine/docker"
 	coretypes "github.com/projecteru2/core/types"
 	coreutils "github.com/projecteru2/core/utils"
+
+	engineapi "github.com/docker/docker/client"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	log "github.com/sirupsen/logrus"
@@ -48,7 +49,7 @@ func NewEngine(ctx context.Context, config *types.Config) (*Engine, error) {
 		return nil, err
 	}
 
-	store, err := corestore.NewClient(ctx, config)
+	store, err := corestore.New(ctx, config)
 	if err != nil {
 		return nil, err
 	}

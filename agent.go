@@ -8,7 +8,6 @@ import (
 
 	_ "go.uber.org/automaxprocs"
 
-	"github.com/jinzhu/configor"
 	"github.com/projecteru2/agent/api"
 	"github.com/projecteru2/agent/engine"
 	"github.com/projecteru2/agent/selfmon"
@@ -16,6 +15,8 @@ import (
 	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/version"
 	"github.com/projecteru2/agent/watcher"
+
+	"github.com/jinzhu/configor"
 	"github.com/sethvargo/go-signalcontext"
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
