@@ -9,11 +9,9 @@ import (
 
 // GetNode return a node by core
 func (c *CoreStore) GetNode(nodename string) (*types.Node, error) {
-	client := c.client.GetRPCClient()
-
 	ctx, cancel := context.WithTimeout(context.Background(), c.config.GlobalConnectionTimeout)
 	defer cancel()
-	resp, err := client.GetNode(ctx, &pb.GetNodeOptions{Nodename: nodename})
+	resp, err := c.GetClient().GetNode(ctx, &pb.GetNodeOptions{Nodename: nodename})
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +36,6 @@ func (c *CoreStore) GetNode(nodename string) (*types.Node, error) {
 
 // UpdateNode update node status
 func (c *CoreStore) UpdateNode(node *types.Node) error {
-	client := c.client.GetRPCClient()
 	opts := &pb.SetNodeOptions{
 		Nodename: node.Name,
 	}
@@ -50,7 +47,7 @@ func (c *CoreStore) UpdateNode(node *types.Node) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), c.config.GlobalConnectionTimeout)
 	defer cancel()
-	_, err := client.SetNode(ctx, opts)
+	_, err := c.GetClient().SetNode(ctx, opts)
 	return err
 }
 
@@ -58,11 +55,10 @@ func (c *CoreStore) UpdateNode(node *types.Node) error {
 // SetNodeStatus always reports alive status,
 // when not alive, TTL will cause expiration of node
 func (c *CoreStore) SetNodeStatus(ctx context.Context, ttl int64) error {
-	client := c.client.GetRPCClient()
 	opts := &pb.SetNodeStatusOptions{
 		Nodename: c.config.HostName,
 		Ttl:      ttl,
 	}
-	_, err := client.SetNodeStatus(ctx, opts)
+	_, err := c.GetClient().SetNodeStatus(ctx, opts)
 	return err
 }

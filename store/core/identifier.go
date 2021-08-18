@@ -8,12 +8,10 @@ import (
 
 // GetCoreIdentifier returns the identifier of core
 func (c *CoreStore) GetCoreIdentifier() string {
-	client := c.client.GetRPCClient()
-
 	ctx, cancel := context.WithTimeout(context.Background(), c.config.GlobalConnectionTimeout)
 	defer cancel()
 
-	resp, err := client.Info(ctx, &pb.Empty{})
+	resp, err := c.GetClient().Info(ctx, &pb.Empty{})
 	if err != nil {
 		return ""
 	}

@@ -14,7 +14,7 @@ func TestLoadConfig(t *testing.T) {
 	err := configor.Load(config, "../agent.yaml.sample")
 	assert.NoError(err)
 	assert.Equal(config.PidFile, "/tmp/agent.pid")
-	assert.Equal(config.Core, "127.0.0.1:5001")
+	assert.Equal(config.Core, []string{"127.0.0.1:5001", "127.0.0.1:5002"})
 	assert.Equal(config.HostName, "")
 	assert.Equal(config.HeartbeatInterval, 120)
 

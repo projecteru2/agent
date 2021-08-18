@@ -44,7 +44,8 @@ func (c *CoreStore) SetContainerStatus(ctx context.Context, container *types.Con
 	opts := &pb.SetWorkloadsStatusOptions{
 		Status: []*pb.WorkloadStatus{containerStatus},
 	}
-	_, err = c.client.GetRPCClient().SetWorkloadsStatus(ctx, opts)
+
+	_, err = c.GetClient().SetWorkloadsStatus(ctx, opts)
 
 	if ttl == 0 {
 		if err != nil {
