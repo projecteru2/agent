@@ -92,7 +92,7 @@ func (m *Selfmon) initNodeStatus(ctx context.Context) {
 		// Get all nodes which are active status, and regardless of pod.
 		cctx, cancel := context.WithTimeout(ctx, m.config.GlobalConnectionTimeout)
 		defer cancel()
-		podNodes, err := m.rpc.GetClient().ListPodNodes(cctx, &pb.ListNodesOptions{})
+		podNodes, err := m.rpc.GetClient().ListPodNodes(cctx, &pb.ListNodesOptions{All: true})
 		if err != nil {
 			log.Errorf("[selfmon] get pod nodes from %s failed %v", m.config.Core, err)
 			return
@@ -164,8 +164,6 @@ func (m *Selfmon) dealNodeStatusMessage(message *pb.NodeStatusStreamMessage) {
 		return
 	}
 
-	defer m.status.Store(message.Nodename, message.Alive)
-
 	lastValue, ok := m.status.Load(message.Nodename)
 	if ok {
 		last, o := lastValue.(bool)
@@ -189,9 +187,11 @@ func (m *Selfmon) dealNodeStatusMessage(message *pb.NodeStatusStreamMessage) {
 		StatusOpt:     opt,
 		WorkloadsDown: !message.Alive,
 	}); err != nil {
-		log.Errorf("[selfmon] set node %s down failed %v", message.Nodename, err)
+		log.Errorf("[selfmon] set node %s failed %v", message.Nodename, err)
 		return
 	}
+
+	m.status.Store(message.Nodename, message.Alive)
 }
 
 // Register .
