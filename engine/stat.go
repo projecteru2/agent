@@ -11,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
+func (e *Engine) stat(ctx context.Context, container *types.Container) {
 	// TODO
 	// FIXME fuck internal pkg
 	proc := "/proc"
@@ -19,7 +19,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 		proc = "/hostProc"
 	}
 	// init stats
-	containerCPUStats, systemCPUStats, containerNetStats, err := getStats(parentCtx, container, proc)
+	containerCPUStats, systemCPUStats, containerNetStats, err := getStats(ctx, container, proc)
 	if err != nil {
 		log.Errorf("[stat] get %s stats failed %v", coreutils.ShortID(container.ID), err)
 		return
@@ -43,14 +43,13 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 	log.Infof("[stat] container %s %s metric report start", container.Name, coreutils.ShortID(container.ID))
 
 	updateMetrics := func() {
-		id := container.ID
-		container, err = e.detectContainer(id)
+		container, err = e.detectContainer(ctx, container.ID)
 		if err != nil {
-			log.Errorf("[stat] can not refresh container meta %s", id)
+			log.Errorf("[stat] can not refresh container meta %s", container.ID)
 			return
 		}
 		containerCPUCount := container.CPUNum * period
-		timeoutCtx, cancel := context.WithTimeout(parentCtx, timeout)
+		timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 		newContainrCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(timeoutCtx, container, proc)
 		if err != nil {
@@ -131,7 +130,7 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 		select {
 		case <-tick.C:
 			updateMetrics()
-		case <-parentCtx.Done():
+		case <-ctx.Done():
 			mClient.Unregister()
 			return
 		}

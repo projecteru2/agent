@@ -67,7 +67,7 @@ func NewEngine(ctx context.Context, config *types.Config) (*Engine, error) {
 	engine.store = store
 	engine.docker = docker
 	engine.node = node
-	engine.nodeIP = dockerengine.GetIP(context.TODO(), node.Endpoint)
+	engine.nodeIP = dockerengine.GetIP(ctx, node.Endpoint)
 	if engine.nodeIP == "" {
 		engine.nodeIP = common.LocalIP
 	}
@@ -98,7 +98,7 @@ func NewEngine(ctx context.Context, config *types.Config) (*Engine, error) {
 // either call this in a separated goroutine, or used in main to block main goroutine
 func (e *Engine) Run(ctx context.Context) error {
 	// load container
-	if err := e.load(); err != nil {
+	if err := e.load(ctx); err != nil {
 		return err
 	}
 	// start status watcher
@@ -119,21 +119,21 @@ func (e *Engine) Run(ctx context.Context) error {
 		log.Info("[Engine] Agent caught system signal, exiting")
 		return nil
 	case err := <-errChan:
-		if err := e.crash(); err != nil {
+		if err := e.crash(ctx); err != nil {
 			log.Infof("[Engine] Mark node crash failed %v", err)
 		}
 		return err
 	}
 }
 
-func (e *Engine) crash() error {
+func (e *Engine) crash(ctx context.Context) error {
 	log.Info("[crash] mark all containers unhealthy")
 	containers, err := e.listContainers(false, nil)
 	if err != nil {
 		return err
 	}
 	for _, c := range containers {
-		container, err := e.detectContainer(c.ID)
+		container, err := e.detectContainer(ctx, c.ID)
 		if err != nil {
 			return err
 		}

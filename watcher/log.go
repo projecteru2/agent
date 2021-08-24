@@ -44,12 +44,12 @@ func (w *Watcher) Serve(ctx context.Context) {
 					break
 				}
 				line := fmt.Sprintf("%X\r\n%s\r\n\r\n", len(data)+2, string(data))
-				for id, consumer := range consumers {
+				for ID, consumer := range consumers {
 					if _, err := consumer.Buf.WriteString(line); err != nil {
 						logrus.Error(err)
 						logrus.Infof("%s %s log detached", consumer.App, consumer.ID)
 						consumer.Conn.Close()
-						delete(consumers, id)
+						delete(consumers, ID)
 						if len(w.consumer[log.Name]) == 0 {
 							delete(w.consumer, log.Name)
 						}

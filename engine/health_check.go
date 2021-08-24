@@ -21,7 +21,7 @@ func (e *Engine) healthCheck(ctx context.Context) {
 	for {
 		select {
 		case <-tick.C:
-			go e.checkAllContainers()
+			go e.checkAllContainers(ctx)
 		case <-ctx.Done():
 			return
 		}
@@ -32,7 +32,7 @@ func (e *Engine) healthCheck(ctx context.Context) {
 // 这里需要 list all，原因是 monitor 检测到 die 的时候已经标记为 false 了
 // 但是这时候 health check 刚返回 true 回来并写入 core
 // 为了保证最终数据一致性这里也要检测
-func (e *Engine) checkAllContainers() {
+func (e *Engine) checkAllContainers(ctx context.Context) {
 	log.Debug("[checkAllContainers] health check begin")
 	containers, err := e.listContainers(true, nil)
 	if err != nil {
@@ -45,7 +45,7 @@ func (e *Engine) checkAllContainers() {
 		// ContainerList 返回 enginetypes.Container
 		// ContainerInspect 返回 enginetypes.ContainerJSON
 		// 是不是有毛病啊, 不能返回一样的数据结构么我真是日了狗了... 艹他妹妹...
-		container, err := e.detectContainer(c.ID)
+		container, err := e.detectContainer(ctx, c.ID)
 		if err != nil {
 			log.Errorf("[checkAllContainers] detect container failed %v", err)
 			continue
@@ -115,9 +115,9 @@ func checkSingleContainerHealthy(container *types.Container, timeout time.Durati
 		httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", container.LocalIP, container.HealthCheck.HTTPPort, container.HealthCheck.HTTPURL))
 	}
 
-	id := coreutils.ShortID(container.ID)
-	f1 := checkHTTP(id, httpChecker, container.HealthCheck.HTTPCode, timeout)
-	f2 := checkTCP(id, tcpChecker, timeout)
+	ID := coreutils.ShortID(container.ID)
+	f1 := checkHTTP(ID, httpChecker, container.HealthCheck.HTTPCode, timeout)
+	f2 := checkTCP(ID, tcpChecker, timeout)
 	return f1 && f2
 }
 
