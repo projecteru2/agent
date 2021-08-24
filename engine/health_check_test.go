@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"testing"
@@ -46,7 +47,7 @@ func TestCheckAllContainers(t *testing.T) {
 	e := mockNewEngine()
 	mockStore := e.store.(*mocks.Store)
 	mockStore.On("SetContainerStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	e.checkAllContainers()
+	e.checkAllContainers(context.TODO())
 
 	time.Sleep(1 * time.Second)
 }

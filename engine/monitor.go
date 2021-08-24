@@ -30,9 +30,9 @@ func (e *Engine) monitor(eventChan <-chan eventtypes.Message) {
 	eventHandler.Watch(eventChan)
 }
 
-func (e *Engine) handleContainerStart(event eventtypes.Message) {
+func (e *Engine) handleContainerStart(ctx context.Context, event eventtypes.Message) {
 	log.Debugf("[handleContainerStart] container %s start", coreutils.ShortID(event.ID))
-	container, err := e.detectContainer(event.ID)
+	container, err := e.detectContainer(ctx, event.ID)
 	if err != nil {
 		log.Errorf("[handleContainerStart] detect container failed %v", err)
 		return
@@ -53,9 +53,9 @@ func (e *Engine) handleContainerStart(event eventtypes.Message) {
 	}
 }
 
-func (e *Engine) handleContainerDie(event eventtypes.Message) {
+func (e *Engine) handleContainerDie(ctx context.Context, event eventtypes.Message) {
 	log.Debugf("[handleContainerDie] container %s die", coreutils.ShortID(event.ID))
-	container, err := e.detectContainer(event.ID)
+	container, err := e.detectContainer(ctx, event.ID)
 	if err != nil {
 		log.Errorf("[handleContainerDie] detect container failed %v", err)
 	} else if err := e.setContainerStatus(container); err != nil {

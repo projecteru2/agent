@@ -1,6 +1,7 @@
 package status
 
 import (
+	"context"
 	"sync"
 
 	eventtypes "github.com/docker/docker/api/types/events"
@@ -11,16 +12,16 @@ import (
 // EventHandler define event handler
 type EventHandler struct {
 	sync.Mutex
-	handlers map[string]func(eventtypes.Message)
+	handlers map[string]func(context.Context, eventtypes.Message)
 }
 
 // NewEventHandler new a event handler
 func NewEventHandler() *EventHandler {
-	return &EventHandler{handlers: make(map[string]func(eventtypes.Message))}
+	return &EventHandler{handlers: make(map[string]func(context.Context, eventtypes.Message))}
 }
 
 // Handle hand a event
-func (e *EventHandler) Handle(action string, h func(eventtypes.Message)) {
+func (e *EventHandler) Handle(action string, h func(context.Context, eventtypes.Message)) {
 	e.Lock()
 	defer e.Unlock()
 	e.handlers[action] = h
@@ -31,11 +32,10 @@ func (e *EventHandler) Watch(c <-chan eventtypes.Message) {
 	for ev := range c {
 		log.Infof("[Watch] Monitor: cid %s action %s", coreutils.ShortID(ev.ID), ev.Action)
 		e.Lock()
-		h, exists := e.handlers[ev.Action]
-		e.Unlock()
-		if !exists {
-			continue
+		h := e.handlers[ev.Action]
+		if h != nil {
+			go h(context.TODO(), ev)
 		}
-		go h(ev)
+		e.Unlock()
 	}
 }

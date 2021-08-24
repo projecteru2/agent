@@ -3,7 +3,6 @@ package selfmon
 import (
 	"context"
 	"io"
-	"os"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -40,7 +39,7 @@ type Selfmon struct {
 }
 
 // New .
-func New(config *types.Config) (mon *Selfmon, err error) {
+func New(ctx context.Context, config *types.Config) (mon *Selfmon, err error) {
 	mon = &Selfmon{}
 	mon.config = config
 	mon.exit.C = make(chan struct{}, 1)
@@ -48,7 +47,7 @@ func New(config *types.Config) (mon *Selfmon, err error) {
 		return
 	}
 
-	if mon.rpc, err = corestore.NewCoreRPCClientPool(context.TODO(), mon.config); err != nil {
+	if mon.rpc, err = corestore.NewCoreRPCClientPool(ctx, mon.config); err != nil {
 		log.Errorf("[selfmon] no core rpc connection")
 		return
 	}
@@ -74,8 +73,8 @@ func (m *Selfmon) Reload() error {
 }
 
 // Run .
-func (m *Selfmon) Run() {
-	ctx, cancel := context.WithCancel(context.Background())
+func (m *Selfmon) Run(ctx context.Context) {
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	go m.watchNodeStatus(ctx)
@@ -110,12 +109,8 @@ func (m *Selfmon) initNodeStatus(ctx context.Context) {
 			Nodename: n.Name,
 			Podname:  n.Podname,
 		}
-		if err != nil || status == nil {
-			fakeMessage.Alive = false
-		} else {
-			fakeMessage.Alive = status.Alive
-		}
-		m.dealNodeStatusMessage(fakeMessage)
+		fakeMessage.Alive = !(err != nil || status == nil) && status.Alive
+		m.dealNodeStatusMessage(ctx, fakeMessage)
 	}
 }
 
@@ -154,11 +149,11 @@ func (m *Selfmon) watch(ctx context.Context) error {
 			log.Errorf("[selfmon] read node events failed %v", err)
 			return err
 		}
-		go m.dealNodeStatusMessage(message)
+		go m.dealNodeStatusMessage(ctx, message)
 	}
 }
 
-func (m *Selfmon) dealNodeStatusMessage(message *pb.NodeStatusStreamMessage) {
+func (m *Selfmon) dealNodeStatusMessage(ctx context.Context, message *pb.NodeStatusStreamMessage) {
 	if message.Error != "" {
 		log.Errorf("[selfmon] deal with node status stream message failed %v", message.Error)
 		return
@@ -180,7 +175,7 @@ func (m *Selfmon) dealNodeStatusMessage(message *pb.NodeStatusStreamMessage) {
 	}
 
 	// TODO maybe we need a distributed lock to control concurrency
-	ctx, cancel := context.WithTimeout(context.Background(), m.config.GlobalConnectionTimeout)
+	ctx, cancel := context.WithTimeout(ctx, m.config.GlobalConnectionTimeout)
 	defer cancel()
 	if _, err := m.rpc.GetClient().SetNode(ctx, &pb.SetNodeOptions{
 		Nodename:      message.Nodename,
@@ -195,8 +190,8 @@ func (m *Selfmon) dealNodeStatusMessage(message *pb.NodeStatusStreamMessage) {
 }
 
 // Register .
-func (m *Selfmon) Register() (func(), error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (m *Selfmon) Register(ctx context.Context) (func(), error) {
+	ctx, cancel := context.WithCancel(ctx)
 	del := make(chan struct{}, 1)
 
 	var wg sync.WaitGroup
@@ -263,7 +258,7 @@ func (m *Selfmon) Register() (func(), error) {
 			default:
 			}
 
-			if ne, un, err := m.register(); err != nil {
+			if ne, un, err := m.register(ctx); err != nil {
 				if !errors.Is(err, coretypes.ErrKeyExists) {
 					log.Errorf("[Register] failed to re-register: %v", err)
 					time.Sleep(time.Second)
@@ -298,36 +293,35 @@ func (m *Selfmon) Register() (func(), error) {
 	}, nil
 }
 
-func (m *Selfmon) register() (<-chan struct{}, func(), error) {
-	ctx, cancel := context.WithTimeout(context.Background(), m.config.GlobalConnectionTimeout*2)
+func (m *Selfmon) register(ctx context.Context) (<-chan struct{}, func(), error) {
+	ctx, cancel := context.WithTimeout(ctx, m.config.GlobalConnectionTimeout*2)
 	defer cancel()
 	return m.etcd.StartEphemeral(ctx, ActiveKey, time.Second*16)
 }
 
 // Monitor .
-func Monitor(config *types.Config) error {
-	mon, err := New(config)
+func Monitor(ctx context.Context, config *types.Config) error {
+	mon, err := New(ctx, config)
 	if err != nil {
 		return err
 	}
 
-	unregister, err := mon.Register()
+	unregister, err := mon.Register(ctx)
 	if err != nil {
 		return err
 	}
 	defer unregister()
 
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		handleSignals(mon)
+		handleSignals(ctx, mon)
 	}()
 
-	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		mon.Run()
+		mon.Run(ctx)
 	}()
 
 	log.Infof("[selfmon] selfmon %p is running", mon)
@@ -338,42 +332,33 @@ func Monitor(config *types.Config) error {
 }
 
 // handleSignals .
-func handleSignals(mon *Selfmon) {
+func handleSignals(ctx context.Context, mon *Selfmon) {
+	var reloadCtx context.Context
+	var cancel1 context.CancelFunc
 	defer func() {
 		log.Warnf("[selfmon] %p signals handler exit", mon)
+		cancel1()
 		mon.Close()
 	}()
 
-	sch := make(chan os.Signal, 1)
-	signal.Notify(sch, []os.Signal{
-		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-		syscall.SIGUSR2,
-	}...)
+	reloadCtx, cancel1 = signal.NotifyContext(ctx, syscall.SIGHUP, syscall.SIGUSR2)
+	exitCtx, cancel2 := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	defer cancel2()
 
 	for {
 		select {
-		case sign := <-sch:
-			switch sign {
-			case syscall.SIGHUP, syscall.SIGUSR2:
-				log.Warnf("[selfmon] recv signal %d to reload", sign)
-				if err := mon.Reload(); err != nil {
-					log.Errorf("[selfmon] reload %p failed %v", mon, err)
-				}
-
-			case syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT:
-				log.Warnf("[selfmon] recv signal %d to exit", sign)
-				return
-
-			default:
-				log.Warnf("[selfmon] recv signal %d to ignore", sign)
-			}
-
 		case <-mon.Exit():
 			log.Warnf("[selfmon] recv from mon %p exit ch", mon)
 			return
+		case <-exitCtx.Done():
+			log.Warn("[selfmon] recv signal to exit")
+			return
+		case <-reloadCtx.Done():
+			log.Warn("[selfmon] recv signal to reload")
+			if err := mon.Reload(); err != nil {
+				log.Errorf("[selfmon] reload %p failed %v", mon, err)
+			}
+			reloadCtx, cancel1 = signal.NotifyContext(ctx, syscall.SIGHUP, syscall.SIGUSR2)
 		}
 	}
 }

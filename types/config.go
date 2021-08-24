@@ -1,12 +1,15 @@
 package types
 
 import (
+	"bufio"
+	"bytes"
 	"os"
 	"time"
 
 	coretypes "github.com/projecteru2/core/types"
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v2"
 )
 
 // DockerConfig contain endpoint
@@ -69,8 +72,8 @@ func (config *Config) GetHealthCheckStatusTTL() int64 {
 	return int64(2*config.HealthCheck.Interval + config.HealthCheck.Interval/2)
 }
 
-// PrepareConfig 从cli覆写并做准备
-func (config *Config) PrepareConfig(c *cli.Context) {
+// Prepare 从cli覆写并做准备
+func (config *Config) Prepare(c *cli.Context) {
 	if c.String("hostname") != "" {
 		config.HostName = c.String("hostname")
 	} else {
@@ -139,4 +142,19 @@ func (config *Config) PrepareConfig(c *cli.Context) {
 	if config.HealthCheck.CacheTTL == 0 {
 		config.HealthCheck.CacheTTL = 300
 	}
+}
+
+// Print config
+func (config *Config) Print() {
+	bs, err := yaml.Marshal(config)
+	if err != nil {
+		log.Fatalf("[config] print config failed %v", err)
+	}
+
+	log.Info("---- current config ----")
+	scanner := bufio.NewScanner(bytes.NewBuffer(bs))
+	for scanner.Scan() {
+		log.Info(scanner.Text())
+	}
+	log.Info("------------------------")
 }

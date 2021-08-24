@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	_ "go.uber.org/automaxprocs"
 
@@ -17,10 +17,8 @@ import (
 	"github.com/projecteru2/agent/watcher"
 
 	"github.com/jinzhu/configor"
-	"github.com/sethvargo/go-signalcontext"
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v3"
 )
 
 func setupLogLevel(l string) error {
@@ -40,23 +38,9 @@ func initConfig(c *cli.Context) *types.Config {
 		log.Fatalf("[main] load config failed %v", err)
 	}
 
-	config.PrepareConfig(c)
-	printConfig(config)
+	config.Prepare(c)
+	config.Print()
 	return config
-}
-
-func printConfig(c *types.Config) {
-	bs, err := yaml.Marshal(c)
-	if err != nil {
-		log.Fatalf("[main] print config failed %v", err)
-	}
-
-	log.Info("---- current config ----")
-	scanner := bufio.NewScanner(bytes.NewBuffer(bs))
-	for scanner.Scan() {
-		log.Info(scanner.Text())
-	}
-	log.Info("------------------------")
 }
 
 func serve(c *cli.Context) error {
@@ -69,16 +53,16 @@ func serve(c *cli.Context) error {
 	defer os.Remove(config.PidFile)
 
 	if c.Bool("selfmon") {
-		return selfmon.Monitor(config)
+		return selfmon.Monitor(c.Context, config)
 	}
 
-	ctx, cancel := signalcontext.OnInterrupt()
+	ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
 
 	watcher.InitMonitor()
 	go watcher.LogMonitor.Serve(ctx)
 
-	agent, err := engine.NewEngine(c.Context, config)
+	agent, err := engine.NewEngine(ctx, config)
 	if err != nil {
 		return err
 	}
