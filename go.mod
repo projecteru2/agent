@@ -15,7 +15,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/projecteru2/core v0.0.0-20210618045145-314d3a292929
 	github.com/prometheus/client_golang v1.11.0
-	github.com/sethvargo/go-signalcontext v0.1.0
 	github.com/shirou/gopsutil v3.20.11+incompatible
 	github.com/sirupsen/logrus v1.7.0
 	github.com/stretchr/objx v0.2.0 // indirect
@@ -26,6 +25,7 @@ require (
 	go.opencensus.io v0.22.2 // indirect
 	go.uber.org/automaxprocs v1.3.0
 	google.golang.org/grpc v1.38.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	gotest.tools/v3 v3.0.3 // indirect
 )

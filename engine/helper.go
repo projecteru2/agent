@@ -70,18 +70,18 @@ func checkHostname(env []string, hostname string) bool {
 	return false
 }
 
-func (e *Engine) detectContainer(id string) (*types.Container, error) {
+func (e *Engine) detectContainer(ctx context.Context, ID string) (*types.Container, error) {
 	// 标准化为 inspect 的数据
-	ctx, cancel := context.WithTimeout(context.Background(), e.config.GlobalConnectionTimeout)
+	ctx, cancel := context.WithTimeout(ctx, e.config.GlobalConnectionTimeout)
 	defer cancel()
-	c, err := e.docker.ContainerInspect(ctx, id)
+	c, err := e.docker.ContainerInspect(ctx, ID)
 	if err != nil {
 		return nil, err
 	}
 	label := c.Config.Labels
 
 	if _, ok := label[cluster.ERUMark]; !ok {
-		return nil, fmt.Errorf("not a eru container %s", coreutils.ShortID(id))
+		return nil, fmt.Errorf("not a eru container %s", coreutils.ShortID(ID))
 	}
 
 	// TODO should be removed in the future

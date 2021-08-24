@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
@@ -22,7 +23,7 @@ func TestLoad(t *testing.T) {
 	mockStore.On("UpdateNode", mock.Anything).Return(nil)
 	mockStore.On("SetContainerStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-	err := e.load()
+	err := e.load(context.TODO())
 	assert.NoError(t, err)
 	time.Sleep(1 * time.Second)
 }

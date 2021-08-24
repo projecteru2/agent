@@ -1,6 +1,7 @@
 package selfmon
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -47,7 +48,7 @@ func TestRun(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		m.Run()
+		m.Run(context.TODO())
 	}()
 
 	// Makes it as an active selfmon.
@@ -61,12 +62,13 @@ func TestRun(t *testing.T) {
 func TestRegister(t *testing.T) {
 	m, cancel := newTestSelfmon(t)
 	defer cancel()
+	ctx := context.TODO()
 
-	unregister0, err := m.Register()
+	unregister0, err := m.Register(ctx)
 	require.NoError(t, err)
 	require.NotNil(t, unregister0)
 
-	unregister1, err := m.Register()
+	unregister1, err := m.Register(ctx)
 	require.NoError(t, err)
 	require.NotNil(t, unregister1)
 
