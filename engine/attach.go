@@ -83,7 +83,7 @@ func (e *Engine) attach(container *types.Container) {
 				Type:       typ,
 				EntryPoint: container.EntryPoint,
 				Ident:      container.Ident,
-				Data:       data,
+				Data:       replaceNonUtf8(data),
 				Datetime:   time.Now().Format(common.DateTimeFormat),
 				Extra:      extra,
 			}
