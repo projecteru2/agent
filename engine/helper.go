@@ -6,6 +6,8 @@ import (
 	"math"
 	"os"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/engine/status"
@@ -129,4 +131,36 @@ func getMaxAttemptsByTTL(ttl int64) int {
 		maxAttempts = 1
 	}
 	return maxAttempts
+}
+
+// replaceNonUtf8 replaces non-utf8 characters in \x format.
+func replaceNonUtf8(str string) string {
+	if str == "" {
+		return str
+	}
+
+	// deal with "legal" error rune in utf8
+	if strings.ContainsRune(str, utf8.RuneError) {
+		str = strings.ReplaceAll(str, string(utf8.RuneError), "\\xff\\xfd")
+	}
+
+	if utf8.ValidString(str) {
+		return str
+	}
+
+	v := make([]rune, 0, len(str))
+	for i, r := range str {
+		switch {
+		case r == utf8.RuneError:
+			_, size := utf8.DecodeRuneInString(str[i:])
+			if size > 0 {
+				v = append(v, []rune(fmt.Sprintf("\\x%02x", str[i:i+size]))...)
+			}
+		case unicode.IsControl(r) && r != '\r' && r != '\n':
+			v = append(v, []rune(fmt.Sprintf("\\x%02x", r))...)
+		default:
+			v = append(v, r)
+		}
+	}
+	return string(v)
 }
