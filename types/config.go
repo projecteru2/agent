@@ -60,6 +60,7 @@ type Config struct {
 	Etcd        coretypes.EtcdConfig `yaml:"etcd"`
 
 	GlobalConnectionTimeout time.Duration `yaml:"global_connection_timeout" default:"5s"`
+	HAKeepaliveInterval     time.Duration `yaml:"ha_keepalive_interval" default:"16s"`
 }
 
 // GetHealthCheckStatusTTL returns the TTL for health check status.

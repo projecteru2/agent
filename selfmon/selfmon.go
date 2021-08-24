@@ -246,10 +246,6 @@ func (m *Selfmon) Register(ctx context.Context) (func(), error) {
 			wg.Done()
 		}()
 
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, m.config.GlobalConnectionTimeout*2)
-		defer cancel()
-
 		for {
 			m.active.Unset()
 
@@ -262,7 +258,7 @@ func (m *Selfmon) Register(ctx context.Context) (func(), error) {
 			default:
 			}
 
-			if ne, un, err := m.etcd.StartEphemeral(ctx, ActiveKey, time.Second*16); err != nil {
+			if ne, un, err := m.etcd.StartEphemeral(ctx, ActiveKey, m.config.HAKeepaliveInterval); err != nil {
 				if !errors.Is(err, coretypes.ErrKeyExists) {
 					log.Errorf("[Register] failed to re-register: %v", err)
 					time.Sleep(time.Second)
