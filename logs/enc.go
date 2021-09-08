@@ -6,8 +6,9 @@ import (
 	"io"
 	"sync"
 
-	"github.com/coreos/go-systemd/journal"
 	"github.com/projecteru2/agent/types"
+
+	"github.com/coreos/go-systemd/journal"
 )
 
 // Encoder .

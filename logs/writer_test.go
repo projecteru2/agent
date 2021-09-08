@@ -4,9 +4,9 @@ import (
 	"net"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/projecteru2/agent/types"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewWriterWithUDP(t *testing.T) {

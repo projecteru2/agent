@@ -3,19 +3,17 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"runtime/pprof"
-
+	"runtime/pprof" // nolint
 	// enable profile
 	_ "net/http/pprof" // nolint
 
+	"github.com/projecteru2/agent/manager/workload"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/version"
-	"github.com/projecteru2/agent/watcher"
-	coreutils "github.com/projecteru2/core/utils"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/bmizerany/pat"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
 )
 
 // JSON define a json
@@ -23,6 +21,8 @@ type JSON map[string]interface{}
 
 // Handler define handler
 type Handler struct {
+	config          *types.Config
+	workloadManager *workload.Manager
 }
 
 // URL /version/
@@ -58,24 +58,27 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 			log.Errorf("[apiLog] connect failed %v", err)
 			return
 		}
-		logConsumer := &types.LogConsumer{
-			ID:  coreutils.RandomString(8),
-			App: app, Conn: conn, Buf: buf,
-		}
-		watcher.LogMonitor.ConsumerC <- logConsumer
-		log.Infof("[apiLog] %s %s log attached", app, logConsumer.ID)
+		defer conn.Close()
+		h.workloadManager.Subscribe(app, buf)
+	}
+}
+
+// NewHandler new api http handler
+func NewHandler(config *types.Config, workloadManager *workload.Manager) *Handler {
+	return &Handler{
+		config:          config,
+		workloadManager: workloadManager,
 	}
 }
 
 // Serve start a api service
 // blocks by http.ListenAndServe
 // run this in a separated goroutine
-func Serve(addr string) {
-	if addr == "" {
+func (h *Handler) Serve() {
+	if h.config.API.Addr == "" {
 		return
 	}
 
-	h := &Handler{}
 	restfulAPIServer := pat.New()
 	handlers := map[string]map[string]func(http.ResponseWriter, *http.Request){
 		"GET": {
@@ -93,9 +96,9 @@ func Serve(addr string) {
 
 	http.Handle("/", restfulAPIServer)
 	http.Handle("/metrics", promhttp.Handler())
-	log.Infof("[apiServe] http api started %s", addr)
+	log.Infof("[apiServe] http api started %s", h.config.API.Addr)
 
-	err := http.ListenAndServe(addr, nil)
+	err := http.ListenAndServe(h.config.API.Addr, nil)
 	if err != nil {
 		log.Panicf("http api failed %s", err)
 	}
