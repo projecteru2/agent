@@ -1,10 +1,18 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
+	"math"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
+	"sync"
+	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
@@ -39,4 +47,92 @@ func Max(a, b int64) int64 {
 		return a
 	}
 	return b
+}
+
+// UseLabelAsFilter return if use label as filter
+func UseLabelAsFilter() bool {
+	return os.Getenv("ERU_AGENT_EXPERIMENTAL_FILTER") == "label"
+}
+
+// CheckHostname check if ERU_NODE_NAME env in container is the hostname of this agent
+// TODO should be removed in the future, should always use label to filter
+func CheckHostname(env []string, hostname string) bool {
+	for _, e := range env {
+		ps := strings.SplitN(e, "=", 2)
+		if len(ps) != 2 {
+			continue
+		}
+		if ps[0] == "ERU_NODE_NAME" && ps[1] == hostname {
+			return true
+		}
+	}
+	return false
+}
+
+// GetMaxAttemptsByTTL .
+func GetMaxAttemptsByTTL(ttl int64) int {
+	// if selfmon is enabled, retry 5 times
+	if ttl < 1 {
+		return 5
+	}
+	return int(math.Floor(math.Log2(float64(ttl)+1))) + 1
+}
+
+// ReplaceNonUtf8 replaces non-utf8 characters in \x format.
+func ReplaceNonUtf8(str string) string {
+	if str == "" {
+		return str
+	}
+
+	// deal with "legal" error rune in utf8
+	if strings.ContainsRune(str, utf8.RuneError) {
+		str = strings.ReplaceAll(str, string(utf8.RuneError), "\\xff\\xfd")
+	}
+
+	if utf8.ValidString(str) {
+		return str
+	}
+
+	v := make([]rune, 0, len(str))
+	for i, r := range str {
+		switch {
+		case r == utf8.RuneError:
+			_, size := utf8.DecodeRuneInString(str[i:])
+			if size > 0 {
+				v = append(v, []rune(fmt.Sprintf("\\x%02x", str[i:i+size]))...)
+			}
+		case unicode.IsControl(r) && r != '\r' && r != '\n':
+			v = append(v, []rune(fmt.Sprintf("\\x%02x", r))...)
+		default:
+			v = append(v, r)
+		}
+	}
+	return string(v)
+}
+
+var dockerized bool
+var once sync.Once
+
+// IsDockerized returns if the agent is running in docker
+func IsDockerized() bool {
+	once.Do(func() {
+		dockerized = os.Getenv(common.DOCKERIZED) != ""
+	})
+	return dockerized
+}
+
+// WithTimeout runs a function with given timeout
+func WithTimeout(ctx context.Context, timeout time.Duration, f func(ctx2 context.Context)) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	f(ctx)
+}
+
+// GetIP Get hostIP
+func GetIP(daemonHost string) string {
+	u, err := url.Parse(daemonHost)
+	if err != nil {
+		return ""
+	}
+	return u.Hostname()
 }

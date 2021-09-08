@@ -7,6 +7,7 @@ import (
 	"time"
 
 	coretypes "github.com/projecteru2/core/types"
+
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
@@ -51,10 +52,14 @@ type Config struct {
 
 	CheckOnlyMine bool `yaml:"check_only_mine" default:"false"`
 
+	Store   string `yaml:"store" default:"grpc"`
+	Runtime string `yaml:"runtime" default:"docker"`
+	KV      string `yaml:"kv" default:"etcd"`
+
 	Auth        coretypes.AuthConfig `yaml:"auth"`
 	Docker      DockerConfig
 	Metrics     MetricsConfig
-	API         APIConfig
+	API         APIConfig `yaml:"api"`
 	Log         LogConfig
 	HealthCheck HealthCheckConfig    `yaml:"healthcheck"`
 	Etcd        coretypes.EtcdConfig `yaml:"etcd"`
@@ -128,6 +133,15 @@ func (config *Config) Prepare(c *cli.Context) {
 	}
 	if c.Bool("check-only-mine") {
 		config.CheckOnlyMine = true
+	}
+	if c.String("runtime") != "" {
+		config.Runtime = c.String("runtime")
+	}
+	if c.String("store") != "" {
+		config.Store = c.String("store")
+	}
+	if c.String("kv") != "" {
+		config.KV = c.String("kv")
 	}
 	// validate
 	if config.PidFile == "" {

@@ -23,4 +23,8 @@ func TestLoadConfig(t *testing.T) {
 	assert.Equal(config.HealthCheck.CacheTTL, 300)
 	assert.False(config.HealthCheck.EnableSelfmon)
 	assert.Equal(config.GetHealthCheckStatusTTL(), int64(300))
+
+	assert.Equal(config.Store, "grpc")
+	assert.Equal(config.Runtime, "docker")
+	assert.Equal(config.KV, "etcd")
 }

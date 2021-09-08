@@ -18,5 +18,5 @@ func TestBackoffRetry(t *testing.T) {
 		return nil
 	}
 	assert.Nil(t, BackoffRetry(context.Background(), 10, f))
-	assert.EqualValues(t, 4, i)
+	assert.Equal(t, 4, i)
 }
