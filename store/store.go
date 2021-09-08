@@ -4,16 +4,17 @@ import (
 	"context"
 
 	"github.com/projecteru2/agent/types"
-	coretypes "github.com/projecteru2/core/types"
 )
 
-// Store indicate store
+// Store wrapper of remote calls
 type Store interface {
-	GetNode(nodename string) (*coretypes.Node, error)
-	UpdateNode(node *coretypes.Node) error
-
-	SetNodeStatus(context.Context, int64) error
-	SetContainerStatus(context.Context, *types.Container, *coretypes.Node, int64) error
-
-	GetCoreIdentifier() string
+	GetNode(ctx context.Context, nodename string) (*types.Node, error)
+	UpdateNode(ctx context.Context, node *types.Node) error
+	SetNodeStatus(ctx context.Context, ttl int64) error
+	GetNodeStatus(ctx context.Context, nodename string) (*types.NodeStatus, error)
+	SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus, ttl int64) error
+	SetNode(ctx context.Context, node string, status bool) error
+	GetIdentifier(ctx context.Context) string
+	NodeStatusStream(ctx context.Context) (<-chan *types.NodeStatus, <-chan error)
+	ListPodNodes(ctx context.Context, all bool, podname string, labels map[string]string) ([]*types.Node, error)
 }
