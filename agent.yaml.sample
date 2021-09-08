@@ -4,6 +4,18 @@
 # This option is not required as the default value is "/tmp/agent.pid".
 pid: /tmp/agent.pid
 
+# store defines the type of core service.
+# This option is not required as the default value is "grpc".
+store: grpc
+
+# runtime defines the type of runtime.
+# This option is not required as the default value is "docker".
+runtime: docker
+
+# kv defines the type of kv store.
+# This option is not required as the default value is "etcd".
+kv: etcd
+
 # core defines the address of eru-core component.
 # This option is not required as the default value is "127.0.0.1:5001".
 core:

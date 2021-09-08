@@ -17,4 +17,19 @@ const (
 
 	// LocalIP .
 	LocalIP = "127.0.0.1"
+
+	// DockerRuntime use docker as runtime
+	DockerRuntime = "docker"
+	// MocksRuntime use the mock runtime
+	MocksRuntime = "mocks"
+
+	// GRPCStore use gRPC as store
+	GRPCStore = "grpc"
+	// MocksStore use the mock store
+	MocksStore = "mocks"
+
+	// ETCDKV use ETCD as KV
+	ETCDKV = "etcd"
+	// MocksKV use the mock KV
+	MocksKV = "mocks"
 )

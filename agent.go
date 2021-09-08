@@ -2,23 +2,24 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
-
-	_ "go.uber.org/automaxprocs"
+	"time"
 
 	"github.com/projecteru2/agent/api"
-	"github.com/projecteru2/agent/engine"
+	"github.com/projecteru2/agent/manager/node"
+	"github.com/projecteru2/agent/manager/workload"
 	"github.com/projecteru2/agent/selfmon"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/version"
-	"github.com/projecteru2/agent/watcher"
 
 	"github.com/jinzhu/configor"
 	log "github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
+	_ "go.uber.org/automaxprocs"
 )
 
 func setupLogLevel(l string) error {
@@ -44,6 +45,8 @@ func initConfig(c *cli.Context) *types.Config {
 }
 
 func serve(c *cli.Context) error {
+	rand.Seed(time.Now().UnixNano())
+
 	if err := setupLogLevel(c.String("log-level")); err != nil {
 		log.Fatal(err)
 	}
@@ -53,22 +56,45 @@ func serve(c *cli.Context) error {
 	defer os.Remove(config.PidFile)
 
 	if c.Bool("selfmon") {
-		return selfmon.Monitor(c.Context, config)
+		mon, err := selfmon.New(c.Context, config)
+		if err != nil {
+			return err
+		}
+		return mon.Run(c.Context)
 	}
 
 	ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
 
-	watcher.InitMonitor()
-	go watcher.LogMonitor.Serve(ctx)
+	errChan := make(chan error, 1)
 
-	agent, err := engine.NewEngine(ctx, config)
+	workloadManager, err := workload.NewManager(ctx, config)
 	if err != nil {
 		return err
 	}
+	go func() {
+		errChan <- workloadManager.Run(ctx)
+	}()
 
-	go api.Serve(config.API.Addr)
-	return agent.Run(ctx)
+	nodeManager, err := node.NewManager(ctx, config)
+	if err != nil {
+		return err
+	}
+	go func() {
+		errChan <- nodeManager.Run(ctx)
+	}()
+
+	apiHandler := api.NewHandler(config, workloadManager)
+	go apiHandler.Serve()
+
+	select {
+	case err := <-errChan:
+		log.Debugf("[agent] err: %v", err)
+		return err
+	case <-ctx.Done():
+		log.Info("[agent] Agent caught system signal, exiting")
+		return nil
+	}
 }
 
 func main() {
@@ -94,6 +120,12 @@ func main() {
 				EnvVars: []string{"ERU_AGENT_LOG_LEVEL"},
 			},
 			&cli.StringFlag{
+				Name:    "store",
+				Value:   "grpc",
+				Usage:   "store type",
+				EnvVars: []string{"ERU_AGENT_STORE"},
+			},
+			&cli.StringFlag{
 				Name:    "core-endpoint",
 				Value:   "",
 				Usage:   "core endpoint",
@@ -110,6 +142,12 @@ func main() {
 				Value:   "",
 				Usage:   "core password",
 				EnvVars: []string{"ERU_AGENT_CORE_PASSWORD"},
+			},
+			&cli.StringFlag{
+				Name:    "runtime",
+				Value:   "docker",
+				Usage:   "runtime type",
+				EnvVars: []string{"ERU_AGENT_RUNTIME"},
 			},
 			&cli.StringFlag{
 				Name:    "docker-endpoint",
@@ -132,7 +170,7 @@ func main() {
 			&cli.StringFlag{
 				Name:    "api-addr",
 				Value:   "",
-				Usage:   "agent API serving address",
+				Usage:   "agent api serving address",
 				EnvVars: []string{"ERU_AGENT_API_ADDR"},
 			},
 			&cli.StringSliceFlag{
@@ -183,6 +221,12 @@ func main() {
 				Name:  "selfmon",
 				Value: false,
 				Usage: "run this agent as a selfmon daemon",
+			},
+			&cli.StringFlag{
+				Name:    "kv",
+				Value:   "etcd",
+				Usage:   "kv type",
+				EnvVars: []string{"ERU_AGENT_KV"},
 			},
 			&cli.BoolFlag{
 				Name:  "check-only-mine",

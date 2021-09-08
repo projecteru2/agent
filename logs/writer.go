@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/projecteru2/agent/types"
+
 	log "github.com/sirupsen/logrus"
 )
 
