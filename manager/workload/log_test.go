@@ -32,7 +32,7 @@ func TestLogBroadcaster(t *testing.T) {
 				return
 			}
 			defer conn.Close()
-			l.subscribe(app, buf)
+			l.subscribe(context.TODO(), app, buf)
 		}
 	}
 

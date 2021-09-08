@@ -121,7 +121,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    "store",
-				Value:   "grpc",
+				Value:   "",
 				Usage:   "store type",
 				EnvVars: []string{"ERU_AGENT_STORE"},
 			},
@@ -145,7 +145,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    "runtime",
-				Value:   "docker",
+				Value:   "",
 				Usage:   "runtime type",
 				EnvVars: []string{"ERU_AGENT_RUNTIME"},
 			},
@@ -224,7 +224,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:    "kv",
-				Value:   "etcd",
+				Value:   "",
 				Usage:   "kv type",
 				EnvVars: []string{"ERU_AGENT_KV"},
 			},

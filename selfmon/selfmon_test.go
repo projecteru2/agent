@@ -30,6 +30,7 @@ func newMockSelfmon(t *testing.T, withETCD bool) *Selfmon {
 			LockPrefix: "__lock__/selfmon-agent",
 		},
 		GlobalConnectionTimeout: 5 * time.Second,
+		HAKeepaliveInterval:     16 * time.Second,
 	}
 
 	m, err := New(ctx, config)

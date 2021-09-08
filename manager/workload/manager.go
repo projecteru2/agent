@@ -119,6 +119,6 @@ func (m *Manager) Run(ctx context.Context) error {
 }
 
 // Subscribe subscribes logs
-func (m *Manager) Subscribe(app string, buf *bufio.ReadWriter) {
-	m.logBroadcaster.subscribe(app, buf)
+func (m *Manager) Subscribe(ctx context.Context, app string, buf *bufio.ReadWriter) {
+	m.logBroadcaster.subscribe(ctx, app, buf)
 }

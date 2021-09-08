@@ -59,7 +59,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		defer conn.Close()
-		h.workloadManager.Subscribe(app, buf)
+		h.workloadManager.Subscribe(req.Context(), app, buf)
 	}
 }
 
