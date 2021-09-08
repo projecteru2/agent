@@ -31,13 +31,13 @@ func newLogBroadcaster() *logBroadcaster {
 }
 
 // subscribe subscribes logs of the specific app.
-func (l *logBroadcaster) subscribe(app string, buf *bufio.ReadWriter) {
+func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.ReadWriter) {
 	if _, ok := l.subscribers[app]; !ok {
 		l.subscribers[app] = map[string]*subscriber{}
 	}
 
 	ID := coreutils.RandomString(8)
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	l.subscribers[app][ID] = &subscriber{buf, cancel}

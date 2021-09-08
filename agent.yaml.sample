@@ -123,6 +123,11 @@ healthcheck:
 # The default value is "5s", note that "s" in the end.
 global_connection_timeout: 15s
 
+# ha_keepalive_interval defines the time interval for sending heartbeat
+# when selfmon maintains its own active state.
+# The default value is "16s", note that "s" in the end.
+ha_keepalive_interval: 16s
+
 # etcd defines the etcd configuration.
 # This option is required and has no default value.
 # If you don't plan to run this eru-agent in selfmon mode,

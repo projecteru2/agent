@@ -76,5 +76,5 @@ func (m *Selfmon) WithActiveLock(parentCtx context.Context, f func(ctx context.C
 }
 
 func (m *Selfmon) register(ctx context.Context) (<-chan struct{}, func(), error) {
-	return m.kv.StartEphemeral(ctx, ActiveKey, time.Second*16)
+	return m.kv.StartEphemeral(ctx, ActiveKey, m.config.HAKeepaliveInterval)
 }
