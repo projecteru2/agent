@@ -1,17 +1,19 @@
-package corestore
+package core
 
 import (
 	"context"
 
+	"github.com/projecteru2/agent/utils"
 	pb "github.com/projecteru2/core/rpc/gen"
 )
 
-// GetCoreIdentifier returns the identifier of core
-func (c *CoreStore) GetCoreIdentifier() string {
-	ctx, cancel := context.WithTimeout(context.Background(), c.config.GlobalConnectionTimeout)
-	defer cancel()
-
-	resp, err := c.GetClient().Info(ctx, &pb.Empty{})
+// GetIdentifier returns the identifier of core
+func (c *Store) GetIdentifier(ctx context.Context) string {
+	var resp *pb.CoreInfo
+	var err error
+	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
+		resp, err = c.GetClient().Info(ctx, &pb.Empty{})
+	})
 	if err != nil {
 		return ""
 	}
