@@ -2,105 +2,136 @@ package selfmon
 
 import (
 	"context"
-	"fmt"
-	"sync"
 	"testing"
 	"time"
 
-	"github.com/projecteru2/agent/selfmon/mocks"
+	"github.com/projecteru2/agent/common"
 	storemocks "github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
-	pb "github.com/projecteru2/core/rpc/gen"
-	coremeta "github.com/projecteru2/core/store/etcdv3/meta"
+	"github.com/projecteru2/core/store/etcdv3/meta"
 	coretypes "github.com/projecteru2/core/types"
 
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestCloseTwice(t *testing.T) {
-	m, cancel := newTestSelfmon(t)
-	defer cancel()
-	m.rpc.GetClient().(*mocks.CoreRPCClient).On("ListPodNodes", mock.Anything, mock.Anything).Return(&pb.Nodes{}, nil)
-	m.Close()
-	m.Close()
-	<-m.Exit()
-}
-
-func TestRun(t *testing.T) {
-	m, cancel := newTestSelfmon(t)
-
-	rpc, ok := m.rpc.GetClient().(*mocks.CoreRPCClient)
-	require.True(t, ok)
-	rpc.On("ListPodNodes", mock.Anything, mock.Anything).Return(&pb.Nodes{
-		Nodes: []*pb.Node{
-			{
-				Name:     "foo",
-				Endpoint: "host:port",
-			},
-		},
-	}, nil).Once()
-	rpc.On("ListPodNodes", mock.Anything, mock.Anything).Return(&pb.Nodes{}, nil)
-	rpc.On("SetNode", mock.Anything, mock.Anything).Return(&pb.Node{}, nil)
-	defer rpc.AssertExpectations(t)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		m.Run(context.TODO())
-	}()
-
-	// Makes it as an active selfmon.
-	m.active.Set()
-	time.Sleep(time.Second)
-
-	cancel()
-	wg.Wait()
-}
-
-func TestRegister(t *testing.T) {
-	m, cancel := newTestSelfmon(t)
-	defer cancel()
-	ctx := context.TODO()
-
-	unregister0, err := m.Register(ctx)
-	require.NoError(t, err)
-	require.NotNil(t, unregister0)
-
-	unregister1, err := m.Register(ctx)
-	require.NoError(t, err)
-	require.NotNil(t, unregister1)
-
-	unregister0()
-
-	time.Sleep(time.Second)
-	unregister1()
-}
-
-func newTestSelfmon(t *testing.T) (*Selfmon, func()) {
+func newMockSelfmon(t *testing.T, withETCD bool) *Selfmon {
+	ctx := context.Background()
 	config := &types.Config{
+		HostName: "fake",
+		Store:    common.MocksStore,
+		Runtime:  common.MocksRuntime,
+		KV:       common.MocksKV,
+		Log: types.LogConfig{
+			Stdout: true,
+		},
 		Etcd: coretypes.EtcdConfig{
 			Machines:   []string{"127.0.0.1:2379"},
 			Prefix:     "/selfmon-agent",
 			LockPrefix: "__lock__/selfmon-agent",
 		},
+		GlobalConnectionTimeout: 5 * time.Second,
 	}
 
-	m := &Selfmon{}
-	m.config = config
-	m.exit.C = make(chan struct{}, 1)
-	m.rpc = &storemocks.RPCClientPool{}
+	m, err := New(ctx, config)
+	assert.Nil(t, err)
 
-	rpcClient := &mocks.CoreRPCClient{}
-	rpcClient.On("NodeStatusStream", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("mock"))
-	rpcClient.On("GetNodeStatus", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("mock"))
-	m.rpc.(*storemocks.RPCClientPool).On("GetClient").Return(rpcClient)
+	if withETCD {
+		etcd, err := meta.NewETCD(config.Etcd, t)
+		assert.Nil(t, err)
+		m.kv = etcd
+	}
 
-	// Uses an embedded one instead of the real one.
-	etcd, err := coremeta.NewETCD(config.Etcd, t)
-	require.NoError(t, err)
-	m.etcd = etcd
+	return m
+}
 
-	return m, m.Close
+func TestCloseTwice(t *testing.T) {
+	m := newMockSelfmon(t, false)
+	defer m.Close()
+	m.Close()
+	m.Close()
+	<-m.Exit()
+}
+
+func TestEmbeddedETCD(t *testing.T) {
+	etcd, err := meta.NewETCD(coretypes.EtcdConfig{
+		Machines:   []string{"127.0.0.1:2379"},
+		Prefix:     "/selfmon-agent",
+		LockPrefix: "__lock__/selfmon-agent",
+	}, t)
+	assert.Nil(t, err)
+
+	ctx := context.Background()
+
+	_, un, err := etcd.StartEphemeral(ctx, "/test/key", 1*time.Second)
+	assert.Nil(t, err)
+	time.Sleep(5 * time.Second)
+	un()
+
+	_, _, err = etcd.StartEphemeral(ctx, "/test/key", 1*time.Second)
+	assert.Nil(t, err)
+}
+
+func TestRegisterTwice(t *testing.T) {
+	m1 := newMockSelfmon(t, false)
+	m2 := newMockSelfmon(t, false)
+	defer m1.Close()
+	defer m2.Close()
+
+	// make sure m1 and m2 are using the same embedded ETCD
+	etcd, err := meta.NewETCD(coretypes.EtcdConfig{
+		Machines:   []string{"127.0.0.1:2379"},
+		Prefix:     "/selfmon-agent",
+		LockPrefix: "__lock__/selfmon-agent",
+	}, t)
+	assert.Nil(t, err)
+
+	m1.kv = etcd
+	m2.kv = etcd
+
+	ctx := context.Background()
+	i := 0
+
+	go m1.WithActiveLock(ctx, func(ctx context.Context) {
+		i = 1
+		time.Sleep(3 * time.Second)
+	})
+	time.Sleep(time.Second)
+	go m2.WithActiveLock(ctx, func(ctx context.Context) {
+		i = 2
+	})
+	assert.Equal(t, i, 1)
+	time.Sleep(5 * time.Second)
+	assert.Equal(t, i, 2)
+}
+
+func TestRun(t *testing.T) {
+	m := newMockSelfmon(t, true)
+	defer m.Close()
+
+	store := m.store.(*storemocks.MockStore)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// set node "fake" as alive
+	assert.Nil(t, store.SetNodeStatus(ctx, 0))
+
+	go func() {
+		assert.Nil(t, m.Run(ctx))
+	}()
+	time.Sleep(2 * time.Second)
+
+	node, _ := store.GetNode(ctx, "fake")
+	assert.Equal(t, node.Available, true)
+	node, _ = store.GetNode(ctx, "faker")
+	assert.Equal(t, node.Available, false)
+
+	go store.StartNodeStatusStream()
+	time.Sleep(2 * time.Second)
+
+	node, _ = store.GetNode(ctx, "fake")
+	assert.Equal(t, node.Available, false)
+	node, _ = store.GetNode(ctx, "faker")
+	assert.Equal(t, node.Available, true)
+
+	m.Close()
 }

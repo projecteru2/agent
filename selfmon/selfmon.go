@@ -2,23 +2,21 @@ package selfmon
 
 import (
 	"context"
-	"io"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/store"
 	corestore "github.com/projecteru2/agent/store/core"
+	storemocks "github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
-	pb "github.com/projecteru2/core/rpc/gen"
 	coremeta "github.com/projecteru2/core/store/etcdv3/meta"
-	coretypes "github.com/projecteru2/core/types"
 
+	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"go.etcd.io/etcd/api/v3/mvccpb"
-	etcdtypes "go.etcd.io/etcd/client/v3"
 )
 
 // ActiveKey .
@@ -27,10 +25,10 @@ const ActiveKey = "/selfmon/active"
 // Selfmon .
 type Selfmon struct {
 	config *types.Config
-	status sync.Map
-	rpc    corestore.RPCClientPool
-	etcd   coremeta.KV
-	active utils.AtomicBool
+	status *cache.Cache
+	store  store.Store
+	kv     coremeta.KV
+	id     int64
 
 	exit struct {
 		sync.Once
@@ -42,17 +40,64 @@ type Selfmon struct {
 func New(ctx context.Context, config *types.Config) (mon *Selfmon, err error) {
 	mon = &Selfmon{}
 	mon.config = config
+	mon.status = cache.New(time.Minute*5, time.Minute*15)
 	mon.exit.C = make(chan struct{}, 1)
-	if mon.etcd, err = coremeta.NewETCD(config.Etcd, nil); err != nil {
-		return
+	mon.id = time.Now().UnixNano() / 1000 % 10000
+
+	switch config.KV {
+	case common.ETCDKV:
+		if mon.kv, err = coremeta.NewETCD(config.Etcd, nil); err != nil {
+			log.Errorf("[selfmon] failed to get etcd client, err: %s", err)
+			return nil, err
+		}
+	case common.MocksKV:
+		log.Debugf("[selfmon] use embedded ETCD")
+		mon.kv = nil
+	default:
+		return nil, errors.New("unknown kv type")
 	}
 
-	if mon.rpc, err = corestore.NewCoreRPCClientPool(ctx, mon.config); err != nil {
-		log.Errorf("[selfmon] no core rpc connection")
-		return
+	switch config.Store {
+	case common.GRPCStore:
+		corestore.Init(ctx, config)
+		mon.store = corestore.Get()
+		if mon.store == nil {
+			log.Errorf("[selfmon] failed to get core store")
+			return nil, errors.New("failed to get core store")
+		}
+	case common.MocksStore:
+		mon.store = storemocks.FromTemplate()
+	default:
+		return nil, errors.New("unknown store type")
 	}
 
-	return
+	return mon, nil
+}
+
+// Monitor .
+func (m *Selfmon) Monitor(ctx context.Context) {
+	go m.watchNodeStatus(ctx)
+	log.Infof("[selfmon] selfmon %v is running", m.id)
+	<-ctx.Done()
+	log.Warnf("[selfmon] m %v monitor stops", m.id)
+}
+
+// Run .
+func (m *Selfmon) Run(ctx context.Context) error {
+	go m.handleSignals(ctx)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-m.Exit():
+			return nil
+		default:
+			m.WithActiveLock(ctx, func(ctx context.Context) {
+				m.Monitor(ctx)
+			})
+		}
+	}
 }
 
 // Exit .
@@ -72,273 +117,14 @@ func (m *Selfmon) Reload() error {
 	return nil
 }
 
-// Run .
-func (m *Selfmon) Run(ctx context.Context) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	go m.watchNodeStatus(ctx)
-
-	<-m.Exit()
-	log.Warnf("[selfmon] exit from %p main loop", m)
-}
-
-func (m *Selfmon) initNodeStatus(ctx context.Context) {
-	nodes := make(chan *pb.Node)
-
-	go func() {
-		defer close(nodes)
-		// Get all nodes which are active status, and regardless of pod.
-		cctx, cancel := context.WithTimeout(ctx, m.config.GlobalConnectionTimeout)
-		defer cancel()
-		podNodes, err := m.rpc.GetClient().ListPodNodes(cctx, &pb.ListNodesOptions{All: true})
-		if err != nil {
-			log.Errorf("[selfmon] get pod nodes from %s failed %v", m.config.Core, err)
-			return
-		}
-
-		for _, n := range podNodes.Nodes {
-			log.Debugf("[selfmon] watched %s/%s", n.Name, n.Endpoint)
-			nodes <- n
-		}
-	}()
-
-	for n := range nodes {
-		status, err := m.rpc.GetClient().GetNodeStatus(ctx, &pb.GetNodeStatusOptions{Nodename: n.Name})
-		fakeMessage := &pb.NodeStatusStreamMessage{
-			Nodename: n.Name,
-			Podname:  n.Podname,
-		}
-		fakeMessage.Alive = !(err != nil || status == nil) && status.Alive
-		m.dealNodeStatusMessage(ctx, fakeMessage)
-	}
-}
-
-func (m *Selfmon) watchNodeStatus(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			log.Infof("[selfmon] stop watching node status")
-			return
-		default:
-			go m.initNodeStatus(ctx)
-			if m.watch(ctx) != nil {
-				log.Debugf("[selfmon] retry to watch node status")
-				time.Sleep(m.config.GlobalConnectionTimeout)
-			}
-		}
-	}
-}
-
-func (m *Selfmon) watch(ctx context.Context) error {
-	client, err := m.rpc.GetClient().NodeStatusStream(ctx, &pb.Empty{})
-	if err != nil {
-		log.Errorf("[selfmon] watch node status failed %v", err)
-		return err
-	}
-	log.Debugf("[selfmon] watch node status started")
-	defer log.Debugf("[selfmon] stop watching node status")
-
-	for {
-		message, err := client.Recv()
-		if err == io.EOF {
-			log.Debugf("[selfmon] server closed the stream")
-			return err
-		}
-		if err != nil {
-			log.Errorf("[selfmon] read node events failed %v", err)
-			return err
-		}
-		go m.dealNodeStatusMessage(ctx, message)
-	}
-}
-
-func (m *Selfmon) dealNodeStatusMessage(ctx context.Context, message *pb.NodeStatusStreamMessage) {
-	if message.Error != "" {
-		log.Errorf("[selfmon] deal with node status stream message failed %v", message.Error)
-		return
-	}
-
-	lastValue, ok := m.status.Load(message.Nodename)
-	if ok {
-		last, o := lastValue.(bool)
-		if o && last == message.Alive {
-			return
-		}
-	}
-
-	var opt pb.TriOpt
-	if message.Alive {
-		opt = pb.TriOpt_TRUE
-	} else {
-		opt = pb.TriOpt_FALSE
-	}
-
-	// TODO maybe we need a distributed lock to control concurrency
-	ctx, cancel := context.WithTimeout(ctx, m.config.GlobalConnectionTimeout)
-	defer cancel()
-	if _, err := m.rpc.GetClient().SetNode(ctx, &pb.SetNodeOptions{
-		Nodename:      message.Nodename,
-		StatusOpt:     opt,
-		WorkloadsDown: !message.Alive,
-	}); err != nil {
-		log.Errorf("[selfmon] set node %s failed %v", message.Nodename, err)
-		return
-	}
-
-	m.status.Store(message.Nodename, message.Alive)
-}
-
-// Register .
-func (m *Selfmon) Register(ctx context.Context) (func(), error) {
-	ctx, cancel := context.WithCancel(ctx)
-	del := make(chan struct{}, 1)
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	// Watching the active key permanently.
-	go func() {
-		defer wg.Done()
-		defer close(del)
-
-		handleResp := func(resp etcdtypes.WatchResponse) {
-			if err := resp.Err(); err != nil {
-				if resp.Canceled {
-					log.Infof("[Register] watching is canceled")
-					return
-				}
-				log.Errorf("[Register] watch failed: %v", err)
-				time.Sleep(time.Second)
-				return
-			}
-
-			for _, ev := range resp.Events {
-				if ev.Type == mvccpb.DELETE {
-					select {
-					case del <- struct{}{}:
-					case <-ctx.Done():
-						return
-					}
-				}
-			}
-		}
-
-		for {
-			select {
-			case <-ctx.Done():
-				log.Infof("[Register] watching done")
-				return
-			case resp := <-m.etcd.Watch(ctx, ActiveKey):
-				handleResp(resp)
-			}
-		}
-	}()
-
-	wg.Add(1)
-	// Always trying to register if the selfmon is alive.
-	go func() {
-		var expiry <-chan struct{}
-		unregister := func() {}
-
-		defer func() {
-			m.active.Unset()
-			unregister()
-			wg.Done()
-		}()
-
-		for {
-			m.active.Unset()
-
-			// We have to put a single <-ctx.Done() here to avoid it may be starved
-			// while it combines with <-expiry and <-del.
-			select {
-			case <-ctx.Done():
-				log.Infof("[Register] register done: %v", ctx.Err())
-				return
-			default:
-			}
-
-			if ne, un, err := m.register(ctx); err != nil {
-				if !errors.Is(err, coretypes.ErrKeyExists) {
-					log.Errorf("[Register] failed to re-register: %v", err)
-					time.Sleep(time.Second)
-					continue
-				}
-				log.Infof("[Register] there has been another active selfmon")
-			} else {
-				log.Infof("[Register] the agent has been active")
-				expiry = ne
-				unregister = un
-				m.active.Set()
-			}
-
-			// Though there's a standalone <-ctx.Done() above, we still need <-ctx.Done()
-			// in this select block to make sure the select could be terminated
-			// once the ctx is done during hang together.
-			select {
-			case <-ctx.Done():
-				log.Infof("[Register] register done: %v", ctx.Err())
-				return
-			case <-expiry:
-				log.Infof("[Register] the original active selfmon has been expired")
-			case <-del:
-				log.Infof("[Register] The original active Selfmon is terminated")
-			}
-		}
-	}()
-
-	return func() {
-		cancel()
-		wg.Wait()
-	}, nil
-}
-
-func (m *Selfmon) register(ctx context.Context) (<-chan struct{}, func(), error) {
-	ctx, cancel := context.WithTimeout(ctx, m.config.GlobalConnectionTimeout*2)
-	defer cancel()
-	return m.etcd.StartEphemeral(ctx, ActiveKey, time.Second*16)
-}
-
-// Monitor .
-func Monitor(ctx context.Context, config *types.Config) error {
-	mon, err := New(ctx, config)
-	if err != nil {
-		return err
-	}
-
-	unregister, err := mon.Register(ctx)
-	if err != nil {
-		return err
-	}
-	defer unregister()
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		handleSignals(ctx, mon)
-	}()
-
-	go func() {
-		defer wg.Done()
-		mon.Run(ctx)
-	}()
-
-	log.Infof("[selfmon] selfmon %p is running", mon)
-	wg.Wait()
-
-	log.Infof("[selfmon] selfmon %p is terminated", mon)
-	return nil
-}
-
 // handleSignals .
-func handleSignals(ctx context.Context, mon *Selfmon) {
+func (m *Selfmon) handleSignals(ctx context.Context) {
 	var reloadCtx context.Context
 	var cancel1 context.CancelFunc
 	defer func() {
-		log.Warnf("[selfmon] %p signals handler exit", mon)
+		log.Warnf("[selfmon] %v signals handler exit", m.id)
 		cancel1()
-		mon.Close()
+		m.Close()
 	}()
 
 	reloadCtx, cancel1 = signal.NotifyContext(ctx, syscall.SIGHUP, syscall.SIGUSR2)
@@ -347,16 +133,16 @@ func handleSignals(ctx context.Context, mon *Selfmon) {
 
 	for {
 		select {
-		case <-mon.Exit():
-			log.Warnf("[selfmon] recv from mon %p exit ch", mon)
+		case <-m.Exit():
+			log.Warnf("[selfmon] recv from m %v exit ch", m.id)
 			return
 		case <-exitCtx.Done():
 			log.Warn("[selfmon] recv signal to exit")
 			return
 		case <-reloadCtx.Done():
 			log.Warn("[selfmon] recv signal to reload")
-			if err := mon.Reload(); err != nil {
-				log.Errorf("[selfmon] reload %p failed %v", mon, err)
+			if err := m.Reload(); err != nil {
+				log.Errorf("[selfmon] reload %v failed %v", m.id, err)
 			}
 			reloadCtx, cancel1 = signal.NotifyContext(ctx, syscall.SIGHUP, syscall.SIGUSR2)
 		}
