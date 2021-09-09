@@ -21,7 +21,7 @@ var ErrConnecting = errors.New("Connecting")
 
 // Writer is a writer!
 type Writer struct {
-	sync.Mutex
+	sync.RWMutex
 	addr       string
 	scheme     string
 	connecting bool
@@ -59,6 +59,18 @@ func NewWriter(addr string, stdout bool) (*Writer, error) {
 	return writer, err
 }
 
+func (w *Writer) withLock(f func()) {
+	w.Lock()
+	defer w.Unlock()
+	f()
+}
+
+func (w *Writer) withRLock(f func()) {
+	w.RLock()
+	defer w.RUnlock()
+	f()
+}
+
 // CreateConn create conn
 func (w *Writer) createEncoder() (enc Encoder, err error) {
 	switch w.scheme {
@@ -76,53 +88,49 @@ func (w *Writer) createEncoder() (enc Encoder, err error) {
 
 func (w *Writer) checkError(err error) {
 	if err != nil && err != ErrConnecting {
-		w.Lock()
-		defer w.Unlock()
 		log.Errorf("[writer] Sending log failed %s", err)
-		if w.enc != nil {
-			w.enc.Close()
-			w.enc = nil
-		}
+		w.withLock(func() {
+			if w.enc != nil {
+				w.enc.Close()
+				w.enc = nil
+			}
+		})
 	}
 }
 
 func (w *Writer) checkConn() error {
-	w.Lock()
-	defer w.Unlock()
-	if w.enc != nil {
-		// normal
-		return nil
-	}
-	if w.connecting {
-		return ErrConnecting
-	}
-	w.connecting = true
+	var err error
+	w.withLock(func() {
+		if w.enc != nil {
+			// normal
+			return
+		}
+		if w.connecting {
+			err = ErrConnecting
+			return
+		}
+		w.connecting = true
+	})
+
 	go func() {
 		log.Debugf("[writer] Begin trying to connect to %s", w.addr)
 		// retrying up to 4 times to prevent infinite loop
 		for i := 0; i < 4; i++ {
 			enc, err := w.createEncoder()
 			if err == nil {
-				w.Lock()
-				w.enc = enc
-				w.connecting = false
-				w.Unlock()
-				break
-			} else {
-				log.Warnf("[writer] Failed to connect to %s: %s", w.addr, err)
-				time.Sleep(30 * time.Second)
+				w.withLock(func() {
+					w.enc = enc
+					w.connecting = false
+				})
+				log.Debugf("[writer] Connect to %s successfully", w.addr)
+				return
 			}
+			log.Warnf("[writer] Failed to connect to %s: %s", w.addr, err)
+			time.Sleep(30 * time.Second)
 		}
-		if w.enc == nil {
-			log.Warnf("[writer] Connect to %s failed for 4 times", w.addr)
-			w.Lock()
-			w.connecting = false
-			w.Unlock()
-		} else {
-			log.Debugf("[writer] Connect to %s successfully", w.addr)
-		}
+		w.connecting = false
 	}()
-	return ErrConnecting
+	return err
 }
 
 // Write write log to remote
@@ -130,10 +138,14 @@ func (w *Writer) Write(logline *types.Log) error {
 	if w.stdout {
 		log.Info(logline)
 	}
-	err := w.checkConn()
+	var err error
+	err = w.checkConn()
 	if err == nil {
-		err = w.enc.Encode(logline)
+		w.withRLock(func() {
+			err = w.enc.Encode(logline)
+		})
 	}
+
 	w.checkError(err)
 	return err
 }

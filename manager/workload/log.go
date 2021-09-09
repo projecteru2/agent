@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 
 	"github.com/projecteru2/agent/types"
 	coreutils "github.com/projecteru2/core/utils"
@@ -13,45 +14,71 @@ import (
 )
 
 type subscriber struct {
-	buf         *bufio.ReadWriter
-	unsubscribe func()
+	buf     *bufio.ReadWriter
+	errChan chan error
 }
 
 // logBroadcaster receives log and broadcasts to subscribers
 type logBroadcaster struct {
-	logC        chan *types.Log
-	subscribers map[string]map[string]*subscriber
+	sync.RWMutex
+	logC           chan *types.Log
+	subscribersMap sync.Map // format: map[app string]map[ID string]*subscriber
 }
 
 func newLogBroadcaster() *logBroadcaster {
 	return &logBroadcaster{
-		logC:        make(chan *types.Log),
-		subscribers: map[string]map[string]*subscriber{},
+		logC:           make(chan *types.Log),
+		subscribersMap: sync.Map{},
 	}
 }
 
+func (l *logBroadcaster) getSubscribers(app string) map[string]*subscriber {
+	v, _ := l.subscribersMap.LoadOrStore(app, map[string]*subscriber{})
+	return v.(map[string]*subscriber)
+}
+
+func (l *logBroadcaster) deleteSubscribers(app string) {
+	l.subscribersMap.Delete(app)
+}
+
 // subscribe subscribes logs of the specific app.
-func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.ReadWriter) {
-	if _, ok := l.subscribers[app]; !ok {
-		l.subscribers[app] = map[string]*subscriber{}
+func (l *logBroadcaster) subscribe(app string, buf *bufio.ReadWriter) (string, <-chan error) {
+	l.Lock()
+	defer l.Unlock()
+
+	subscribers := l.getSubscribers(app)
+	errChan := make(chan error)
+	ID := coreutils.RandomString(8)
+	subscribers[ID] = &subscriber{
+		buf:     buf,
+		errChan: errChan,
 	}
 
-	ID := coreutils.RandomString(8)
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	l.subscribers[app][ID] = &subscriber{buf, cancel}
 	logrus.Infof("%s %s log subscribed", app, ID)
-	<-ctx.Done()
+	return ID, errChan
+}
 
-	delete(l.subscribers[app], ID)
-	if len(l.subscribers[app]) == 0 {
-		delete(l.subscribers, app)
+func (l *logBroadcaster) unsubscribe(app string, ID string) {
+	l.Lock()
+	defer l.Unlock()
+
+	subscribers := l.getSubscribers(app)
+	delete(subscribers, ID)
+
+	logrus.Infof("%s %s detached", app, ID)
+
+	// if no subscribers for this app, remove the key
+	if len(subscribers) == 0 {
+		l.deleteSubscribers(app)
 	}
 }
 
 func (l *logBroadcaster) broadcast(log *types.Log) {
-	if _, ok := l.subscribers[log.Name]; !ok {
+	l.RLock()
+	defer l.RUnlock()
+
+	subscribers := l.getSubscribers(log.Name)
+	if len(subscribers) == 0 {
 		return
 	}
 	data, err := json.Marshal(log)
@@ -60,15 +87,20 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 		return
 	}
 	line := fmt.Sprintf("%X\r\n%s\r\n\r\n", len(data)+2, string(data))
-	for ID, subscriber := range l.subscribers[log.Name] {
-		if _, err := subscriber.buf.WriteString(line); err != nil {
-			logrus.Error(err)
-			logrus.Infof("%s %s detached", log.Name, ID)
-			subscriber.unsubscribe()
-		}
-		subscriber.buf.Flush()
-		logrus.Debugf("sub %s get %s", ID, line)
+
+	// use wait group to make sure the logs are ordered
+	wg := &sync.WaitGroup{}
+	wg.Add(len(subscribers))
+	for _, sub := range subscribers {
+		go func(sub *subscriber) {
+			defer wg.Done()
+			if _, err := sub.buf.Write([]byte(line)); err != nil {
+				sub.errChan <- err
+			}
+			sub.buf.Flush()
+		}(sub)
 	}
+	wg.Wait()
 }
 
 func (l *logBroadcaster) run(ctx context.Context) {

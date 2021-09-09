@@ -29,6 +29,6 @@ func TestLoadConfig(t *testing.T) {
 	assert.Equal(config.Runtime, "docker")
 	assert.Equal(config.KV, "etcd")
 
-	assert.Equal(config.GlobalConnectionTimeout, time.Second * 15)
-	assert.Equal(config.HAKeepaliveInterval, time.Second * 16)
+	assert.Equal(config.GlobalConnectionTimeout, time.Second*15)
+	assert.Equal(config.HAKeepaliveInterval, time.Second*16)
 }
