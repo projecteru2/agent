@@ -2,6 +2,7 @@ package selfmon
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -90,19 +91,22 @@ func TestRegisterTwice(t *testing.T) {
 	m2.kv = etcd
 
 	ctx := context.Background()
-	i := 0
+
+	i := ""
 
 	go m1.WithActiveLock(ctx, func(ctx context.Context) {
-		i = 1
-		time.Sleep(3 * time.Second)
+		i += "a"
+		time.Sleep(5 * time.Second) // hold the lock for 3s
 	})
 	time.Sleep(time.Second)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go m2.WithActiveLock(ctx, func(ctx context.Context) {
-		i = 2
+		defer wg.Done()
+		i += "b"
 	})
-	assert.Equal(t, i, 1)
-	time.Sleep(5 * time.Second)
-	assert.Equal(t, i, 2)
+	wg.Wait()
+	assert.Equal(t, i, "ab")
 }
 
 func TestRun(t *testing.T) {

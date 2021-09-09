@@ -2,7 +2,9 @@ package mocks
 
 import (
 	"context"
+	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/projecteru2/agent/common"
@@ -25,58 +27,75 @@ type eva struct {
 // Nerv a fake runtime
 type Nerv struct {
 	Runtime
-	workloads     map[string]*eva
+	sync.Mutex
+	workloads     sync.Map // map[string]*eva
 	msgChan       chan *types.WorkloadEventMessage
 	errChan       chan error
 	daemonRunning bool
 }
 
 func (n *Nerv) init() {
-	n.workloads = map[string]*eva{
-		"Rei": {
-			ID:         "Rei",
-			Name:       "nerv_eva0_boiled",
-			EntryPoint: "eva0",
-			Pid:        12306,
-			Running:    true,
-			Healthy:    false,
-		},
-		"Shinji": {
-			ID:         "Shinji",
-			Name:       "nerv_eva1_related",
-			EntryPoint: "eva1",
-			Pid:        12307,
-			Running:    true,
-			Healthy:    true,
-		},
-		"Asuka": {
-			ID:         "Asuka",
-			Name:       "nerv_eva2_genius",
-			EntryPoint: "eva2",
-			Pid:        12308,
-			Running:    false, // not yet
-			Healthy:    false,
-		},
-	}
+	n.workloads = sync.Map{}
+	n.workloads.Store("Rei", &eva{
+		ID:         "Rei",
+		Name:       "nerv_eva0_boiled",
+		EntryPoint: "eva0",
+		Pid:        12306,
+		Running:    true,
+		Healthy:    false,
+	})
+	n.workloads.Store("Shinji", &eva{
+		ID:         "Shinji",
+		Name:       "nerv_eva1_related",
+		EntryPoint: "eva1",
+		Pid:        12307,
+		Running:    true,
+		Healthy:    true,
+	})
+	n.workloads.Store("Asuka", &eva{
+		ID:         "Asuka",
+		Name:       "nerv_eva2_genius",
+		EntryPoint: "eva2",
+		Pid:        12308,
+		Running:    false, // not yet
+		Healthy:    false,
+	})
 
 	n.msgChan = make(chan *types.WorkloadEventMessage)
 	n.errChan = make(chan error)
 	n.daemonRunning = true
 }
 
+func (n *Nerv) withLock(f func()) {
+	n.Lock()
+	defer n.Unlock()
+	f()
+}
+
 // FromTemplate returns a mock runtime instance created from template
 func FromTemplate() runtime.Runtime {
 	n := &Nerv{}
 	n.init()
-	n.On("AttachWorkload", mock.Anything, mock.Anything).Return(strings.NewReader("stdout\n"), strings.NewReader("stderr\n"), nil)
+	n.On("AttachWorkload", mock.Anything, mock.Anything).Return(
+		func(ctx context.Context, ID string) io.Reader {
+			return strings.NewReader("stdout\n")
+		},
+		func(ctx context.Context, ID string) io.Reader {
+			return strings.NewReader("stderr\n")
+		},
+		nil,
+	)
 	n.On("CollectWorkloadMetrics", mock.Anything, mock.Anything).Return()
 	n.On("ListWorkloadIDs", mock.Anything, mock.Anything, mock.Anything).Return(func(ctx context.Context, all bool, filters []types.KV) []string {
 		var IDs []string
-		for ID, workload := range n.workloads {
-			if all || workload.Running {
-				IDs = append(IDs, ID)
-			}
-		}
+		n.withLock(func() {
+			n.workloads.Range(func(ID, workload interface{}) bool {
+				if all || workload.(*eva).Running {
+					IDs = append(IDs, ID.(string))
+				}
+				return true
+			})
+		})
 		return IDs
 	}, nil)
 	n.On("Events", mock.Anything, mock.Anything).Return(func(ctx context.Context, filters []types.KV) <-chan *types.WorkloadEventMessage {
@@ -85,15 +104,27 @@ func FromTemplate() runtime.Runtime {
 		return n.errChan
 	})
 	n.On("GetStatus", mock.Anything, mock.Anything, mock.Anything).Return(func(ctx context.Context, ID string, checkHealth bool) *types.WorkloadStatus {
-		workload := n.workloads[ID]
-		return &types.WorkloadStatus{
-			ID:      workload.ID,
-			Running: workload.Running,
-			Healthy: workload.Healthy,
-		}
+		var status *types.WorkloadStatus
+		n.withLock(func() {
+			v, ok := n.workloads.Load(ID)
+			if !ok {
+				return
+			}
+			workload := v.(*eva)
+			status = &types.WorkloadStatus{
+				ID:      workload.ID,
+				Running: workload.Running,
+				Healthy: workload.Healthy,
+			}
+		})
+		return status
 	}, nil)
 	n.On("GetWorkloadName", mock.Anything, mock.Anything).Return(func(ctx context.Context, ID string) string {
-		return n.workloads[ID].Name
+		workload, ok := n.workloads.Load(ID)
+		if !ok {
+			return ""
+		}
+		return workload.(*eva).Name
 	}, nil)
 	n.On("LogFieldsExtra", mock.Anything, mock.Anything).Return(map[string]string{}, nil)
 	n.On("IsDaemonRunning", mock.Anything).Return(func(ctx context.Context) bool {
@@ -111,24 +142,39 @@ func (n *Nerv) StartEvents() {
 		Action: "400%",
 	}
 
-	n.workloads["Asuka"].Running = true
-	n.workloads["Asuka"].Healthy = true
+	n.withLock(func() {
+		v, _ := n.workloads.Load("Asuka")
+		asuka := v.(*eva)
+		asuka.Running = true
+		asuka.Healthy = true
+	})
+
 	n.msgChan <- &types.WorkloadEventMessage{
 		ID:     "Asuka",
 		Action: common.StatusStart,
 	}
 	time.Sleep(time.Second)
 
-	n.workloads["Asuka"].Running = false
-	n.workloads["Asuka"].Healthy = false
+	n.withLock(func() {
+		v, _ := n.workloads.Load("Asuka")
+		asuka := v.(*eva)
+		asuka.Running = false
+		asuka.Healthy = false
+	})
+
 	n.msgChan <- &types.WorkloadEventMessage{
 		ID:     "Asuka",
 		Action: common.StatusDie,
 	}
 	time.Sleep(time.Second)
 
-	n.workloads["Rei"].Running = false
-	n.workloads["Rei"].Healthy = false
+	n.withLock(func() {
+		v, _ := n.workloads.Load("Rei")
+		rei := v.(*eva)
+		rei.Running = false
+		rei.Healthy = false
+	})
+
 	n.msgChan <- &types.WorkloadEventMessage{
 		ID:     "Rei",
 		Action: common.StatusDie,

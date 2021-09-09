@@ -15,7 +15,8 @@ import (
 )
 
 func TestLogBroadcaster(t *testing.T) {
-	l := newLogBroadcaster()
+	manager := newMockWorkloadManager(t)
+	logrus.SetLevel(logrus.DebugLevel)
 
 	handler := func(w http.ResponseWriter, req *http.Request) {
 		app := req.URL.Query().Get("app")
@@ -27,12 +28,9 @@ func TestLogBroadcaster(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		if hijack, ok := w.(http.Hijacker); ok {
 			conn, buf, err := hijack.Hijack()
-			if err != nil {
-				logrus.Errorf("[apiLog] connect failed %v", err)
-				return
-			}
+			assert.Nil(t, err)
 			defer conn.Close()
-			l.subscribe(context.TODO(), app, buf)
+			manager.PullLog(req.Context(), app, buf)
 		}
 	}
 
@@ -45,14 +43,14 @@ func TestLogBroadcaster(t *testing.T) {
 
 	go func() {
 		time.Sleep(3 * time.Second)
-		l.logC <- &types.Log{
+		manager.logBroadcaster.logC <- &types.Log{
 			ID:         "Rei",
 			Name:       "nerv",
 			Type:       "stdout",
 			EntryPoint: "eva0",
 			Data:       "data0",
 		}
-		l.logC <- &types.Log{
+		manager.logBroadcaster.logC <- &types.Log{
 			ID:         "Rei",
 			Name:       "nerv",
 			Type:       "stdout",
@@ -63,7 +61,7 @@ func TestLogBroadcaster(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	go l.run(ctx)
+	go manager.logBroadcaster.run(ctx)
 
 	time.Sleep(2 * time.Second)
 	resp, err := http.Get("http://127.0.0.1:12310/log/?app=nerv")

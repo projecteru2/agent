@@ -3,6 +3,7 @@ package workload
 import (
 	"bufio"
 	"context"
+	"io"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/runtime"
@@ -118,7 +119,19 @@ func (m *Manager) Run(ctx context.Context) error {
 	}
 }
 
-// Subscribe subscribes logs
-func (m *Manager) Subscribe(ctx context.Context, app string, buf *bufio.ReadWriter) {
-	m.logBroadcaster.subscribe(ctx, app, buf)
+// PullLog pull logs for specific app
+func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter) {
+	ID, errChan := m.logBroadcaster.subscribe(app, buf)
+	defer m.logBroadcaster.unsubscribe(app, ID)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case err := <-errChan:
+			if err != io.EOF {
+				log.Errorf("[PullLog] failed to pull log, err: %v", err)
+			}
+			return
+		}
+	}
 }

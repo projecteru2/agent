@@ -22,7 +22,12 @@ binary:
 
 unit-test:
 	go vet `go list ./... | grep -v '/vendor/'`
-	go test `go list ./... | grep -v '/vendor/'`
+	go test -race -count=1 -cover ./logs/... \
+	./manager/node/... \
+	./manager/workload/... \
+	./selfmon/... \
+	./types/... \
+	./utils/...
 
 build: deps binary
 
@@ -34,3 +39,4 @@ lint:
 .PHONY: mock
 mock:
 	mockery --dir store --output store/mocks --name Store
+	mockery --dir runtime --output runtime/mocks --name Runtime

@@ -18,8 +18,10 @@ func TestNewWriterWithUDP(t *testing.T) {
 	enc, err := w.createUDPEncoder()
 	assert.NoError(t, err)
 
-	w.enc = enc
-	w.Write(&types.Log{})
+	w.withLock(func() {
+		w.enc = enc
+	})
+	assert.NoError(t, w.Write(&types.Log{}))
 }
 
 func TestNewWriterWithTCP(t *testing.T) {
@@ -35,8 +37,10 @@ func TestNewWriterWithTCP(t *testing.T) {
 	enc, err := w.createTCPEncoder()
 	assert.NoError(t, err)
 
-	w.enc = enc
-	w.enc.Encode(&types.Log{})
+	w.withLock(func() {
+		w.enc = enc
+	})
+	assert.NoError(t, w.enc.Encode(&types.Log{}))
 }
 
 // func TestNewWriterWithJournal(t *testing.T) {

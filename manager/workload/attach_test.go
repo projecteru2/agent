@@ -25,6 +25,7 @@ func TestAttach(t *testing.T) {
 		}
 	}()
 
-	manager.attach(ctx, "Rei")
+	go manager.attach(ctx, "Rei")
+	go manager.attach(ctx, "Rei")
 	time.Sleep(2 * time.Second)
 }
