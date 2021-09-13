@@ -63,6 +63,11 @@ func (l *logBroadcaster) unsubscribe(app string, ID string) {
 	defer l.Unlock()
 
 	subscribers := l.getSubscribers(app)
+	subscriber, ok := subscribers[ID]
+	if ok {
+		defer close(subscriber.errChan)
+	}
+
 	delete(subscribers, ID)
 
 	logrus.Infof("%s %s detached", app, ID)
