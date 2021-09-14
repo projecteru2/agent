@@ -11,8 +11,8 @@ import (
 type Runtime interface {
 	AttachWorkload(ctx context.Context, ID string) (io.Reader, io.Reader, error)
 	CollectWorkloadMetrics(ctx context.Context, ID string)
-	ListWorkloadIDs(ctx context.Context, all bool, filters []types.KV) ([]string, error)
-	Events(ctx context.Context, filters []types.KV) (<-chan *types.WorkloadEventMessage, <-chan error)
+	ListWorkloadIDs(ctx context.Context, filters map[string]string) ([]string, error)
+	Events(ctx context.Context, filters map[string]string) (<-chan *types.WorkloadEventMessage, <-chan error)
 	GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error)
 	GetWorkloadName(ctx context.Context, ID string) (string, error)
 	LogFieldsExtra(ctx context.Context, ID string) (map[string]string, error)

@@ -5,7 +5,6 @@ import (
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
-	coreutils "github.com/projecteru2/core/utils"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -16,8 +15,7 @@ func (m *Manager) initMonitor(ctx context.Context) (<-chan *types.WorkloadEventM
 	eventHandler.Handle(common.StatusStart, m.handleWorkloadStart)
 	eventHandler.Handle(common.StatusDie, m.handleWorkloadDie)
 
-	f := m.getFilter(map[string]string{})
-	eventChan, errChan := m.runtimeClient.Events(ctx, f)
+	eventChan, errChan := m.runtimeClient.Events(ctx, m.getBaseFilter())
 	return eventChan, errChan
 }
 
@@ -27,7 +25,7 @@ func (m *Manager) monitor(ctx context.Context, eventChan <-chan *types.WorkloadE
 }
 
 func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.WorkloadEventMessage) {
-	log.Debugf("[handleWorkloadStart] workload %s start", coreutils.ShortID(event.ID))
+	log.Debugf("[handleWorkloadStart] workload %s start", event.ID)
 	workloadStatus, err := m.runtimeClient.GetStatus(ctx, event.ID, true)
 	if err != nil {
 		log.Errorf("[handleWorkloadStart] faild to get workload %v status, err: %v", event.ID, err)
@@ -48,7 +46,7 @@ func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.Workload
 }
 
 func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEventMessage) {
-	log.Debugf("[handleWorkloadDie] container %s die", coreutils.ShortID(event.ID))
+	log.Debugf("[handleWorkloadDie] container %s die", event.ID)
 	workloadStatus, err := m.runtimeClient.GetStatus(ctx, event.ID, true)
 	if err != nil {
 		log.Errorf("[handleWorkloadDie] faild to get workload %v status, err: %v", event.ID, err)

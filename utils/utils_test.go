@@ -156,15 +156,6 @@ func TestUseLabelAsFilter(t *testing.T) {
 	assert.Equal(t, UseLabelAsFilter(), true)
 }
 
-func TestCheckHostname(t *testing.T) {
-	env := []string{"ERU_NODE_NAME=hostname", "LUNCH=free", "ANNUAL_LEAVE=unlimited"}
-	assert.Equal(t, CheckHostname(env, "hostname"), true)
-	assert.Equal(t, CheckHostname(env, ""), false)
-
-	env = []string{"LUNCH=free", "ANNUAL_LEAVE=unlimited"}
-	assert.Equal(t, CheckHostname(env, ""), false)
-}
-
 func TestGetMaxAttemptsByTTL(t *testing.T) {
 	assert.Equal(t, GetMaxAttemptsByTTL(0), 5) // selfmon enabled
 	assert.Equal(t, GetMaxAttemptsByTTL(1), 2)

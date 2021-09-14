@@ -3,12 +3,14 @@ package workload
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/runtime"
 	"github.com/projecteru2/agent/runtime/docker"
 	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
+	"github.com/projecteru2/agent/runtime/yavirt"
 	"github.com/projecteru2/agent/store"
 	corestore "github.com/projecteru2/agent/store/core"
 	storemocks "github.com/projecteru2/agent/store/mocks"
@@ -77,6 +79,12 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		if manager.runtimeClient == nil {
 			log.Errorf("[NewManager] failed to create runtime client")
 			return nil, err
+		}
+	case common.YavirtRuntime:
+		yavirt.InitClient(config)
+		manager.runtimeClient = yavirt.GetClient()
+		if manager.runtimeClient == nil {
+			return nil, errors.New("failed to get runtime client")
 		}
 	case common.MocksRuntime:
 		manager.runtimeClient = runtimemocks.FromTemplate()

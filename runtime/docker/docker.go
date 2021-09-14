@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http/httputil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/projecteru2/agent/common"
@@ -85,20 +86,20 @@ func New(config *types.Config, nodeIP string) (*Docker, error) {
 	return d, nil
 }
 
-func (d *Docker) getFilterArgs(filters []types.KV) enginefilters.Args {
+func (d *Docker) getFilterArgs(filters map[string]string) enginefilters.Args {
 	f := enginefilters.NewArgs()
 
-	for _, kv := range filters {
-		f.Add(kv.Key, kv.Value)
+	for key, value := range filters {
+		f.Add("label", fmt.Sprintf("%s=%s", key, value))
 	}
 
 	return f
 }
 
 // ListWorkloadIDs lists workload IDs filtered by given condition
-func (d *Docker) ListWorkloadIDs(ctx context.Context, all bool, filters []types.KV) ([]string, error) {
+func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string) ([]string, error) {
 	f := d.getFilterArgs(filters)
-	opts := enginetypes.ContainerListOptions{Filters: f, All: all}
+	opts := enginetypes.ContainerListOptions{Filters: f, All: true}
 
 	var containers []enginetypes.Container
 	var err error
@@ -145,10 +146,25 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 		if err != nil {
 			log.Errorf("[attach] attach get stream failed %s", err)
 		}
-		log.Infof("[attach] attach workload %s finished", coreutils.ShortID(ID))
+		log.Infof("[attach] attach workload %s finished", ID)
 	}()
 
 	return outr, errr, nil
+}
+
+// checkHostname check if ERU_NODE_NAME env in container is the hostname of this agent
+// TODO should be removed in the future, should always use label to filter
+func (d *Docker) checkHostname(env []string) bool {
+	for _, e := range env {
+		ps := strings.SplitN(e, "=", 2)
+		if len(ps) != 2 {
+			continue
+		}
+		if ps[0] == "ERU_NODE_NAME" && ps[1] == d.config.HostName {
+			return true
+		}
+	}
+	return false
 }
 
 // detectWorkload detect a container by ID
@@ -165,11 +181,11 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 	label := c.Config.Labels
 
 	if _, ok := label[cluster.ERUMark]; !ok {
-		return nil, fmt.Errorf("not a eru container %s", coreutils.ShortID(ID))
+		return nil, fmt.Errorf("not a eru container %s", ID)
 	}
 
 	// TODO should be removed in the future
-	if d.config.CheckOnlyMine && !utils.UseLabelAsFilter() && !utils.CheckHostname(c.Config.Env, d.config.HostName) {
+	if d.config.CheckOnlyMine && !utils.UseLabelAsFilter() && !d.checkHostname(c.Config.Env) {
 		return nil, fmt.Errorf("should ignore this container")
 	}
 
@@ -207,7 +223,7 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 }
 
 // Events returns the events of workloads' changes
-func (d *Docker) Events(ctx context.Context, filters []types.KV) (<-chan *types.WorkloadEventMessage, <-chan error) {
+func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan *types.WorkloadEventMessage, <-chan error) {
 	eventChan := make(chan *types.WorkloadEventMessage)
 	errChan := make(chan error)
 
@@ -239,7 +255,7 @@ func (d *Docker) Events(ctx context.Context, filters []types.KV) (<-chan *types.
 	return eventChan, errChan
 }
 
-// GetStatus check workload's status then returns workload status
+// GetStatus checks workload's status first, then returns workload status
 func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error) {
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {

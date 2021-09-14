@@ -8,6 +8,7 @@ import (
 	"github.com/projecteru2/agent/runtime"
 	"github.com/projecteru2/agent/runtime/docker"
 	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
+	"github.com/projecteru2/agent/runtime/yavirt"
 	"github.com/projecteru2/agent/store"
 	corestore "github.com/projecteru2/agent/store/core"
 	storemocks "github.com/projecteru2/agent/store/mocks"
@@ -54,6 +55,12 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		}
 		docker.InitClient(config, nodeIP)
 		m.runtimeClient = docker.GetClient()
+		if m.runtimeClient == nil {
+			return nil, errors.New("failed to get runtime client")
+		}
+	case common.YavirtRuntime:
+		yavirt.InitClient(config)
+		m.runtimeClient = yavirt.GetClient()
 		if m.runtimeClient == nil {
 			return nil, errors.New("failed to get runtime client")
 		}

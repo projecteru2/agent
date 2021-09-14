@@ -18,6 +18,7 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/version"
 	coreutils "github.com/projecteru2/core/utils"
+	yavirtclient "github.com/projecteru2/libyavirt/client"
 
 	engineapi "github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
@@ -27,6 +28,11 @@ import (
 func MakeDockerClient(config *types.Config) (*engineapi.Client, error) {
 	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("eru-agent-%s", version.VERSION)}
 	return engineapi.NewClient(config.Docker.Endpoint, common.DockerCliVersion, nil, defaultHeaders)
+}
+
+// MakeYavirtClient make a yavirt client
+func MakeYavirtClient(config *types.Config) (yavirtclient.Client, error) {
+	return yavirtclient.New(config.Yavirt.Endpoint)
 }
 
 // WritePid write pid
@@ -52,21 +58,6 @@ func Max(a, b int64) int64 {
 // UseLabelAsFilter return if use label as filter
 func UseLabelAsFilter() bool {
 	return os.Getenv("ERU_AGENT_EXPERIMENTAL_FILTER") == "label"
-}
-
-// CheckHostname check if ERU_NODE_NAME env in container is the hostname of this agent
-// TODO should be removed in the future, should always use label to filter
-func CheckHostname(env []string, hostname string) bool {
-	for _, e := range env {
-		ps := strings.SplitN(e, "=", 2)
-		if len(ps) != 2 {
-			continue
-		}
-		if ps[0] == "ERU_NODE_NAME" && ps[1] == hostname {
-			return true
-		}
-	}
-	return false
 }
 
 // GetMaxAttemptsByTTL .

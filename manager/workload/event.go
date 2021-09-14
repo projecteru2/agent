@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/projecteru2/agent/types"
-	coreutils "github.com/projecteru2/core/utils"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -31,7 +30,7 @@ func (e *EventHandler) Handle(action string, h func(context.Context, *types.Work
 // Watch watch change
 func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventMessage) {
 	for ev := range c {
-		log.Infof("[Watch] Monitor: workload id %s action %s", coreutils.ShortID(ev.ID), ev.Action)
+		log.Infof("[Watch] Monitor: workload id %s action %s", ev.ID, ev.Action)
 		e.Lock()
 		h := e.handlers[ev.Action]
 		if h != nil {

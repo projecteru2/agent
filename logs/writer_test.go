@@ -40,7 +40,7 @@ func TestNewWriterWithTCP(t *testing.T) {
 	w.withLock(func() {
 		w.enc = enc
 	})
-	assert.NoError(t, w.enc.Encode(&types.Log{}))
+	assert.NoError(t, w.Write(&types.Log{}))
 }
 
 // func TestNewWriterWithJournal(t *testing.T) {
