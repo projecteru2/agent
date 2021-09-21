@@ -105,26 +105,21 @@ func (m *Manager) Run(ctx context.Context) error {
 	// start log broadcaster
 	go m.logBroadcaster.run(ctx)
 
-	// load container
-	if err := m.load(ctx); err != nil {
+	// initWorkloadStatus container
+	if err := m.initWorkloadStatus(ctx); err != nil {
 		return err
 	}
+
 	// start status watcher
-	eventChan, errChan := m.initMonitor(ctx)
-	go m.monitor(ctx, eventChan)
+	go m.monitor(ctx)
 
 	// start health check
 	go m.healthCheck(ctx)
 
 	// wait for signal
-	select {
-	case <-ctx.Done():
-		log.Info("[WorkloadManager] exiting")
-		return nil
-	case err := <-errChan:
-		log.Infof("[WorkloadManager] failed to watch node status, err: %v", err)
-		return err
-	}
+	<-ctx.Done()
+	log.Info("[WorkloadManager] exiting")
+	return nil
 }
 
 // PullLog pull logs for specific app

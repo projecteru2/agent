@@ -23,7 +23,7 @@ type HealthCheck struct {
 	HTTPCode int
 }
 
-type healthCheckBridge struct {
+type healthCheckMeta struct {
 	Publish     []string
 	HealthCheck *HealthCheck
 }
@@ -44,7 +44,7 @@ type Guest struct {
 	ImageUser     string
 	Networks      map[string]string
 	Labels        map[string]string
-	IPList        []string
+	IPs           []string
 	Hostname      string
 	Running       bool
 	HealthCheck   *HealthCheck
@@ -57,13 +57,13 @@ func (g *Guest) CheckHealth(ctx context.Context, timeout time.Duration) bool {
 	// init health check bridge
 	g.once.Do(func() {
 		if meta, ok := g.Labels[LabelMeta]; ok {
-			bridge := &healthCheckBridge{}
-			err := json.Unmarshal([]byte(meta), bridge)
+			hcm := &healthCheckMeta{}
+			err := json.Unmarshal([]byte(meta), hcm)
 			if err != nil {
 				log.Errorf("[CheckHealth] invalid json format, guest %v, meta %v, err %v", g.ID, meta, err)
 				return
 			}
-			g.HealthCheck = bridge.HealthCheck
+			g.HealthCheck = hcm.HealthCheck
 		}
 	})
 
@@ -77,12 +77,12 @@ func (g *Guest) CheckHealth(ctx context.Context, timeout time.Duration) bool {
 	healthCheck := g.HealthCheck
 
 	for _, port := range healthCheck.TCPPorts {
-		for _, ip := range g.IPList {
+		for _, ip := range g.IPs {
 			tcpChecker = append(tcpChecker, fmt.Sprintf("%s:%s", ip, port))
 		}
 	}
 	if healthCheck.HTTPPort != "" {
-		for _, ip := range g.IPList {
+		for _, ip := range g.IPs {
 			httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", ip, healthCheck.HTTPPort, healthCheck.HTTPURL))
 		}
 	}

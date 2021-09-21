@@ -138,6 +138,9 @@ func (w *Writer) Write(logline *types.Log) error {
 	if w.stdout {
 		log.Info(logline)
 	}
+	if len(w.addr) == 0 && len(w.scheme) == 0 {
+		return nil
+	}
 	var err error
 	err = w.checkConn()
 	if err == nil {

@@ -26,4 +26,4 @@ require (
 	gotest.tools/v3 v3.0.3 // indirect
 )
 
-replace github.com/projecteru2/libyavirt v0.0.0-20210915071951-6b784e72977b => github.com/DuodenumL/libyavirt v0.0.0-20210916103342-42ef27937ebd
+replace github.com/projecteru2/libyavirt v0.0.0-20210915071951-6b784e72977b => github.com/DuodenumL/libyavirt v0.0.0-20210920103912-eb23e2ebc0c2

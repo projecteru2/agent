@@ -246,6 +246,7 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 				}
 			case err := <-e:
 				errChan <- err
+				return
 			case <-ctx.Done():
 				return
 			}
@@ -259,7 +260,7 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error) {
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
-		log.Errorf("[GetStatus] failed to detect workload, err: %v", err)
+		log.Errorf("[GetStatus] failed to detect workload %v, err: %v", ID, err)
 		return nil, err
 	}
 
@@ -312,7 +313,7 @@ func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error)
 func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]string, error) {
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
-		log.Errorf("[LogFieldsExtra] failed to detect container, err: %v", err)
+		log.Errorf("[LogFieldsExtra] failed to detect container %v, err: %v", ID, err)
 		return nil, err
 	}
 

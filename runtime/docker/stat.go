@@ -22,7 +22,7 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) {
 
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
-		log.Errorf("[CollectWorkloadMetrics] failed to detect container, err: %v", err)
+		log.Errorf("[CollectWorkloadMetrics] failed to detect container %v, err: %v", ID, err)
 	}
 
 	// init stats

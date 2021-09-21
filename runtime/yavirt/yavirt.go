@@ -101,7 +101,7 @@ func (y *Yavirt) detectWorkload(ctx context.Context, ID string) (*Guest, error) 
 		ImageUser:     guest.ImageUser,
 		Networks:      guest.Networks,
 		Labels:        guest.Labels,
-		IPList:        guest.IPList,
+		IPs:           guest.IPs,
 		Hostname:      guest.Hostname,
 		Running:       guest.Running,
 		once:          sync.Once{},
@@ -117,9 +117,7 @@ func (y *Yavirt) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 func (y *Yavirt) CollectWorkloadMetrics(ctx context.Context, ID string) {}
 
 // ListWorkloadIDs lists workload IDs filtered by given condition
-func (y *Yavirt) ListWorkloadIDs(ctx context.Context, filters map[string]string) ([]string, error) {
-	var ids []string
-	var err error
+func (y *Yavirt) ListWorkloadIDs(ctx context.Context, filters map[string]string) (ids []string, err error) {
 	utils.WithTimeout(ctx, y.config.GlobalConnectionTimeout, func(ctx context.Context) {
 		ids, err = y.client.GetGuestIDList(ctx, yavirttypes.GetGuestIDListReq{Filters: filters})
 	})
@@ -134,11 +132,7 @@ func (y *Yavirt) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 func (y *Yavirt) Events(ctx context.Context, filters map[string]string) (<-chan *types.WorkloadEventMessage, <-chan error) {
 	eventChan := make(chan *types.WorkloadEventMessage)
 	errChan := make(chan error)
-
-	var yaEventChan <-chan yavirttypes.EventMessage
-	var yaErrChan <-chan error
-
-	yaEventChan, yaErrChan = y.client.Events(ctx, filters)
+	yaEventChan, yaErrChan := y.client.Events(ctx, filters)
 
 	go func() {
 		defer close(eventChan)
@@ -155,6 +149,7 @@ func (y *Yavirt) Events(ctx context.Context, filters map[string]string) (<-chan 
 				}
 			case err := <-yaErrChan:
 				errChan <- err
+				return
 			case <-ctx.Done():
 				return
 			}

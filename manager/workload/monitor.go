@@ -2,6 +2,7 @@ package workload
 
 import (
 	"context"
+	"time"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
@@ -19,9 +20,25 @@ func (m *Manager) initMonitor(ctx context.Context) (<-chan *types.WorkloadEventM
 	return eventChan, errChan
 }
 
-func (m *Manager) monitor(ctx context.Context, eventChan <-chan *types.WorkloadEventMessage) {
-	log.Info("[monitor] Status watch start")
+func (m *Manager) watchEvent(ctx context.Context, eventChan <-chan *types.WorkloadEventMessage) {
+	log.Info("[watchEvent] Status watch start")
 	eventHandler.Watch(ctx, eventChan)
+}
+
+// monitor with retry
+func (m *Manager) monitor(ctx context.Context) {
+	for {
+		eventChan, errChan := m.initMonitor(ctx)
+		go m.watchEvent(ctx, eventChan)
+		select {
+		case <-ctx.Done():
+			log.Infof("[monitor] context canceled, stop monitoring")
+			return
+		case err := <-errChan:
+			log.Errorf("[monitor] received an err: %v, will retry", err)
+			time.Sleep(m.config.GlobalConnectionTimeout)
+		}
+	}
 }
 
 func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.WorkloadEventMessage) {

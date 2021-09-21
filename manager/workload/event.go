@@ -29,13 +29,23 @@ func (e *EventHandler) Handle(action string, h func(context.Context, *types.Work
 
 // Watch watch change
 func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventMessage) {
-	for ev := range c {
-		log.Infof("[Watch] Monitor: workload id %s action %s", ev.ID, ev.Action)
-		e.Lock()
-		h := e.handlers[ev.Action]
-		if h != nil {
-			go h(ctx, ev)
+	for {
+		select {
+		case ev, ok := <-c:
+			if !ok {
+				log.Infof("[Watch] event chan closed")
+				return
+			}
+			log.Infof("[Watch] Monitor: workload id %s action %s", ev.ID, ev.Action)
+			e.Lock()
+			h := e.handlers[ev.Action]
+			if h != nil {
+				go h(ctx, ev)
+			}
+			e.Unlock()
+		case <-ctx.Done():
+			log.Infof("[Watch] context canceled, stop watching")
+			return
 		}
-		e.Unlock()
 	}
 }

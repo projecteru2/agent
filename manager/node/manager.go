@@ -80,6 +80,10 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	// wait for signal
 	<-ctx.Done()
+	return m.exit()
+}
+
+func (m *Manager) exit() error {
 	log.Info("[NodeManager] exiting")
 	log.Infof("[NodeManager] mark node %s as down", m.config.HostName)
 
