@@ -67,12 +67,15 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 	wg := &sync.WaitGroup{}
 	pump := func(typ string, source io.Reader) {
 		defer wg.Done()
+		log.Debugf("[attach] attach pump %s %s %s start", workloadName, ID, typ)
+		defer log.Debugf("[attach] attach pump %s %s %s finished", workloadName, ID, typ)
+
 		buf := bufio.NewReader(source)
 		for {
 			data, err := buf.ReadString('\n')
 			if err != nil {
 				if err != io.EOF {
-					log.Errorf("[attach] attach pump %s %s %s %s", workloadName, ID, typ, err)
+					log.Errorf("[attach] attach pump %s %s %s failed, err: %v", workloadName, ID, typ, err)
 				}
 				return
 			}

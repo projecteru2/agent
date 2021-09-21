@@ -140,6 +140,9 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 			resp.Close()
 			outw.Close()
 			errw.Close()
+			outr.Close()
+			errr.Close()
+			log.Debugf("[attach] %v buf pipes closed", ID)
 		}()
 
 		_, err = stdcopy.StdCopy(outw, errw, resp.Reader)
