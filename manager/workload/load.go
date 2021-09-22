@@ -22,7 +22,7 @@ func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 			defer wg.Done()
 			workloadStatus, err := m.runtimeClient.GetStatus(ctx, ID, true)
 			if err != nil {
-				log.Errorf("[initWorkloadStatus] get workload status failed %v", err)
+				log.Errorf("[initWorkloadStatus] get workload %v status failed %v", ID, err)
 				return
 			}
 

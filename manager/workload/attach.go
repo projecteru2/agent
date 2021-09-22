@@ -18,15 +18,21 @@ import (
 
 func (m *Manager) attach(ctx context.Context, ID string) {
 	log.Debugf("[attach] attaching workload %v", ID)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	transfer := m.forwards.Get(ID, 0)
 	if transfer == "" {
 		transfer = logs.Discard
 	}
-	writer, err := logs.NewWriter(transfer, m.config.Log.Stdout)
+	writer, err := logs.NewWriter(ctx, transfer, m.config.Log.Stdout)
 	if err != nil {
-		log.Errorf("[attach] Create log forward failed %s", err)
+		log.Errorf("[attach] Create log forward %s failed %s", transfer, err)
 		return
 	}
+	defer func() {
+		go writer.Close()
+	}()
 
 	// get app info
 	workloadName, err := m.runtimeClient.GetWorkloadName(ctx, ID)
@@ -53,11 +59,8 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 	}
 	log.Infof("[attach] attach %s workload %s success", workloadName, ID)
 
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	// attach metrics
-	go m.runtimeClient.CollectWorkloadMetrics(cancelCtx, ID)
+	go m.runtimeClient.CollectWorkloadMetrics(ctx, ID)
 
 	extra, err := m.runtimeClient.LogFieldsExtra(ctx, ID)
 	if err != nil {

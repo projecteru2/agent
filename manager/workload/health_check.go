@@ -52,7 +52,7 @@ func (m *Manager) checkOneWorkload(ctx context.Context, ID string) bool {
 	}
 
 	if err = m.setWorkloadStatus(ctx, workloadStatus); err != nil {
-		log.Errorf("[checkOneWorkload] update workload status failed, err: %v", err)
+		log.Errorf("[checkOneWorkload] update workload status for %v failed, err: %v", ID, err)
 	}
 	return workloadStatus.Healthy
 }

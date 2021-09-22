@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"context"
 	"net"
 	"testing"
 
@@ -10,9 +11,11 @@ import (
 )
 
 func TestNewWriterWithUDP(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	// udp writer
 	addr := "udp://127.0.0.1:23456"
-	w, err := NewWriter(addr, true)
+	w, err := NewWriter(ctx, addr, true)
 	assert.NoError(t, err)
 
 	enc, err := w.createUDPEncoder()
@@ -25,13 +28,15 @@ func TestNewWriterWithUDP(t *testing.T) {
 }
 
 func TestNewWriterWithTCP(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	// tcp writer
 	addr := "tcp://127.0.0.1:34567"
 	tcpL, err := net.Listen("tcp", ":34567")
 	assert.NoError(t, err)
 
 	defer tcpL.Close()
-	w, err := NewWriter(addr, true)
+	w, err := NewWriter(ctx, addr, true)
 	assert.NoError(t, err)
 
 	enc, err := w.createTCPEncoder()

@@ -79,7 +79,6 @@ func serve(c *cli.Context) error {
 		defer cancel()
 		if err := workloadManager.Run(ctx); err != nil {
 			log.Errorf("[agent] workload manager err: %v, exiting", err)
-			cancel()
 		}
 	}()
 

@@ -29,6 +29,7 @@ func CheckTCP(ID string, backends []string, timeout time.Duration) bool {
 		log.Debugf("[checkTCP] Check health via tcp: workload %s, backend %s", ID, backend)
 		conn, err := net.DialTimeout("tcp", backend, timeout)
 		if err != nil {
+			log.Debugf("[checkTCP] Check health failed via tcp: workload %s, backend %s", ID, backend)
 			return false
 		}
 		conn.Close()
