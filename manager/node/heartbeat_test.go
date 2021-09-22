@@ -2,9 +2,10 @@ package node
 
 import (
 	"context"
+	"testing"
+
 	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
 	storemocks "github.com/projecteru2/agent/store/mocks"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -55,7 +55,7 @@ func (d discard) Close() error {
 func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, err error) {
 	if addr == Discard {
 		return &Writer{
-			enc:    NewStreamEncoder(discard{}),
+			enc: NewStreamEncoder(discard{}),
 		}, nil
 	}
 
@@ -67,13 +67,14 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 	writer = &Writer{addr: u.Host, scheme: u.Scheme, stdout: stdout}
 	writer.enc, err = writer.createEncoder()
 
-	if err == ErrInvalidScheme {
+	switch {
+	case err == ErrInvalidScheme:
 		log.Infof("[writer] create an empty writer for %s success", addr)
 		writer.enc = NewStreamEncoder(discard{})
-	} else if err != nil {
+	case err != nil:
 		log.Errorf("[writer] failed to create writer encoder for %s, err: %v, will retry", addr, err)
 		writer.needReconnect = true
-	} else {
+	default:
 		log.Infof("[writer] create writer for %s success", addr)
 	}
 

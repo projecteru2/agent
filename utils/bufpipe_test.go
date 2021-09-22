@@ -3,14 +3,15 @@ package utils
 import (
 	"bufio"
 	"fmt"
-	"github.com/docker/go-units"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/docker/go-units"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestBufPipe(t *testing.T)  {
+func TestBufPipe(t *testing.T) {
 	size, _ := units.RAMInBytes("10M")
 	r, w := NewBufPipe(size)
 	w.Write([]byte("test"))

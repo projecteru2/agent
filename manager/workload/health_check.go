@@ -2,7 +2,6 @@ package workload
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/projecteru2/agent/types"
@@ -60,26 +59,6 @@ func (m *Manager) checkOneWorkload(ctx context.Context, ID string) bool {
 // 设置workload状态，允许重试，带timeout控制
 func (m *Manager) setWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error {
 	return utils.BackoffRetry(ctx, 3, func() error {
-		var err error
-		utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
-			err = m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL())
-		})
-		return err
+		return m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL())
 	})
-}
-
-// 检查一个workload，允许重试
-func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID string) {
-	log.Debugf("[checkOneWorkloadWithBackoffRetry] check workload %s", ID)
-	err := utils.BackoffRetry(ctx, utils.GetMaxAttemptsByTTL(m.config.GetHealthCheckStatusTTL()), func() error {
-		if !m.checkOneWorkload(ctx, ID) {
-			// 这个err就是用来判断要不要继续的，不用打在日志里
-			return errors.New("not healthy")
-		}
-		return nil
-	})
-
-	if err != nil {
-		log.Debugf("[checkOneWorkloadWithBackoffRetry] workload %s still not healthy", ID)
-	}
 }

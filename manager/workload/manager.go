@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"sync"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/runtime"
@@ -28,6 +29,9 @@ type Manager struct {
 
 	nodeIP   string
 	forwards *utils.HashBackends
+
+	checkWorkloadMutex *sync.Mutex
+	startingWorkloads  sync.Map
 
 	logBroadcaster *logBroadcaster
 
@@ -95,6 +99,9 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 
 	manager.logBroadcaster = newLogBroadcaster()
 
+	manager.checkWorkloadMutex = &sync.Mutex{}
+	manager.startingWorkloads = sync.Map{}
+
 	return manager, nil
 }
 
@@ -132,7 +139,7 @@ func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter
 			return
 		case err := <-errChan:
 			if err != io.EOF {
-				log.Errorf("[PullLog] failed to pull log, err: %v", err)
+				log.Errorf("[PullLog] %v failed to pull log, err: %v", ID, err)
 			}
 			return
 		}

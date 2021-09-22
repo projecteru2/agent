@@ -2,10 +2,12 @@ package workload
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -41,6 +43,34 @@ func (m *Manager) monitor(ctx context.Context) {
 	}
 }
 
+// 检查一个workload，允许重试
+func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID string) {
+	log.Debugf("[checkOneWorkloadWithBackoffRetry] check workload %s", ID)
+
+	m.checkWorkloadMutex.Lock()
+	defer m.checkWorkloadMutex.Unlock()
+
+	if v, ok := m.startingWorkloads.Load(ID); ok {
+		retryTask := v.(*utils.RetryTask)
+		retryTask.Stop()
+	}
+
+	retryTask := utils.NewRetryTask(ctx, utils.GetMaxAttemptsByTTL(m.config.GetHealthCheckStatusTTL()), func() error {
+		if !m.checkOneWorkload(ctx, ID) {
+			// 这个err就是用来判断要不要继续的，不用打在日志里
+			return errors.New("not healthy")
+		}
+		return nil
+	})
+	m.startingWorkloads.Store(ID, retryTask)
+	go func() {
+		err := retryTask.Run()
+		if err != nil {
+			log.Debugf("[checkOneWorkloadWithBackoffRetry] workload %s still not healthy", ID)
+		}
+	}()
+}
+
 func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.WorkloadEventMessage) {
 	log.Debugf("[handleWorkloadStart] workload %s start", event.ID)
 	workloadStatus, err := m.runtimeClient.GetStatus(ctx, event.ID, true)
@@ -58,7 +88,7 @@ func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.Workload
 			log.Errorf("[handleWorkloadStart] update deploy status failed %v", err)
 		}
 	} else {
-		go m.checkOneWorkloadWithBackoffRetry(ctx, event.ID)
+		m.checkOneWorkloadWithBackoffRetry(ctx, event.ID)
 	}
 }
 
