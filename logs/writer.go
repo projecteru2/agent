@@ -165,6 +165,11 @@ func (w *Writer) keepalive(ctx context.Context) {
 			w.reconnect()
 			timer.Reset(KeepaliveInterval)
 		case <-ctx.Done():
+			// leave some time for the pending writing
+			time.Sleep(CloseWaitInterval)
+			if err := w.close(); err != nil {
+				log.Errorf("[keepalive] failed to close writer %s, err: %s", w.addr, err)
+			}
 			return
 		}
 	}
@@ -215,10 +220,7 @@ func (w *Writer) Write(logline *types.Log) error {
 	return err
 }
 
-// Close .
-func (w *Writer) Close() error {
-	// leave some time for the pending writing
-	time.Sleep(CloseWaitInterval)
+func (w *Writer) close() error {
 	var err error
 	w.withLock(func() {
 		if w.enc != nil {

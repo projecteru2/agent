@@ -14,8 +14,19 @@ import (
 )
 
 type subscriber struct {
+	ctx     context.Context
+	cancel  context.CancelFunc
 	buf     *bufio.ReadWriter
 	errChan chan error
+}
+
+func (s *subscriber) isDone() bool {
+	select {
+	case <-s.ctx.Done():
+		return true
+	default:
+		return false
+	}
 }
 
 // logBroadcaster receives log and broadcasts to subscribers
@@ -42,20 +53,27 @@ func (l *logBroadcaster) deleteSubscribers(app string) {
 }
 
 // subscribe subscribes logs of the specific app.
-func (l *logBroadcaster) subscribe(app string, buf *bufio.ReadWriter) (string, <-chan error) {
+func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.ReadWriter) (string, chan error, func()) {
 	l.Lock()
 	defer l.Unlock()
 
 	subscribers := l.getSubscribers(app)
-	errChan := make(chan error)
 	ID := coreutils.RandomString(8)
+	ctx, cancel := context.WithCancel(ctx)
+	errChan := make(chan error)
+
 	subscribers[ID] = &subscriber{
+		ctx:     ctx,
+		cancel:  cancel,
 		buf:     buf,
 		errChan: errChan,
 	}
 
 	logrus.Infof("%s %s log subscribed", app, ID)
-	return ID, errChan
+	return ID, errChan, func() {
+		cancel()
+		go l.unsubscribe(app, ID)
+	}
 }
 
 func (l *logBroadcaster) unsubscribe(app string, ID string) {
@@ -63,9 +81,10 @@ func (l *logBroadcaster) unsubscribe(app string, ID string) {
 	defer l.Unlock()
 
 	subscribers := l.getSubscribers(app)
+
 	subscriber, ok := subscribers[ID]
 	if ok {
-		defer close(subscriber.errChan)
+		close(subscriber.errChan)
 	}
 
 	delete(subscribers, ID)
@@ -96,14 +115,22 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 	// use wait group to make sure the logs are ordered
 	wg := &sync.WaitGroup{}
 	wg.Add(len(subscribers))
-	for _, sub := range subscribers {
-		go func(sub *subscriber) {
+	for ID, sub := range subscribers {
+		go func(ID string, sub *subscriber) {
 			defer wg.Done()
-			if _, err := sub.buf.Write([]byte(line)); err != nil {
-				sub.errChan <- err
+			if sub.isDone() {
+				return
 			}
+
+			if _, err := sub.buf.Write([]byte(line)); err != nil {
+				logrus.Debugf("[broadcast] failed to write into %v, err: %v", ID, err)
+				sub.cancel()
+				sub.errChan <- err
+				return
+			}
+
 			sub.buf.Flush()
-		}(sub)
+		}(ID, sub)
 	}
 	wg.Wait()
 }

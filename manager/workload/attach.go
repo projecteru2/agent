@@ -30,9 +30,6 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 		log.Errorf("[attach] Create log forward %s failed %s", transfer, err)
 		return
 	}
-	defer func() {
-		go writer.Close()
-	}()
 
 	// get app info
 	workloadName, err := m.runtimeClient.GetWorkloadName(ctx, ID)

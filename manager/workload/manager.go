@@ -131,8 +131,9 @@ func (m *Manager) Run(ctx context.Context) error {
 
 // PullLog pull logs for specific app
 func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter) {
-	ID, errChan := m.logBroadcaster.subscribe(app, buf)
-	defer m.logBroadcaster.unsubscribe(app, ID)
+	ID, errChan, unsubscribe := m.logBroadcaster.subscribe(ctx, app, buf)
+	defer unsubscribe()
+
 	for {
 		select {
 		case <-ctx.Done():

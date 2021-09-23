@@ -14,7 +14,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/projecteru2/core v0.0.0-20210618045145-314d3a292929
-	github.com/projecteru2/libyavirt v0.0.0-20210915071951-6b784e72977b
+	github.com/projecteru2/libyavirt v0.0.0-20210924065830-1db08f427e87
 	github.com/prometheus/client_golang v1.11.0
 	github.com/shirou/gopsutil v3.20.11+incompatible
 	github.com/sirupsen/logrus v1.7.0
@@ -25,5 +25,3 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.0.3 // indirect
 )
-
-replace github.com/projecteru2/libyavirt v0.0.0-20210915071951-6b784e72977b => github.com/DuodenumL/libyavirt v0.0.0-20210920103912-eb23e2ebc0c2
