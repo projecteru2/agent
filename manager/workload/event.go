@@ -33,7 +33,7 @@ func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventM
 		select {
 		case ev, ok := <-c:
 			if !ok {
-				log.Infof("[Watch] event chan closed")
+				log.Info("[Watch] event chan closed")
 				return
 			}
 			log.Infof("[Watch] Monitor: workload id %s action %s", ev.ID, ev.Action)
@@ -44,7 +44,7 @@ func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventM
 			}
 			e.Unlock()
 		case <-ctx.Done():
-			log.Infof("[Watch] context canceled, stop watching")
+			log.Info("[Watch] context canceled, stop watching")
 			return
 		}
 	}

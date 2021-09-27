@@ -139,7 +139,7 @@ func (l *logBroadcaster) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			logrus.Infof("[logBroadcaster] stops")
+			logrus.Info("[logBroadcaster] stops")
 			return
 		case log := <-l.logC:
 			l.broadcast(log)

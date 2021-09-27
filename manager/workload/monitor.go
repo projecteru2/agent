@@ -34,7 +34,7 @@ func (m *Manager) monitor(ctx context.Context) {
 		go m.watchEvent(ctx, eventChan)
 		select {
 		case <-ctx.Done():
-			log.Infof("[monitor] context canceled, stop monitoring")
+			log.Info("[monitor] context canceled, stop monitoring")
 			return
 		case err := <-errChan:
 			log.Errorf("[monitor] received an err: %v, will retry", err)

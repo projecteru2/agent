@@ -32,7 +32,7 @@ func NewRetryTask(ctx context.Context, maxAttempts int, f func() error) *RetryTa
 
 // Run start running retry task
 func (r *RetryTask) Run() error {
-	log.Debugf("[RetryTask] start")
+	log.Debug("[RetryTask] start")
 	defer r.Stop()
 
 	var err error
@@ -43,7 +43,7 @@ func (r *RetryTask) Run() error {
 	for i := 0; i < r.MaxAttempts; i++ {
 		select {
 		case <-r.ctx.Done():
-			log.Debugf("[RetryTask] abort")
+			log.Debug("[RetryTask] abort")
 			return r.ctx.Err()
 		case <-timer.C:
 			err = r.Func()
@@ -60,7 +60,7 @@ func (r *RetryTask) Run() error {
 
 // Stop stops running task
 func (r *RetryTask) Stop() {
-	log.Debugf("[RetryTask] stop")
+	log.Debug("[RetryTask] stop")
 	r.cancel()
 }
 

@@ -53,7 +53,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		corestore.Init(ctx, config)
 		manager.store = corestore.Get()
 		if manager.store == nil {
-			log.Errorf("[NewManager] failed to create core store client")
+			log.Error("[NewManager] failed to create core store client")
 			return nil, err
 		}
 	case common.MocksStore:
@@ -81,7 +81,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		docker.InitClient(config, manager.nodeIP)
 		manager.runtimeClient = docker.GetClient()
 		if manager.runtimeClient == nil {
-			log.Errorf("[NewManager] failed to create runtime client")
+			log.Error("[NewManager] failed to create runtime client")
 			return nil, err
 		}
 	case common.YavirtRuntime:

@@ -67,6 +67,9 @@ func serve(c *cli.Context) error {
 	ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
 
+	errChan := make(chan error, 2)
+	defer close(errChan)
+
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 
@@ -76,9 +79,9 @@ func serve(c *cli.Context) error {
 	}
 	go func() {
 		defer wg.Done()
-		defer cancel()
 		if err := workloadManager.Run(ctx); err != nil {
 			log.Errorf("[agent] workload manager err: %v, exiting", err)
+			errChan <- err
 		}
 	}()
 
@@ -88,14 +91,24 @@ func serve(c *cli.Context) error {
 	}
 	go func() {
 		defer wg.Done()
-		defer cancel()
 		if err := nodeManager.Run(ctx); err != nil {
 			log.Errorf("[agent] node manager err: %v, exiting", err)
+			errChan <- err
 		}
 	}()
 
 	apiHandler := api.NewHandler(config, workloadManager)
 	go apiHandler.Serve()
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			log.Info("[agent] Agent caught system signal, exiting")
+		case <-errChan:
+			log.Info("[agent] got err, exiting")
+			cancel()
+		}
+	}()
 
 	wg.Wait()
 	return nil

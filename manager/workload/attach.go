@@ -37,7 +37,7 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 		if err != common.ErrNotImplemented {
 			log.Errorf("[attach] failed to get workload name, id: %v, err: %v", ID, err)
 		} else {
-			log.Debugf("[attach] should ignore this workload")
+			log.Debug("[attach] should ignore this workload")
 		}
 		return
 	}

@@ -13,7 +13,7 @@ import (
 )
 
 func (m *Selfmon) initNodeStatus(ctx context.Context) {
-	log.Debugf("[selfmon] init node status started")
+	log.Debug("[selfmon] init node status started")
 	nodes := make(chan *types.Node)
 
 	go func() {
@@ -58,7 +58,7 @@ func (m *Selfmon) watchNodeStatus(ctx context.Context) {
 			time.Sleep(time.Second)
 			go m.initNodeStatus(ctx)
 			if m.watch(ctx) != nil {
-				log.Debugf("[selfmon] retry to watch node status")
+				log.Debug("[selfmon] retry to watch node status")
 				time.Sleep(m.config.GlobalConnectionTimeout)
 			}
 		}
@@ -67,8 +67,8 @@ func (m *Selfmon) watchNodeStatus(ctx context.Context) {
 
 func (m *Selfmon) watch(ctx context.Context) error {
 	messageChan, errChan := m.store.NodeStatusStream(ctx)
-	log.Debugf("[selfmon] watch node status started")
-	defer log.Debugf("[selfmon] stop watching node status")
+	log.Debug("[selfmon] watch node status started")
+	defer log.Debug("[selfmon] stop watching node status")
 
 	for {
 		select {
@@ -76,7 +76,7 @@ func (m *Selfmon) watch(ctx context.Context) error {
 			go m.dealNodeStatusMessage(ctx, message)
 		case err := <-errChan:
 			if err == io.EOF {
-				log.Debugf("[selfmon] server closed the stream")
+				log.Debug("[selfmon] server closed the stream")
 				return err
 			}
 			log.Debugf("[selfmon] read node status failed, err: %s", err)

@@ -2,12 +2,12 @@ package logs
 
 import (
 	"context"
-	"errors"
 	"net"
 	"net/url"
 	"sync"
 	"time"
 
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 
 	log "github.com/sirupsen/logrus"
@@ -15,12 +15,6 @@ import (
 
 // Discard .
 const Discard = "__discard__"
-
-// ErrConnecting means writer is in connecting status, waiting to be connected
-var ErrConnecting = errors.New("connecting")
-
-// ErrInvalidScheme .
-var ErrInvalidScheme = errors.New("invalid scheme")
 
 // KeepaliveInterval .
 var KeepaliveInterval = time.Second * 30
@@ -68,7 +62,7 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 	writer.enc, err = writer.createEncoder()
 
 	switch {
-	case err == ErrInvalidScheme:
+	case err == common.ErrInvalidScheme:
 		log.Infof("[writer] create an empty writer for %s success", addr)
 		writer.enc = NewStreamEncoder(discard{})
 	case err != nil:
@@ -130,7 +124,7 @@ func (w *Writer) createEncoder() (enc Encoder, err error) {
 		enc, err = CreateJournalEncoder()
 	default:
 		log.Errorf("[writer] Invalid scheme: %s", w.scheme)
-		err = ErrInvalidScheme
+		err = common.ErrInvalidScheme
 	}
 	return enc, err
 }
@@ -176,7 +170,7 @@ func (w *Writer) keepalive(ctx context.Context) {
 }
 
 func (w *Writer) checkError(err error) {
-	if err != nil && err != ErrConnecting {
+	if err != nil && err != common.ErrConnecting {
 		log.Errorf("[writer] Sending log failed %s", err)
 		w.withLock(func() {
 			if w.enc != nil {
@@ -188,18 +182,6 @@ func (w *Writer) checkError(err error) {
 	}
 }
 
-func (w *Writer) checkConn() error {
-	var err error
-	w.withLock(func() {
-		if w.enc == nil {
-			err = ErrConnecting
-			w.needReconnect = true
-		}
-	})
-
-	return err
-}
-
 // Write write log to remote
 func (w *Writer) Write(logline *types.Log) error {
 	if w.stdout {
@@ -209,12 +191,14 @@ func (w *Writer) Write(logline *types.Log) error {
 		return nil
 	}
 	var err error
-	err = w.checkConn()
-	if err == nil {
-		w.withRLock(func() {
-			err = w.enc.Encode(logline)
-		})
-	}
+	w.withLock(func() {
+		if w.enc == nil {
+			err = common.ErrConnecting
+			w.needReconnect = true
+			return
+		}
+		err = w.enc.Encode(logline)
+	})
 
 	w.checkError(err)
 	return err

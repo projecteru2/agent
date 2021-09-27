@@ -29,7 +29,7 @@ func (m *Manager) healthCheck(ctx context.Context) {
 // 但是这时候 health check 刚返回 true 回来并写入 core
 // 为了保证最终数据一致性这里也要检测
 func (m *Manager) checkAllWorkloads(ctx context.Context) {
-	log.Debugf("[checkAllWorkloads] health check begin")
+	log.Debug("[checkAllWorkloads] health check begin")
 	workloadIDs, err := m.runtimeClient.ListWorkloadIDs(ctx, m.getBaseFilter())
 	if err != nil {
 		log.Errorf("[checkAllWorkloads] Error when list all workloads with label \"ERU=1\": %v", err)

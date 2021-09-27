@@ -40,7 +40,7 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 	defer log.Debug("[nodeStatusReport] report ends")
 
 	if !m.runtimeClient.IsDaemonRunning(ctx) {
-		log.Debugf("[nodeStatusReport] cannot connect to runtime daemon")
+		log.Debug("[nodeStatusReport] cannot connect to runtime daemon")
 		return
 	}
 

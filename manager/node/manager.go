@@ -75,7 +75,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 
 // Run runs a node manager
 func (m *Manager) Run(ctx context.Context) error {
-	log.Infof("[NodeManager] start node status heartbeat")
+	log.Info("[NodeManager] start node status heartbeat")
 	go m.heartbeat(ctx)
 
 	// wait for signal
