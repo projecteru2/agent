@@ -7,7 +7,6 @@ import (
 
 	"github.com/projecteru2/agent/utils"
 	coretypes "github.com/projecteru2/core/types"
-	coreutils "github.com/projecteru2/core/utils"
 )
 
 // Container docker container
@@ -32,8 +31,8 @@ func (c *Container) CheckHealth(ctx context.Context, timeout time.Duration) bool
 	if c.HealthCheck == nil {
 		return true
 	}
-	tcpChecker := []string{}
-	httpChecker := []string{}
+	var tcpChecker []string
+	var httpChecker []string
 
 	for _, port := range c.HealthCheck.TCPPorts {
 		tcpChecker = append(tcpChecker, fmt.Sprintf("%s:%s", c.LocalIP, port))
@@ -42,7 +41,7 @@ func (c *Container) CheckHealth(ctx context.Context, timeout time.Duration) bool
 		httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", c.LocalIP, c.HealthCheck.HTTPPort, c.HealthCheck.HTTPURL))
 	}
 
-	ID := coreutils.ShortID(c.ID)
+	ID := c.ID
 	f1 := utils.CheckHTTP(ctx, ID, httpChecker, c.HealthCheck.HTTPCode, timeout)
 	f2 := utils.CheckTCP(ID, tcpChecker, timeout)
 	return f1 && f2

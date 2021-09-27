@@ -3,12 +3,15 @@ package workload
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
+	"sync"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/runtime"
 	"github.com/projecteru2/agent/runtime/docker"
 	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
+	"github.com/projecteru2/agent/runtime/yavirt"
 	"github.com/projecteru2/agent/store"
 	corestore "github.com/projecteru2/agent/store/core"
 	storemocks "github.com/projecteru2/agent/store/mocks"
@@ -26,6 +29,9 @@ type Manager struct {
 
 	nodeIP   string
 	forwards *utils.HashBackends
+
+	checkWorkloadMutex *sync.Mutex
+	startingWorkloads  sync.Map
 
 	logBroadcaster *logBroadcaster
 
@@ -47,7 +53,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		corestore.Init(ctx, config)
 		manager.store = corestore.Get()
 		if manager.store == nil {
-			log.Errorf("[NewManager] failed to create core store client")
+			log.Error("[NewManager] failed to create core store client")
 			return nil, err
 		}
 	case common.MocksStore:
@@ -75,8 +81,14 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		docker.InitClient(config, manager.nodeIP)
 		manager.runtimeClient = docker.GetClient()
 		if manager.runtimeClient == nil {
-			log.Errorf("[NewManager] failed to create runtime client")
+			log.Error("[NewManager] failed to create runtime client")
 			return nil, err
+		}
+	case common.YavirtRuntime:
+		yavirt.InitClient(config)
+		manager.runtimeClient = yavirt.GetClient()
+		if manager.runtimeClient == nil {
+			return nil, errors.New("failed to get runtime client")
 		}
 	case common.MocksRuntime:
 		manager.runtimeClient = runtimemocks.FromTemplate()
@@ -86,6 +98,9 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 	}
 
 	manager.logBroadcaster = newLogBroadcaster()
+
+	manager.checkWorkloadMutex = &sync.Mutex{}
+	manager.startingWorkloads = sync.Map{}
 
 	return manager, nil
 }
@@ -97,39 +112,35 @@ func (m *Manager) Run(ctx context.Context) error {
 	// start log broadcaster
 	go m.logBroadcaster.run(ctx)
 
-	// load container
-	if err := m.load(ctx); err != nil {
+	// initWorkloadStatus container
+	if err := m.initWorkloadStatus(ctx); err != nil {
 		return err
 	}
+
 	// start status watcher
-	eventChan, errChan := m.initMonitor(ctx)
-	go m.monitor(ctx, eventChan)
+	go m.monitor(ctx)
 
 	// start health check
 	go m.healthCheck(ctx)
 
 	// wait for signal
-	select {
-	case <-ctx.Done():
-		log.Info("[WorkloadManager] exiting")
-		return nil
-	case err := <-errChan:
-		log.Infof("[WorkloadManager] failed to watch node status, err: %v", err)
-		return err
-	}
+	<-ctx.Done()
+	log.Info("[WorkloadManager] exiting")
+	return nil
 }
 
 // PullLog pull logs for specific app
 func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter) {
-	ID, errChan := m.logBroadcaster.subscribe(app, buf)
-	defer m.logBroadcaster.unsubscribe(app, ID)
+	ID, errChan, unsubscribe := m.logBroadcaster.subscribe(ctx, app, buf)
+	defer unsubscribe()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case err := <-errChan:
 			if err != io.EOF {
-				log.Errorf("[PullLog] failed to pull log, err: %v", err)
+				log.Errorf("[PullLog] %v failed to pull log, err: %v", ID, err)
 			}
 			return
 		}

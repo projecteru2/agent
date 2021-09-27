@@ -27,7 +27,7 @@ func (m *Selfmon) WithActiveLock(parentCtx context.Context, f func(ctx context.C
 	for {
 		select {
 		case <-ctx.Done():
-			log.Infof("[Register] context canceled")
+			log.Info("[Register] context canceled")
 			return
 		case <-m.Exit():
 			log.Infof("[Register] selfmon %v closed", m.id)
@@ -38,7 +38,7 @@ func (m *Selfmon) WithActiveLock(parentCtx context.Context, f func(ctx context.C
 		// try to get the lock
 		if ne, un, err := m.register(ctx); err != nil {
 			if errors.Is(err, context.Canceled) {
-				log.Infof("[Register] context canceled")
+				log.Info("[Register] context canceled")
 				return
 			} else if !errors.Is(err, coretypes.ErrKeyExists) {
 				log.Errorf("[Register] failed to re-register: %v", err)
@@ -61,13 +61,13 @@ func (m *Selfmon) WithActiveLock(parentCtx context.Context, f func(ctx context.C
 
 		select {
 		case <-ctx.Done():
-			log.Infof("[Register] context canceled")
+			log.Info("[Register] context canceled")
 			return
 		case <-m.Exit():
 			log.Infof("[Register] selfmon %v closed", m.id)
 			return
 		case <-expiry:
-			log.Infof("[Register] lock expired")
+			log.Info("[Register] lock expired")
 			return
 		}
 	}()

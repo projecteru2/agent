@@ -12,27 +12,33 @@ import (
 	"github.com/projecteru2/agent/logs"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
-	coreutils "github.com/projecteru2/core/utils"
 
 	log "github.com/sirupsen/logrus"
 )
 
 func (m *Manager) attach(ctx context.Context, ID string) {
 	log.Debugf("[attach] attaching workload %v", ID)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	transfer := m.forwards.Get(ID, 0)
 	if transfer == "" {
 		transfer = logs.Discard
 	}
-	writer, err := logs.NewWriter(transfer, m.config.Log.Stdout)
+	writer, err := logs.NewWriter(ctx, transfer, m.config.Log.Stdout)
 	if err != nil {
-		log.Errorf("[attach] Create log forward failed %s", err)
+		log.Errorf("[attach] Create log forward %s failed %s", transfer, err)
 		return
 	}
 
 	// get app info
 	workloadName, err := m.runtimeClient.GetWorkloadName(ctx, ID)
 	if err != nil {
-		log.Errorf("[attach] failed to get workload name, id: %v, err: %v", ID, err)
+		if err != common.ErrNotImplemented {
+			log.Errorf("[attach] failed to get workload name, id: %v, err: %v", ID, err)
+		} else {
+			log.Debug("[attach] should ignore this workload")
+		}
 		return
 	}
 
@@ -48,13 +54,10 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 		log.Errorf("[attach] failed to attach workload %s, err: %v", workloadName, err)
 		return
 	}
-	log.Infof("[attach] attach %s workload %s success", workloadName, coreutils.ShortID(ID))
-
-	cancelCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	log.Infof("[attach] attach %s workload %s success", workloadName, ID)
 
 	// attach metrics
-	go m.runtimeClient.CollectWorkloadMetrics(cancelCtx, ID)
+	go m.runtimeClient.CollectWorkloadMetrics(ctx, ID)
 
 	extra, err := m.runtimeClient.LogFieldsExtra(ctx, ID)
 	if err != nil {
@@ -64,12 +67,15 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 	wg := &sync.WaitGroup{}
 	pump := func(typ string, source io.Reader) {
 		defer wg.Done()
+		log.Debugf("[attach] attach pump %s %s %s start", workloadName, ID, typ)
+		defer log.Debugf("[attach] attach pump %s %s %s finished", workloadName, ID, typ)
+
 		buf := bufio.NewReader(source)
 		for {
 			data, err := buf.ReadString('\n')
 			if err != nil {
 				if err != io.EOF {
-					log.Errorf("[attach] attach pump %s %s %s %s", workloadName, coreutils.ShortID(ID), typ, err)
+					log.Errorf("[attach] attach pump %s %s %s failed, err: %v", workloadName, ID, typ, err)
 				}
 				return
 			}
@@ -89,7 +95,7 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 				m.logBroadcaster.logC <- l
 			}
 			if err := writer.Write(l); err != nil && !(entryPoint == "agent" && utils.IsDockerized()) {
-				log.Errorf("[attach] %s workload %s_%s write failed %v", workloadName, entryPoint, coreutils.ShortID(ID), err)
+				log.Errorf("[attach] %s workload %s_%s write failed %v", workloadName, entryPoint, ID, err)
 				log.Errorf("[attach] %s", data)
 			}
 		}

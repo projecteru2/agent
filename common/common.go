@@ -20,6 +20,8 @@ const (
 
 	// DockerRuntime use docker as runtime
 	DockerRuntime = "docker"
+	// YavirtRuntime use yavirt as runtime
+	YavirtRuntime = "yavirt"
 	// MocksRuntime use the mock runtime
 	MocksRuntime = "mocks"
 
@@ -32,4 +34,9 @@ const (
 	ETCDKV = "etcd"
 	// MocksKV use the mock KV
 	MocksKV = "mocks"
+
+	// ERUNodeName key of workload's name label
+	ERUNodeName = "eru.nodename"
+	// ERUCoreID key of workload's core ID label
+	ERUCoreID = "eru.coreid"
 )

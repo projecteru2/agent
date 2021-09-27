@@ -54,11 +54,11 @@ func (_m *Runtime) CollectWorkloadMetrics(ctx context.Context, ID string) {
 }
 
 // Events provides a mock function with given fields: ctx, filters
-func (_m *Runtime) Events(ctx context.Context, filters []types.KV) (<-chan *types.WorkloadEventMessage, <-chan error) {
+func (_m *Runtime) Events(ctx context.Context, filters map[string]string) (<-chan *types.WorkloadEventMessage, <-chan error) {
 	ret := _m.Called(ctx, filters)
 
 	var r0 <-chan *types.WorkloadEventMessage
-	if rf, ok := ret.Get(0).(func(context.Context, []types.KV) <-chan *types.WorkloadEventMessage); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, map[string]string) <-chan *types.WorkloadEventMessage); ok {
 		r0 = rf(ctx, filters)
 	} else {
 		if ret.Get(0) != nil {
@@ -67,7 +67,7 @@ func (_m *Runtime) Events(ctx context.Context, filters []types.KV) (<-chan *type
 	}
 
 	var r1 <-chan error
-	if rf, ok := ret.Get(1).(func(context.Context, []types.KV) <-chan error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, map[string]string) <-chan error); ok {
 		r1 = rf(ctx, filters)
 	} else {
 		if ret.Get(1) != nil {
@@ -136,13 +136,13 @@ func (_m *Runtime) IsDaemonRunning(ctx context.Context) bool {
 	return r0
 }
 
-// ListWorkloadIDs provides a mock function with given fields: ctx, all, filters
-func (_m *Runtime) ListWorkloadIDs(ctx context.Context, all bool, filters []types.KV) ([]string, error) {
-	ret := _m.Called(ctx, all, filters)
+// ListWorkloadIDs provides a mock function with given fields: ctx, filters
+func (_m *Runtime) ListWorkloadIDs(ctx context.Context, filters map[string]string) ([]string, error) {
+	ret := _m.Called(ctx, filters)
 
 	var r0 []string
-	if rf, ok := ret.Get(0).(func(context.Context, bool, []types.KV) []string); ok {
-		r0 = rf(ctx, all, filters)
+	if rf, ok := ret.Get(0).(func(context.Context, map[string]string) []string); ok {
+		r0 = rf(ctx, filters)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
@@ -150,8 +150,8 @@ func (_m *Runtime) ListWorkloadIDs(ctx context.Context, all bool, filters []type
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, bool, []types.KV) error); ok {
-		r1 = rf(ctx, all, filters)
+	if rf, ok := ret.Get(1).(func(context.Context, map[string]string) error); ok {
+		r1 = rf(ctx, filters)
 	} else {
 		r1 = ret.Error(1)
 	}

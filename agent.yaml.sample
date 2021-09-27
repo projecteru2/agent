@@ -43,10 +43,20 @@ auth:
 # docker.endpoint is the url that eru-agent will use to connect to.
 # This URL can be a tcp address like "tcp://10.233.10.14:2376",
 # or a unix socket file path like "unix:///var/run/docker/sock",
-# this option is required and has no default value, you must set it.
 # Note that this endpoint is usually the API URL of docker on local machine.
 docker:
   endpoint: unix:///var/run/docker.sock
+
+# yavirt defines yavirt config
+#
+# yavirt.endpoint is the url that eru-agent will use to connect to.
+# Workloads whose names match one of yavirt.skip_guest_report_regexps will not be checked by eru-agent.
+# This URL can be a grpc address like "grpc://127.0.0.1:9697",
+# Note that this endpoint is usually the API URL of docker on local machine.
+yavirt:
+  endpoint: grpc://127.0.0.1:9697
+  skip_guest_report_regexps:
+    - .+002
 
 # metrics defines where should eru-agent send metrics of containers to.
 #

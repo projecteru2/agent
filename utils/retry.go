@@ -7,28 +7,66 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// BackoffRetry retries up to `maxAttempts` times, and the interval will grow exponentially
-func BackoffRetry(ctx context.Context, maxAttempts int, f func() error) error {
-	t := time.NewTimer(0)
-	var err error
+// RetryTask .
+type RetryTask struct {
+	ctx         context.Context
+	cancel      context.CancelFunc
+	Func        func() error
+	MaxAttempts int
+}
+
+// NewRetryTask .
+func NewRetryTask(ctx context.Context, maxAttempts int, f func() error) *RetryTask {
 	// make sure to execute at least once
 	if maxAttempts < 1 {
 		maxAttempts = 1
 	}
-	interval := 1
+	ctx, cancel := context.WithCancel(ctx)
+	return &RetryTask{
+		ctx:         ctx,
+		cancel:      cancel,
+		MaxAttempts: maxAttempts,
+		Func:        f,
+	}
+}
 
-	for i := 0; i < maxAttempts; i++ {
+// Run start running retry task
+func (r *RetryTask) Run() error {
+	log.Debug("[RetryTask] start")
+	defer r.Stop()
+
+	var err error
+	interval := 1
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	for i := 0; i < r.MaxAttempts; i++ {
 		select {
-		case <-t.C:
-			if err = f(); err == nil {
+		case <-r.ctx.Done():
+			log.Debug("[RetryTask] abort")
+			return r.ctx.Err()
+		case <-timer.C:
+			err = r.Func()
+			if err == nil {
 				return nil
 			}
-			log.Debugf("[backoffRetry] will retry after %d seconds", interval)
-			t.Reset(time.Duration(interval) * time.Second)
+			log.Debugf("[RetryTask] will retry after %v seconds", interval)
+			timer.Reset(time.Duration(interval) * time.Second)
 			interval *= 2
-		case <-ctx.Done():
-			return ctx.Err()
 		}
 	}
 	return err
+}
+
+// Stop stops running task
+func (r *RetryTask) Stop() {
+	log.Debug("[RetryTask] stop")
+	r.cancel()
+}
+
+// BackoffRetry retries up to `maxAttempts` times, and the interval will grow exponentially
+func BackoffRetry(ctx context.Context, maxAttempts int, f func() error) error {
+	retryTask := NewRetryTask(ctx, maxAttempts, f)
+	defer retryTask.Stop()
+	return retryTask.Run()
 }

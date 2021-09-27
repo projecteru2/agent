@@ -8,6 +8,7 @@ import (
 	"github.com/projecteru2/agent/runtime"
 	"github.com/projecteru2/agent/runtime/docker"
 	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
+	"github.com/projecteru2/agent/runtime/yavirt"
 	"github.com/projecteru2/agent/store"
 	corestore "github.com/projecteru2/agent/store/core"
 	storemocks "github.com/projecteru2/agent/store/mocks"
@@ -57,6 +58,12 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		if m.runtimeClient == nil {
 			return nil, errors.New("failed to get runtime client")
 		}
+	case common.YavirtRuntime:
+		yavirt.InitClient(config)
+		m.runtimeClient = yavirt.GetClient()
+		if m.runtimeClient == nil {
+			return nil, errors.New("failed to get runtime client")
+		}
 	case common.MocksRuntime:
 		m.runtimeClient = runtimemocks.FromTemplate()
 	default:
@@ -68,11 +75,15 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 
 // Run runs a node manager
 func (m *Manager) Run(ctx context.Context) error {
-	log.Infof("[NodeManager] start node status heartbeat")
+	log.Info("[NodeManager] start node status heartbeat")
 	go m.heartbeat(ctx)
 
 	// wait for signal
 	<-ctx.Done()
+	return m.exit()
+}
+
+func (m *Manager) exit() error {
 	log.Info("[NodeManager] exiting")
 	log.Infof("[NodeManager] mark node %s as down", m.config.HostName)
 

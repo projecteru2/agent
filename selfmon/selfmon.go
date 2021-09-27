@@ -51,7 +51,7 @@ func New(ctx context.Context, config *types.Config) (mon *Selfmon, err error) {
 			return nil, err
 		}
 	case common.MocksKV:
-		log.Debugf("[selfmon] use embedded ETCD")
+		log.Debug("[selfmon] use embedded ETCD")
 		mon.kv = nil
 	default:
 		return nil, errors.New("unknown kv type")
@@ -62,7 +62,7 @@ func New(ctx context.Context, config *types.Config) (mon *Selfmon, err error) {
 		corestore.Init(ctx, config)
 		mon.store = corestore.Get()
 		if mon.store == nil {
-			log.Errorf("[selfmon] failed to get core store")
+			log.Error("[selfmon] failed to get core store")
 			return nil, errors.New("failed to get core store")
 		}
 	case common.MocksStore:

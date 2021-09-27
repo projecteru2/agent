@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/projecteru2/agent/utils"
-	coreutils "github.com/projecteru2/core/utils"
 
 	"github.com/shirou/gopsutil/net"
 	log "github.com/sirupsen/logrus"
@@ -23,13 +22,13 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) {
 
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
-		log.Errorf("[CollectWorkloadMetrics] failed to detect container, err: %v", err)
+		log.Errorf("[CollectWorkloadMetrics] failed to detect container %v, err: %v", ID, err)
 	}
 
 	// init stats
 	containerCPUStats, systemCPUStats, containerNetStats, err := getStats(ctx, container.ID, container.Pid, proc)
 	if err != nil {
-		log.Errorf("[stat] get %s stats failed %v", coreutils.ShortID(container.ID), err)
+		log.Errorf("[stat] get %s stats failed %v", container.ID, err)
 		return
 	}
 
@@ -47,8 +46,8 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) {
 	hostCPUCount := d.cpuCore * period
 
 	mClient := NewMetricsClient(addr, hostname, container)
-	defer log.Infof("[stat] container %s %s metric report stop", container.Name, coreutils.ShortID(container.ID))
-	log.Infof("[stat] container %s %s metric report start", container.Name, coreutils.ShortID(container.ID))
+	defer log.Infof("[stat] container %s %s metric report stop", container.Name, container.ID)
+	log.Infof("[stat] container %s %s metric report start", container.Name, container.ID)
 
 	updateMetrics := func() {
 		newContainer, err := d.detectWorkload(ctx, container.ID)
@@ -61,12 +60,12 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) {
 		defer cancel()
 		newContainerCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(timeoutCtx, newContainer.ID, newContainer.Pid, proc)
 		if err != nil {
-			log.Errorf("[stat] get %s stats failed %v", coreutils.ShortID(newContainer.ID), err)
+			log.Errorf("[stat] get %s stats failed %v", newContainer.ID, err)
 			return
 		}
 		containerMemStats, err := getMemStats(timeoutCtx, newContainer.ID)
 		if err != nil {
-			log.Errorf("[stat] get %s mem stats failed %v", coreutils.ShortID(newContainer.ID), err)
+			log.Errorf("[stat] get %s mem stats failed %v", newContainer.ID, err)
 			return
 		}
 

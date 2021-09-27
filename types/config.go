@@ -13,9 +13,15 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// DockerConfig contain endpoint
+// DockerConfig contain docker endpoint
 type DockerConfig struct {
-	Endpoint string `yaml:"endpoint" required:"true"`
+	Endpoint string `yaml:"endpoint" required:"false"`
+}
+
+// YavirtConfig contain yavirt endpoint
+type YavirtConfig struct {
+	Endpoint               string   `yaml:"endpoint" required:"false"`
+	SkipGuestReportRegexps []string `yaml:"skip_guest_report_regexps" required:"false"`
 }
 
 // MetricsConfig contain metrics config
@@ -56,8 +62,10 @@ type Config struct {
 	Runtime string `yaml:"runtime" default:"docker"`
 	KV      string `yaml:"kv" default:"etcd"`
 
-	Auth        coretypes.AuthConfig `yaml:"auth"`
-	Docker      DockerConfig
+	Auth   coretypes.AuthConfig `yaml:"auth"`
+	Docker DockerConfig
+	Yavirt YavirtConfig
+
 	Metrics     MetricsConfig
 	API         APIConfig `yaml:"api"`
 	Log         LogConfig

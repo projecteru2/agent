@@ -86,21 +86,19 @@ func FromTemplate() runtime.Runtime {
 		nil,
 	)
 	n.On("CollectWorkloadMetrics", mock.Anything, mock.Anything).Return()
-	n.On("ListWorkloadIDs", mock.Anything, mock.Anything, mock.Anything).Return(func(ctx context.Context, all bool, filters []types.KV) []string {
+	n.On("ListWorkloadIDs", mock.Anything, mock.Anything).Return(func(ctx context.Context, filters map[string]string) []string {
 		var IDs []string
 		n.withLock(func() {
 			n.workloads.Range(func(ID, workload interface{}) bool {
-				if all || workload.(*eva).Running {
-					IDs = append(IDs, ID.(string))
-				}
+				IDs = append(IDs, ID.(string))
 				return true
 			})
 		})
 		return IDs
 	}, nil)
-	n.On("Events", mock.Anything, mock.Anything).Return(func(ctx context.Context, filters []types.KV) <-chan *types.WorkloadEventMessage {
+	n.On("Events", mock.Anything, mock.Anything).Return(func(ctx context.Context, filters map[string]string) <-chan *types.WorkloadEventMessage {
 		return n.msgChan
-	}, func(ctx context.Context, filters []types.KV) <-chan error {
+	}, func(ctx context.Context, filters map[string]string) <-chan error {
 		return n.errChan
 	})
 	n.On("GetStatus", mock.Anything, mock.Anything, mock.Anything).Return(func(ctx context.Context, ID string, checkHealth bool) *types.WorkloadStatus {

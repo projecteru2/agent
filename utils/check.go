@@ -13,9 +13,9 @@ import (
 // CheckHTTP 事实上一般也就一个
 func CheckHTTP(ctx context.Context, ID string, backends []string, code int, timeout time.Duration) bool {
 	for _, backend := range backends {
-		log.Debugf("[checkHTTP] Check health via http: container %s, url %s, expect code %d", ID, backend, code)
+		log.Debugf("[checkHTTP] Check health via http: workload %s, url %s, expect code %d", ID, backend, code)
 		if !checkOneURL(ctx, backend, code, timeout) {
-			log.Infof("[checkHTTP] Check health failed via http: container %s, url %s, expect code %d", ID, backend, code)
+			log.Infof("[checkHTTP] Check health failed via http: workload %s, url %s, expect code %d", ID, backend, code)
 			return false
 		}
 	}
@@ -26,9 +26,10 @@ func CheckHTTP(ctx context.Context, ID string, backends []string, code int, time
 // 这里不支持ctx?
 func CheckTCP(ID string, backends []string, timeout time.Duration) bool {
 	for _, backend := range backends {
-		log.Debugf("[checkTCP] Check health via tcp: container %s, backend %s", ID, backend)
+		log.Debugf("[checkTCP] Check health via tcp: workload %s, backend %s", ID, backend)
 		conn, err := net.DialTimeout("tcp", backend, timeout)
 		if err != nil {
+			log.Debugf("[checkTCP] Check health failed via tcp: workload %s, backend %s", ID, backend)
 			return false
 		}
 		conn.Close()

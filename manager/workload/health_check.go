@@ -2,7 +2,6 @@ package workload
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/projecteru2/agent/types"
@@ -30,8 +29,8 @@ func (m *Manager) healthCheck(ctx context.Context) {
 // 但是这时候 health check 刚返回 true 回来并写入 core
 // 为了保证最终数据一致性这里也要检测
 func (m *Manager) checkAllWorkloads(ctx context.Context) {
-	log.Debugf("[checkAllWorkloads] health check begin")
-	workloadIDs, err := m.runtimeClient.ListWorkloadIDs(ctx, true, nil)
+	log.Debug("[checkAllWorkloads] health check begin")
+	workloadIDs, err := m.runtimeClient.ListWorkloadIDs(ctx, m.getBaseFilter())
 	if err != nil {
 		log.Errorf("[checkAllWorkloads] Error when list all workloads with label \"ERU=1\": %v", err)
 		return
@@ -52,7 +51,7 @@ func (m *Manager) checkOneWorkload(ctx context.Context, ID string) bool {
 	}
 
 	if err = m.setWorkloadStatus(ctx, workloadStatus); err != nil {
-		log.Errorf("[checkOneWorkload] update workload status failed, err: %v", err)
+		log.Errorf("[checkOneWorkload] update workload status for %v failed, err: %v", ID, err)
 	}
 	return workloadStatus.Healthy
 }
@@ -60,26 +59,6 @@ func (m *Manager) checkOneWorkload(ctx context.Context, ID string) bool {
 // 设置workload状态，允许重试，带timeout控制
 func (m *Manager) setWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error {
 	return utils.BackoffRetry(ctx, 3, func() error {
-		var err error
-		utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
-			err = m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL())
-		})
-		return err
+		return m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL())
 	})
-}
-
-// 检查一个workload，允许重试
-func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID string) {
-	log.Debugf("[checkOneWorkloadWithBackoffRetry] check workload %s", ID)
-	err := utils.BackoffRetry(ctx, utils.GetMaxAttemptsByTTL(m.config.GetHealthCheckStatusTTL()), func() error {
-		if !m.checkOneWorkload(ctx, ID) {
-			// 这个err就是用来判断要不要继续的，不用打在日志里
-			return errors.New("not healthy")
-		}
-		return nil
-	})
-
-	if err != nil {
-		log.Debugf("[checkOneWorkloadWithBackoffRetry] workload %s still not healthy", ID)
-	}
 }
