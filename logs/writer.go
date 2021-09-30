@@ -65,6 +65,8 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 	case err == common.ErrInvalidScheme:
 		log.Infof("[writer] create an empty writer for %s success", addr)
 		writer.enc = NewStreamEncoder(discard{})
+	case err == errJournalDisabled:
+		return nil, err
 	case err != nil:
 		log.Errorf("[writer] failed to create writer encoder for %s, err: %v, will retry", addr, err)
 		writer.needReconnect = true

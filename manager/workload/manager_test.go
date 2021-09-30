@@ -41,6 +41,12 @@ func TestRun(t *testing.T) {
 	runtime := manager.runtimeClient.(*mocks.Nerv)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
-	go runtime.StartEvents()
+	go func() {
+		runtime.StartEvents()
+		runtime.StartCustomEvent(&types.WorkloadEventMessage{
+			ID:     "Kaworu",
+			Action: "start",
+		})
+	}()
 	assert.Nil(t, manager.Run(ctx))
 }

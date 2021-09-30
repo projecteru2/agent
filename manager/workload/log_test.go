@@ -18,30 +18,36 @@ func TestLogBroadcaster(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	logrus.SetLevel(logrus.DebugLevel)
 
+	logCtx, logCancel := context.WithCancel(context.Background())
+	defer logCancel()
+
 	handler := func(w http.ResponseWriter, req *http.Request) {
 		app := req.URL.Query().Get("app")
 		if app == "" {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		// fuck httpie
 		w.WriteHeader(http.StatusOK)
 		if hijack, ok := w.(http.Hijacker); ok {
 			conn, buf, err := hijack.Hijack()
-			assert.Nil(t, err)
+			if err != nil {
+				return
+			}
 			defer conn.Close()
-			manager.PullLog(req.Context(), app, buf)
+			manager.PullLog(logCtx, app, buf)
 		}
 	}
+	server := &http.Server{Addr: ":12310"}
 
 	go func() {
 		restfulAPIServer := pat.New()
 		restfulAPIServer.Add("GET", "/log/", http.HandlerFunc(handler))
-		http.Handle("/", restfulAPIServer)
-		http.ListenAndServe(":12310", nil)
+		server.Handler = restfulAPIServer
+		assert.Equal(t, server.ListenAndServe(), http.ErrServerClosed)
 	}()
 
 	go func() {
+		// wait for subscribers
 		time.Sleep(3 * time.Second)
 		manager.logBroadcaster.logC <- &types.Log{
 			ID:         "Rei",
@@ -63,9 +69,18 @@ func TestLogBroadcaster(t *testing.T) {
 	defer cancel()
 	go manager.logBroadcaster.run(ctx)
 
-	time.Sleep(2 * time.Second)
-	resp, err := http.Get("http://127.0.0.1:12310/log/?app=nerv")
+	// wait for http server to start
+	time.Sleep(time.Second)
+
+	reqCtx, reqCancel := context.WithTimeout(ctx, 5*time.Second)
+	defer reqCancel()
+
+	req, err := http.NewRequestWithContext(reqCtx, "GET", "http://127.0.0.1:12310/log/?app=nerv", nil)
 	assert.Nil(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	assert.Nil(t, err)
+	defer resp.Body.Close()
 
 	reader := bufio.NewReader(resp.Body)
 	for i := 0; i < 2; i++ {
@@ -73,4 +88,22 @@ func TestLogBroadcaster(t *testing.T) {
 		assert.Nil(t, err)
 		t.Log(string(line))
 	}
+
+	logCancel()
+	// wait log subscriber to be removed
+	time.Sleep(time.Second)
+
+	manager.logBroadcaster.logC <- &types.Log{
+		ID:         "Rei",
+		Name:       "nerv",
+		Type:       "stdout",
+		EntryPoint: "eva0",
+		Data:       "data1",
+	}
+	count := 0
+	manager.logBroadcaster.subscribersMap.Range(func(key, value interface{}) bool {
+		count++
+		return true
+	})
+	assert.Equal(t, count, 0)
 }

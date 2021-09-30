@@ -116,12 +116,14 @@ func TestRun(t *testing.T) {
 	store := m.store.(*storemocks.MockStore)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	exit := make(chan struct{})
 
 	// set node "fake" as alive
 	assert.Nil(t, store.SetNodeStatus(ctx, 0))
 
 	go func() {
 		assert.Nil(t, m.Run(ctx))
+		exit <- struct{}{}
 	}()
 	time.Sleep(2 * time.Second)
 
@@ -138,5 +140,7 @@ func TestRun(t *testing.T) {
 	node, _ = store.GetNode(ctx, "faker")
 	assert.Equal(t, node.Available, true)
 
+	store.StopNodeStatusStream()
 	m.Close()
+	<-exit
 }

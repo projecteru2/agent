@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/projecteru2/agent/types"
 
@@ -17,13 +18,6 @@ func TestNewWriterWithUDP(t *testing.T) {
 	addr := "udp://127.0.0.1:23456"
 	w, err := NewWriter(ctx, addr, true)
 	assert.NoError(t, err)
-
-	enc, err := w.createUDPEncoder()
-	assert.NoError(t, err)
-
-	w.withLock(func() {
-		w.enc = enc
-	})
 	assert.NoError(t, w.Write(&types.Log{}))
 }
 
@@ -31,42 +25,88 @@ func TestNewWriterWithTCP(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// tcp writer
-	addr := "tcp://127.0.0.1:34567"
-	tcpL, err := net.Listen("tcp", ":34567")
-	assert.NoError(t, err)
 
+	tcpL, err := net.Listen("tcp", ":34567")
 	defer tcpL.Close()
+	addr := "tcp://127.0.0.1:34567"
 	w, err := NewWriter(ctx, addr, true)
 	assert.NoError(t, err)
-
-	enc, err := w.createTCPEncoder()
-	assert.NoError(t, err)
-
-	w.withLock(func() {
-		w.enc = enc
-	})
 	assert.NoError(t, w.Write(&types.Log{}))
 }
 
-// func TestNewWriterWithJournal(t *testing.T) {
-// 	addr := "journal://system"
-// 	enc, err := CreateJournalEncoder()
-// 	assert.NoError(t, err)
-// 	defer enc.Close()
+func TestNewWriterWithJournal(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	addr := "journal://system"
+	enc, err := CreateJournalEncoder()
+	if err == errJournalDisabled {
+		return
+	}
+	assert.NoError(t, err)
+	defer enc.Close()
 
-// 	w, err := NewWriter(addr, true)
-// 	assert.NoError(t, err)
+	w, err := NewWriter(ctx, addr, true)
+	assert.NoError(t, err)
 
-// 	w.enc = enc
-// 	err = w.enc.Encode(&types.Log{
-// 		ID: "id",
-// 		Name: "name",
-// 		Type: "type",
-// 		EntryPoint: "entrypoint",
-// 		Ident: "ident",
-// 		Data: "data",
-// 		Datetime: "datetime",
-// 		Extra: map[string]string{"a": "1", "b": "2"},
-// 	})
-// 	assert.NoError(t, err)
-// }
+	w.enc = enc
+	err = w.enc.Encode(&types.Log{
+		ID:         "id",
+		Name:       "name",
+		Type:       "type",
+		EntryPoint: "entrypoint",
+		Ident:      "ident",
+		Data:       "data",
+		Datetime:   "datetime",
+		Extra:      map[string]string{"a": "1", "b": "2"},
+	})
+	assert.NoError(t, err)
+}
+
+func TestNewWriters(t *testing.T) {
+	cases := map[string]error{
+		Discard:                 nil,
+		"udp://127.0.0.1:23456": nil,
+		"tcp://127.0.0.1:34567": nil,
+		"journal://system":      errJournalDisabled,
+		"invalid://hhh":         nil,
+	}
+	tcpL, err := net.Listen("tcp", ":34567")
+	assert.NoError(t, err)
+	defer tcpL.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for addr, expectedErr := range cases {
+		go func(addr string, expectedErr error) {
+			writer, err := NewWriter(ctx, addr, false)
+			assert.Equal(t, err, expectedErr)
+			if expectedErr != nil {
+				return
+			}
+			assert.NoError(t, err)
+			err = writer.Write(&types.Log{})
+			assert.NoError(t, err)
+		}(addr, expectedErr)
+	}
+	// wait for closing all writers
+	time.Sleep(CloseWaitInterval + 2*time.Second)
+}
+
+func TestReconnect(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	addr := "tcp://127.0.0.1:34567"
+	writer, err := NewWriter(ctx, addr, false)
+	assert.NoError(t, err)
+	assert.Nil(t, writer.enc)
+	assert.Equal(t, writer.needReconnect, true)
+
+	tcpL, err := net.Listen("tcp", ":34567")
+	assert.NoError(t, err)
+	defer tcpL.Close()
+
+	writer.reconnect()
+	assert.NoError(t, writer.Write(&types.Log{}))
+}

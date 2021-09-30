@@ -48,5 +48,4 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           build_args: KEEP_SYMBOL=1
-          repository: projecteru2/agent
           tags: ${{ github.sha }}-debug
