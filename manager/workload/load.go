@@ -31,7 +31,6 @@ func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 				go m.attach(ctx, ID)
 			}
 
-			// no health check here
 			if err := m.setWorkloadStatus(ctx, workloadStatus); err != nil {
 				log.Errorf("[initWorkloadStatus] update workload %v status failed %v", ID, err)
 			}

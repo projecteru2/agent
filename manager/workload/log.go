@@ -128,7 +128,6 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 				sub.errChan <- err
 				return
 			}
-
 			sub.buf.Flush()
 		}(ID, sub)
 	}

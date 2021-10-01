@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/projecteru2/agent/common"
+	storemocks "github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
 
 	"github.com/stretchr/testify/assert"
@@ -33,4 +34,29 @@ func newMockNodeManager(t *testing.T) *Manager {
 	m, err := NewManager(context.Background(), config)
 	assert.Nil(t, err)
 	return m
+}
+
+func TestRun(t *testing.T) {
+	manager := newMockNodeManager(t)
+	store := manager.store.(*storemocks.MockStore)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(manager.config.HeartbeatInterval*3)*time.Second)
+	defer cancel()
+
+	status, err := store.GetNodeStatus(ctx, "fake")
+	assert.Nil(t, err)
+	assert.Equal(t, status.Alive, false)
+
+	go func() {
+		time.Sleep(time.Duration(manager.config.HeartbeatInterval*2) * time.Second)
+		status, err := store.GetNodeStatus(ctx, "fake")
+		assert.Nil(t, err)
+		assert.Equal(t, status.Alive, true)
+	}()
+
+	assert.Nil(t, manager.Run(ctx))
+
+	info, err := store.GetNode(ctx, "fake")
+	assert.Nil(t, err)
+	assert.Equal(t, info.Available, false)
 }

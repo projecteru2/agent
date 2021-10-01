@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -72,8 +73,14 @@ func FromTemplate() store.Store {
 		return nil
 	})
 	m.On("GetNodeStatus", mock.Anything, mock.Anything).Return(func(ctx context.Context, nodename string) *types.NodeStatus {
-		if status, ok := m.nodeStatus.Load(nodename); ok {
-			return status.(*types.NodeStatus)
+		m.Lock()
+		defer m.Unlock()
+		if v, ok := m.nodeStatus.Load(nodename); ok {
+			status := v.(*types.NodeStatus)
+			return &types.NodeStatus{
+				Nodename: status.Nodename,
+				Alive:    status.Alive,
+			}
 		}
 		return &types.NodeStatus{
 			Nodename: nodename,
@@ -136,4 +143,9 @@ func (m *MockStore) StartNodeStatusStream() {
 		Nodename: "fake",
 		Alive:    false,
 	}
+}
+
+// StopNodeStatusStream send an err to errChan.
+func (m *MockStore) StopNodeStatusStream() {
+	m.errChan <- errors.New("closed")
 }

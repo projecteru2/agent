@@ -96,7 +96,6 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 			}
 			if err := writer.Write(l); err != nil && !(entryPoint == "agent" && utils.IsDockerized()) {
 				log.Errorf("[attach] %s workload %s_%s write failed %v", workloadName, entryPoint, ID, err)
-				log.Errorf("[attach] %s", data)
 			}
 		}
 	}

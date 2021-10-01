@@ -106,6 +106,7 @@ func FromTemplate() runtime.Runtime {
 		n.withLock(func() {
 			v, ok := n.workloads.Load(ID)
 			if !ok {
+				status = &types.WorkloadStatus{ID: ID}
 				return
 			}
 			workload := v.(*eva)
@@ -177,6 +178,11 @@ func (n *Nerv) StartEvents() {
 		ID:     "Rei",
 		Action: common.StatusDie,
 	}
+}
+
+// StartCustomEvent .
+func (n *Nerv) StartCustomEvent(event *types.WorkloadEventMessage) {
+	n.msgChan <- event
 }
 
 // SetDaemonRunning set `daemonRunning`
