@@ -410,8 +410,8 @@ github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndr
 github.com/projecteru2/core v0.0.0-20210618045145-314d3a292929 h1:utetQxBGS03TtC0vgkEHTYh5zXUoTRpWr0I3K8ObexI=
 github.com/projecteru2/core v0.0.0-20210618045145-314d3a292929/go.mod h1:Cmom68fvQs8uAA9AEjSXu6sTegObAtgPKJMEWQUoQ+Y=
 github.com/projecteru2/libyavirt v0.0.0-20210514093713-959b2e232319/go.mod h1:9/SNmdphwl12ubwihkRa9YtOozM6liYLDxsricra1mY=
-github.com/projecteru2/libyavirt v0.0.0-20210924065830-1db08f427e87 h1:iascQhtPjHmEpAJ2Vb+/EoD0dZ+G08G1PdYXeyez1+M=
-github.com/projecteru2/libyavirt v0.0.0-20210924065830-1db08f427e87/go.mod h1:FOc+hWBMLsMrmx5p3/moizKeSomedZPNwB6LhS+kEnE=
+github.com/projecteru2/libyavirt v0.0.0-20211005075821-cf93676926ff h1:X8L0fVZytXtyPyEsF/xbiQxnjz13PtoIcMQlLWHKZ2s=
+github.com/projecteru2/libyavirt v0.0.0-20211005075821-cf93676926ff/go.mod h1:FOc+hWBMLsMrmx5p3/moizKeSomedZPNwB6LhS+kEnE=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
 github.com/prometheus/client_golang v0.9.3/go.mod h1:/TN21ttK/J9q6uSwhBd54HahCDft0ttaMvbicHlPoso=
 github.com/prometheus/client_golang v1.0.0/go.mod h1:db9x61etRT2tGnBNRi70OPL5FsnadC4Ky3P0J6CfImo=
