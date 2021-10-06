@@ -56,9 +56,10 @@ func NewCoreRPCClientPool(ctx context.Context, config *types.Config) (*ClientPoo
 		}
 		rpcClient := rpc.GetRPCClient()
 		c.rpcClients = append(c.rpcClients, &clientWithStatus{client: rpcClient, addr: addr})
-		// update client status synchronously
-		c.updateClientsStatus(ctx, config.GlobalConnectionTimeout)
 	}
+
+	// init client status
+	c.updateClientsStatus(ctx, config.GlobalConnectionTimeout)
 
 	allFailed := true
 	for _, rpc := range c.rpcClients {
