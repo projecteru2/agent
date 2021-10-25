@@ -13,8 +13,8 @@ require (
 	github.com/jinzhu/configor v1.2.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/projecteru2/core v0.0.0-20210618045145-314d3a292929
-	github.com/projecteru2/libyavirt v0.0.0-20211005075821-cf93676926ff
+	github.com/projecteru2/core v0.0.0-20211021040158-0be8dbadbc55
+	github.com/projecteru2/libyavirt v0.0.0-20211014062234-66e6f24ab6d1
 	github.com/prometheus/client_golang v1.11.0
 	github.com/shirou/gopsutil v3.20.11+incompatible
 	github.com/sirupsen/logrus v1.7.0
