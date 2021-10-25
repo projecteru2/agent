@@ -40,7 +40,6 @@ type Selfmon struct {
 func New(ctx context.Context, config *types.Config) (mon *Selfmon, err error) {
 	mon = &Selfmon{}
 	mon.config = config
-	mon.status = cache.New(time.Minute*5, time.Minute*15)
 	mon.exit.C = make(chan struct{}, 1)
 	mon.id = time.Now().UnixNano() / 1000 % 10000
 

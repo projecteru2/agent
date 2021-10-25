@@ -3,7 +3,6 @@ package selfmon
 import (
 	"context"
 	"io"
-	"math/rand"
 	"time"
 
 	"github.com/projecteru2/agent/types"
@@ -91,14 +90,6 @@ func (m *Selfmon) dealNodeStatusMessage(ctx context.Context, message *types.Node
 		return
 	}
 
-	lastValue, ok := m.status.Get(message.Nodename)
-	if ok {
-		last, o := lastValue.(bool)
-		if o && last == message.Alive {
-			return
-		}
-	}
-
 	// TODO maybe we need a distributed lock to control concurrency
 	var err error
 	utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
@@ -107,10 +98,7 @@ func (m *Selfmon) dealNodeStatusMessage(ctx context.Context, message *types.Node
 
 	if err != nil {
 		log.Errorf("[selfmon] set node %s failed %v", message.Nodename, err)
-		m.status.Delete(message.Nodename)
 		return
 	}
 	log.Debugf("[selfmon] set node %s as alive: %v", message.Nodename, message.Alive)
-
-	m.status.Set(message.Nodename, message.Alive, time.Duration(300+rand.Intn(100))*time.Second) // nolint
 }
