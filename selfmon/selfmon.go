@@ -14,7 +14,6 @@ import (
 	"github.com/projecteru2/agent/types"
 	coremeta "github.com/projecteru2/core/store/etcdv3/meta"
 
-	"github.com/patrickmn/go-cache"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -25,7 +24,6 @@ const ActiveKey = "/selfmon/active"
 // Selfmon .
 type Selfmon struct {
 	config *types.Config
-	status *cache.Cache
 	store  store.Store
 	kv     coremeta.KV
 	id     int64
