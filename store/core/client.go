@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/core/client"
 	pb "github.com/projecteru2/core/rpc/gen"
 
 	"github.com/patrickmn/go-cache"
@@ -14,7 +15,7 @@ import (
 
 // Store use core to store meta
 type Store struct {
-	clientPool *ClientPool
+	clientPool *client.Pool
 	config     *types.Config
 	cache      *cache.Cache
 }
@@ -24,7 +25,12 @@ var once sync.Once
 
 // New new a Store
 func New(ctx context.Context, config *types.Config) (*Store, error) {
-	clientPool, err := NewCoreRPCClientPool(ctx, config)
+	clientPoolConfig := &client.PoolConfig{
+		EruAddrs:          config.Core,
+		Auth:              config.Auth,
+		ConnectionTimeout: config.GlobalConnectionTimeout,
+	}
+	clientPool, err := client.NewCoreRPCClientPool(ctx, clientPoolConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +40,7 @@ func New(ctx context.Context, config *types.Config) (*Store, error) {
 
 // GetClient returns a gRPC client
 func (c *Store) GetClient() pb.CoreRPCClient {
-	return c.clientPool.getClient()
+	return c.clientPool.GetClient()
 }
 
 // Init inits the core store only once
