@@ -5,10 +5,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projecteru2/agent/types"
-	coreutils "github.com/projecteru2/core/utils"
 	"github.com/shirou/gopsutil/net"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/projecteru2/agent/types"
+	coreutils "github.com/projecteru2/core/utils"
 )
 
 func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
@@ -44,22 +45,22 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 
 	updateMetrics := func() {
 		id := container.ID
-		container, err = e.detectContainer(id)
+		newContainer, err := e.detectContainer(id)
 		if err != nil {
-			log.Errorf("[stat] can not refresh container meta %s", id)
+			log.Errorf("[stat] can not refresh newContainer meta %s", id)
 			return
 		}
-		containerCPUCount := container.CPUNum * period
+		containerCPUCount := newContainer.CPUNum * period
 		timeoutCtx, cancel := context.WithTimeout(parentCtx, timeout)
 		defer cancel()
-		newContainrCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(timeoutCtx, container, proc)
+		newContainrCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(timeoutCtx, newContainer, proc)
 		if err != nil {
-			log.Errorf("[stat] get %s stats failed %v", coreutils.ShortID(container.ID), err)
+			log.Errorf("[stat] get %s stats failed %v", coreutils.ShortID(newContainer.ID), err)
 			return
 		}
-		containerMemStats, err := getMemStats(timeoutCtx, container)
+		containerMemStats, err := getMemStats(timeoutCtx, newContainer)
 		if err != nil {
-			log.Errorf("[stat] get %s mem stats failed %v", coreutils.ShortID(container.ID), err)
+			log.Errorf("[stat] get %s mem stats failed %v", coreutils.ShortID(newContainer.ID), err)
 			return
 		}
 
@@ -100,9 +101,9 @@ func (e *Engine) stat(parentCtx context.Context, container *types.Container) {
 		mClient.MemUsage(float64(containerMemStats.MemUsageInBytes))
 		mClient.MemMaxUsage(float64(containerMemStats.MemMaxUsageInBytes))
 		mClient.MemRss(float64(containerMemStats.RSS))
-		if container.Memory > 0 {
-			mClient.MemPercent(float64(containerMemStats.MemUsageInBytes) / float64(container.Memory))
-			mClient.MemRSSPercent(float64(containerMemStats.RSS) / float64(container.Memory))
+		if newContainer.Memory > 0 {
+			mClient.MemPercent(float64(containerMemStats.MemUsageInBytes) / float64(newContainer.Memory))
+			mClient.MemRSSPercent(float64(containerMemStats.RSS) / float64(newContainer.Memory))
 		}
 		nics := map[string]net.IOCountersStat{}
 		for _, nic := range containerNetStats {
