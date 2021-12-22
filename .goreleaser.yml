@@ -6,17 +6,47 @@ before:
     - go mod download
 
 builds:
-  - binary: eru-agent
+  - id: eru-agent-debug
+    binary: eru-agent.dbg
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w
+      - -X github.com/projecteru2/agent/version.REVISION={{.Commit}}
+      - -X github.com/projecteru2/agent/version.VERSION={{.Env.VERSION}}
+      - -X github.com/projecteru2/agent/version.BUILTAT={{.Date}}
+    hooks:
+      post:
+        - cp {{.Path}} ./eru-agent-{{.Os}}.dbg
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+
+  # the best practice is using prebuilt builder
+  # however it's a Pro feature
+  - id: eru-agent-linux
+    binary: eru-agent
+    hooks:
+      post:
+        - cp ./eru-agent-{{.Os}}.dbg {{.Path}}
+        - strip {{.Path}}
+    goos:
+      - linux
+    goarch:
+      - amd64
+
+  - id: eru-agent-darwin
+    binary: eru-agent
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -w -s
       - -X github.com/projecteru2/agent/version.REVISION={{.Commit}}
       - -X github.com/projecteru2/agent/version.VERSION={{.Env.VERSION}}
       - -X github.com/projecteru2/agent/version.BUILTAT={{.Date}}
     goos:
       - darwin
-      - linux
     goarch:
       - amd64
 
