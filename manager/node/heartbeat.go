@@ -44,10 +44,18 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 		return
 	}
 
-	utils.WithTimeout(ctx, time.Duration(m.config.HealthCheck.Timeout)*time.Second, func(ctx context.Context) {
-		ttl := int64(m.config.HeartbeatInterval * 2)
-		if err := m.store.SetNodeStatus(ctx, ttl); err != nil {
-			log.Errorf("[nodeStatusReport] error when set node status: %v", err)
-		}
+	ttl := int64(m.config.HeartbeatInterval * 3)
+
+	err := utils.BackoffRetry(ctx, 3, func() (err error) {
+		utils.WithTimeout(ctx, time.Duration(m.config.HealthCheck.Timeout)*time.Second, func(ctx context.Context) {
+			if err = m.store.SetNodeStatus(ctx, ttl); err != nil {
+				log.Errorf("[nodeStatusReport] failed to set node status of %v, err %v", m.config.HostName, err)
+			}
+		})
+		return err
 	})
+
+	if err != nil {
+		log.Errorf("[nodeStatusReport] failed to set node status of %v for 3 times", m.config.HostName)
+	}
 }
