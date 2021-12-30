@@ -25,7 +25,6 @@ unit-test:
 	go test -race -count=1 -timeout 240s -cover ./logs/... \
 	./manager/node/... \
 	./manager/workload/... \
-	./selfmon/... \
 	./types/... \
 	./utils/...
 

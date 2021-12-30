@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/projecteru2/agent/store"
 	"github.com/projecteru2/agent/types"
-	"github.com/stretchr/testify/mock"
 )
 
 // MockStore .
@@ -93,20 +94,6 @@ func FromTemplate() store.Store {
 		return nil
 	})
 	m.On("GetIdentifier", mock.Anything).Return("fake-identifier")
-	m.On("SetNode", mock.Anything, mock.Anything, mock.Anything).Return(func(ctx context.Context, node string, status bool) error {
-		fmt.Printf("[MockStore] set node %s as status: %v\n", node, status)
-		m.Lock()
-		defer m.Unlock()
-		if nodeInfo, ok := m.nodeInfo.Load(node); ok {
-			nodeInfo.(*types.Node).Available = status
-		} else {
-			m.nodeInfo.Store(node, &types.Node{
-				Name:      node,
-				Available: status,
-			})
-		}
-		return nil
-	})
 	m.On("ListPodNodes", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*types.Node{
 		{
 			Name: "fake",

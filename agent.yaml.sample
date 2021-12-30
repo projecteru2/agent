@@ -12,10 +12,6 @@ store: grpc
 # This option is not required as the default value is "docker".
 runtime: docker
 
-# kv defines the type of kv store.
-# This option is not required as the default value is "etcd".
-kv: etcd
-
 # core defines the address of eru-core component.
 # This option is not required as the default value is "127.0.0.1:5001".
 core:
@@ -24,10 +20,8 @@ core:
 
 # heartbeat_interval defines the interval for eru-agent to
 # report health status of the node to eru-core.
-# This option is not required, and is only useful when enabling
-# selfmon mode.
 # If you don't want eru-agent to report this status, set it to 0.
-# The default value of this option is 0.
+# The default value of this option is 60.
 heartbeat_interval: 120
 
 # auth defines the authentication values for eru-core.
@@ -117,41 +111,13 @@ log:
 #
 # healthcheck.cache_ttl defines how long will eru-agent cache an unchanged status locally.
 # This is only used when selfmon mode is switched on. The default value is 300 (in seconds).
-#
-# healthcheck.enable_selfmon defines whether selfmon is switched on.
-# This should be true if there's at least one eru-agent is in mode selfmon.
-# When this is true, healthcheck.enable_selfmon and heartbeat_interval is meaningless.
 healthcheck:
   interval: 120
   timeout: 10
   cache_ttl: 300
-  enable_selfmon: false
 
 # global_connection_timeout defines the timeout for eru-agent other than healthcheck.
 # E.g. the timeout for reporting action of eru-agent, or the timeout for eru-agent to
 # connect to docker.
 # The default value is "5s", note that "s" in the end.
 global_connection_timeout: 15s
-
-# ha_keepalive_interval defines the time interval for sending heartbeat
-# when selfmon maintains its own active state.
-# The default value is "16s", note that "s" in the end.
-ha_keepalive_interval: 16s
-
-# etcd defines the etcd configuration.
-# This option is required and has no default value.
-# If you don't plan to run this eru-agent in selfmon mode,
-# you can give a mocked value e.g. 127.0.0.1:1111,
-# this value won't be used to connect, it's only to pass
-# the validation of this option (it's tricky).
-# Will plan to improve this in next release.
-#
-# etcd.machines defines the addresses of etcd machines.
-#
-# etcd.prefix defines the prefix for eru-agents in selfmon mode.
-# This prefix should be the same for all eru-agents in selfmon mode,
-# and also distinguished for different ERU clusters.
-etcd:
-  machines:
-    - 127.0.0.1:2379
-  prefix: /agent-selfmon

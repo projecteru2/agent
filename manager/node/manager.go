@@ -78,22 +78,24 @@ func (m *Manager) Run(ctx context.Context) error {
 	log.Info("[NodeManager] start node status heartbeat")
 	go m.heartbeat(ctx)
 
-	// wait for signal
 	<-ctx.Done()
-	return m.exit()
+	log.Info("[NodeManager] exiting")
+	return nil
 }
 
-func (m *Manager) exit() error {
+// Exit .
+func (m *Manager) Exit() error {
 	log.Info("[NodeManager] exiting")
-	log.Infof("[NodeManager] mark node %s as down", m.config.HostName)
+	log.Infof("[NodeManager] remove node status of %s", m.config.HostName)
 
 	// ctx is now canceled. use a new context.
 	var err error
 	utils.WithTimeout(context.TODO(), m.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		err = m.store.SetNode(ctx, m.config.HostName, false)
+		// remove node status
+		err = m.store.SetNodeStatus(ctx, -1)
 	})
 	if err != nil {
-		log.Errorf("[NodeManager] failed to mark the node %s as down, err: %s", m.config.HostName, err)
+		log.Errorf("[NodeManager] failed to remove node status of %v, err: %s", m.config.HostName, err)
 		return err
 	}
 	return nil

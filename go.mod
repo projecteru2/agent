@@ -12,7 +12,7 @@ require (
 	github.com/go-ole/go-ole v0.0.0-20180213002836-a1ec82a652eb // indirect
 	github.com/jinzhu/configor v1.2.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/pkg/errors v0.9.1
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/projecteru2/core v0.0.0-20211021040158-0be8dbadbc55
 	github.com/projecteru2/libyavirt v0.0.0-20211014062234-66e6f24ab6d1
 	github.com/prometheus/client_golang v1.11.0

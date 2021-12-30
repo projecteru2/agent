@@ -23,10 +23,9 @@ func newMockNodeManager(t *testing.T) *Manager {
 			Stdout: true,
 		},
 		HealthCheck: types.HealthCheckConfig{
-			Interval:      10,
-			Timeout:       5,
-			CacheTTL:      300,
-			EnableSelfmon: true,
+			Interval: 10,
+			Timeout:  5,
+			CacheTTL: 300,
 		},
 		GlobalConnectionTimeout: 5 * time.Second,
 	}
