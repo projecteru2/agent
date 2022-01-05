@@ -22,15 +22,12 @@ func TestLoadConfig(t *testing.T) {
 	assert.Equal(config.HealthCheck.Interval, 120)
 	assert.Equal(config.HealthCheck.Timeout, 10)
 	assert.Equal(config.HealthCheck.CacheTTL, 300)
-	assert.False(config.HealthCheck.EnableSelfmon)
-	assert.Equal(config.GetHealthCheckStatusTTL(), int64(300))
+	assert.Equal(config.GetHealthCheckStatusTTL(), int64(0))
 
 	assert.Equal(config.Store, "grpc")
 	assert.Equal(config.Runtime, "docker")
-	assert.Equal(config.KV, "etcd")
 
 	assert.Equal(config.GlobalConnectionTimeout, time.Second*15)
-	assert.Equal(config.HAKeepaliveInterval, time.Second*16)
 
 	config.Print()
 }

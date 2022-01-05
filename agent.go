@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -12,7 +13,6 @@ import (
 	"github.com/projecteru2/agent/api"
 	"github.com/projecteru2/agent/manager/node"
 	"github.com/projecteru2/agent/manager/workload"
-	"github.com/projecteru2/agent/selfmon"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/version"
@@ -56,16 +56,11 @@ func serve(c *cli.Context) error {
 	utils.WritePid(config.PidFile)
 	defer os.Remove(config.PidFile)
 
-	if c.Bool("selfmon") {
-		mon, err := selfmon.New(c.Context, config)
-		if err != nil {
-			return err
-		}
-		return mon.Run(c.Context)
-	}
-
-	ctx, cancel := signal.NotifyContext(c.Context, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	ctx, cancel := context.WithCancel(c.Context)
 	defer cancel()
+
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGUSR1)
 
 	errChan := make(chan error, 2)
 	defer close(errChan)
@@ -103,9 +98,17 @@ func serve(c *cli.Context) error {
 	go func() {
 		select {
 		case <-ctx.Done():
-			log.Info("[agent] Agent caught system signal, exiting")
+			log.Info("[agent] Agent exiting")
 		case <-errChan:
 			log.Info("[agent] got err, exiting")
+			cancel()
+		case sig := <-signalChan:
+			log.Infof("[agent] Agent caught system signal %v", sig)
+			if sig != syscall.SIGUSR1 {
+				if err := nodeManager.Exit(); err != nil {
+					log.Errorf("[agent] node manager exits with err: %v", err)
+				}
+			}
 			cancel()
 		}
 	}()
@@ -233,17 +236,6 @@ func main() {
 				Value:   "",
 				Usage:   "change hostname",
 				EnvVars: []string{"ERU_HOSTNAME"},
-			},
-			&cli.BoolFlag{
-				Name:  "selfmon",
-				Value: false,
-				Usage: "run this agent as a selfmon daemon",
-			},
-			&cli.StringFlag{
-				Name:    "kv",
-				Value:   "",
-				Usage:   "kv type",
-				EnvVars: []string{"ERU_AGENT_KV"},
 			},
 			&cli.BoolFlag{
 				Name:  "check-only-mine",

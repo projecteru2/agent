@@ -7,7 +7,6 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	pb "github.com/projecteru2/core/rpc/gen"
-	coretypes "github.com/projecteru2/core/types"
 )
 
 // GetNode return a node by core
@@ -32,24 +31,6 @@ func (c *Store) GetNode(ctx context.Context, nodename string) (*types.Node, erro
 	return node, nil
 }
 
-// UpdateNode update node status
-func (c *Store) UpdateNode(ctx context.Context, node *types.Node) error {
-	opts := &pb.SetNodeOptions{
-		Nodename:  node.Name,
-		StatusOpt: coretypes.TriFalse,
-	}
-	if node.Available {
-		opts.StatusOpt = coretypes.TriTrue
-	}
-
-	var err error
-	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		_, err = c.GetClient().SetNode(ctx, opts)
-	})
-
-	return err
-}
-
 // SetNodeStatus reports the status of node
 // SetNodeStatus always reports alive status,
 // when not alive, TTL will cause expiration of node
@@ -61,25 +42,6 @@ func (c *Store) SetNodeStatus(ctx context.Context, ttl int64) error {
 	var err error
 	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
 		_, err = c.GetClient().SetNodeStatus(ctx, opts)
-	})
-
-	return err
-}
-
-// SetNode sets node
-func (c *Store) SetNode(ctx context.Context, node string, status bool) error {
-	statusOpt := pb.TriOpt_TRUE
-	if !status {
-		statusOpt = pb.TriOpt_FALSE
-	}
-
-	var err error
-	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		_, err = c.GetClient().SetNode(ctx, &pb.SetNodeOptions{
-			Nodename:      node,
-			StatusOpt:     statusOpt,
-			WorkloadsDown: !status,
-		})
 	})
 
 	return err

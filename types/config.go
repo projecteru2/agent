@@ -43,10 +43,9 @@ type LogConfig struct {
 
 // HealthCheckConfig contain healthcheck config
 type HealthCheckConfig struct {
-	Interval      int  `yaml:"interval" default:"60"`
-	Timeout       int  `yaml:"timeout" default:"10"`
-	CacheTTL      int  `yaml:"cache_ttl" default:"300"`
-	EnableSelfmon bool `yaml:"enable_selfmon" default:"false"`
+	Interval int `yaml:"interval" default:"60"`
+	Timeout  int `yaml:"timeout" default:"10"`
+	CacheTTL int `yaml:"cache_ttl" default:"300"`
 }
 
 // Config contain all configs
@@ -54,13 +53,12 @@ type Config struct {
 	PidFile           string   `yaml:"pid" default:"/tmp/agent.pid"`
 	Core              []string `yaml:"core" required:"true"`
 	HostName          string   `yaml:"-"`
-	HeartbeatInterval int      `yaml:"heartbeat_interval" default:"0"`
+	HeartbeatInterval int      `yaml:"heartbeat_interval" default:"60"`
 
 	CheckOnlyMine bool `yaml:"check_only_mine" default:"false"`
 
 	Store   string `yaml:"store" default:"grpc"`
 	Runtime string `yaml:"runtime" default:"docker"`
-	KV      string `yaml:"kv" default:"etcd"`
 
 	Auth   coretypes.AuthConfig `yaml:"auth"`
 	Docker DockerConfig
@@ -69,21 +67,15 @@ type Config struct {
 	Metrics     MetricsConfig
 	API         APIConfig `yaml:"api"`
 	Log         LogConfig
-	HealthCheck HealthCheckConfig    `yaml:"healthcheck"`
-	Etcd        coretypes.EtcdConfig `yaml:"etcd"`
+	HealthCheck HealthCheckConfig `yaml:"healthcheck"`
 
 	GlobalConnectionTimeout time.Duration `yaml:"global_connection_timeout" default:"5s"`
-	HAKeepaliveInterval     time.Duration `yaml:"ha_keepalive_interval" default:"16s"`
 }
 
 // GetHealthCheckStatusTTL returns the TTL for health check status.
-// If selfmon is enabled, will return 0.
-// Otherwise will use 2.5 * interval.
+// Because selfmon is integrated in eru-core, so there returns 0.
 func (config *Config) GetHealthCheckStatusTTL() int64 {
-	if config.HealthCheck.EnableSelfmon {
-		return 0
-	}
-	return int64(2*config.HealthCheck.Interval + config.HealthCheck.Interval/2)
+	return 0
 }
 
 // Prepare 从cli覆写并做准备
@@ -148,9 +140,6 @@ func (config *Config) Prepare(c *cli.Context) {
 	}
 	if c.String("store") != "" {
 		config.Store = c.String("store")
-	}
-	if c.String("kv") != "" {
-		config.KV = c.String("kv")
 	}
 	// validate
 	if config.PidFile == "" {
