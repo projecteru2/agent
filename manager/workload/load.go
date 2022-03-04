@@ -3,14 +3,36 @@ package workload
 import (
 	"context"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
+func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context) ([]string, error) {
+	var workloadIDs []string
+	var err error
+	ticker := time.NewTicker(m.config.GlobalConnectionTimeout)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-ticker.C:
+			workloadIDs, err = m.runtimeClient.ListWorkloadIDs(ctx, m.getBaseFilter())
+			if err != nil {
+				log.Errorf("[initWorkloadStatus] Failed to load workloads: %v, will retry", err)
+				continue
+			}
+			return workloadIDs, nil
+		}
+	}
+}
+
 func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 	log.Info("[initWorkloadStatus] Load workloads")
-	workloadIDs, err := m.runtimeClient.ListWorkloadIDs(ctx, m.getBaseFilter())
+	workloadIDs, err := m.listWorkloadIDsWithRetry(ctx)
 	if err != nil {
+		log.Errorf("[initWorkloadStatus] Failed to load workloads: %v", err)
 		return err
 	}
 
