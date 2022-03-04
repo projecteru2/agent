@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -121,7 +122,7 @@ func (y *Yavirt) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 	utils.WithTimeout(ctx, y.config.GlobalConnectionTimeout, func(ctx context.Context) {
 		ids, err = y.client.GetGuestIDList(ctx, yavirttypes.GetGuestIDListReq{Filters: filters})
 	})
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "key not exists") {
 		log.Errorf("[ListWorkloadIDs] failed to get workload ids, err: %v", err)
 		return nil, err
 	}
