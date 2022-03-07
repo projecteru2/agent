@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context) ([]string, error) {
+func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[string]string) ([]string, error) {
 	var workloadIDs []string
 	var err error
 	ticker := time.NewTicker(m.config.GlobalConnectionTimeout)
@@ -18,7 +18,7 @@ func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context) ([]string, error
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-ticker.C:
-			workloadIDs, err = m.runtimeClient.ListWorkloadIDs(ctx, m.getBaseFilter())
+			workloadIDs, err = m.runtimeClient.ListWorkloadIDs(ctx, filter)
 			if err != nil {
 				log.Errorf("[initWorkloadStatus] Failed to load workloads: %v, will retry", err)
 				continue
@@ -30,7 +30,7 @@ func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context) ([]string, error
 
 func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 	log.Info("[initWorkloadStatus] Load workloads")
-	workloadIDs, err := m.listWorkloadIDsWithRetry(ctx)
+	workloadIDs, err := m.listWorkloadIDsWithRetry(ctx, m.getBaseFilter())
 	if err != nil {
 		log.Errorf("[initWorkloadStatus] Failed to load workloads: %v", err)
 		return err
