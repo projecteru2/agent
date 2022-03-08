@@ -335,10 +335,10 @@ func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]stri
 func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		_, err = d.client.Info(ctx)
+		_, err = d.client.Ping(ctx)
 	})
 	if err != nil {
-		log.Debugf("[IsDaemonRunning] connect to docker daemon failed, err: %v", err)
+		log.Errorf("[IsDaemonRunning] connect to docker daemon failed, err: %v", err)
 		return false
 	}
 	return true
