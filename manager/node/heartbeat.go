@@ -40,14 +40,14 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 	defer log.Debug("[nodeStatusReport] report ends")
 
 	if !m.runtimeClient.IsDaemonRunning(ctx) {
-		log.Debug("[nodeStatusReport] cannot connect to runtime daemon")
+		log.Error("[nodeStatusReport] cannot connect to runtime daemon")
 		return
 	}
 
 	ttl := int64(m.config.HeartbeatInterval * 3)
 
 	err := utils.BackoffRetry(ctx, 3, func() (err error) {
-		utils.WithTimeout(ctx, time.Duration(m.config.HealthCheck.Timeout)*time.Second, func(ctx context.Context) {
+		utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
 			if err = m.store.SetNodeStatus(ctx, ttl); err != nil {
 				log.Errorf("[nodeStatusReport] failed to set node status of %v, err %v", m.config.HostName, err)
 			}
