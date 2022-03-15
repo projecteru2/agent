@@ -4,7 +4,7 @@ MAINTAINER CMGS <ilskdw@gmail.com>
 
 # make binary
 RUN apk add --no-cache git curl make gcc libc-dev
-RUN git clone https://github.com/projecteru2/agent.git /go/src/github.com/projecteru2/agent
+COPY . /go/src/github.com/projecteru2/core
 WORKDIR /go/src/github.com/projecteru2/agent
 ARG KEEP_SYMBOL
 RUN make build && ./eru-agent --version
