@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"io"
 
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
@@ -112,22 +113,17 @@ func (c *Store) NodeStatusStream(ctx context.Context) (<-chan *types.NodeStatus,
 
 // ListPodNodes list nodes by given conditions, note that not all the fields are filled.
 func (c *Store) ListPodNodes(ctx context.Context, all bool, podname string, labels map[string]string) ([]*types.Node, error) {
-	var resp *pb.Nodes
-	var err error
-	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		resp, err = c.GetClient().ListPodNodes(ctx, &pb.ListNodesOptions{
-			Podname: podname,
-			All:     all,
-			Labels:  labels,
-		})
+	ch, err := c.listPodeNodes(ctx, &pb.ListNodesOptions{
+		Podname: podname,
+		All:     all,
+		Labels:  labels,
 	})
-
 	if err != nil {
 		return nil, err
 	}
 
-	nodes := make([]*types.Node, 0, len(resp.Nodes))
-	for _, n := range resp.Nodes {
+	nodes := []*types.Node{}
+	for n := range ch {
 		nodes = append(nodes, &types.Node{
 			Name:     n.Name,
 			Endpoint: n.Endpoint,
@@ -136,4 +132,32 @@ func (c *Store) ListPodNodes(ctx context.Context, all bool, podname string, labe
 		})
 	}
 	return nodes, nil
+}
+
+func (c *Store) listPodeNodes(ctx context.Context, opt *pb.ListNodesOptions) (ch chan *pb.Node, err error) {
+	ch = make(chan *pb.Node)
+
+	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
+		var stream pb.CoreRPC_ListPodNodesClient
+		if stream, err = c.GetClient().ListPodNodes(ctx, opt); err != nil {
+			return
+		}
+
+		go func() {
+			defer close(ch)
+			for {
+				node, err := stream.Recv()
+				if err != nil {
+					if err != io.EOF {
+						// TODO:
+						// log it
+					}
+					return
+				}
+				ch <- node
+			}
+		}()
+	})
+
+	return ch, nil
 }
