@@ -126,7 +126,7 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 		Stdout: true,
 		Stderr: true,
 	})
-	if err != nil && err != httputil.ErrPersistEOF { // nolint
+	if err != nil && err != httputil.ErrPersistEOF { //nolint
 		log.Errorf("[AttachWorkload] failed to attach workload %v, err: %v", ID, err)
 		return nil, nil, err
 	}

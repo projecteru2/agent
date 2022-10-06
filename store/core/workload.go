@@ -12,7 +12,7 @@ import (
 )
 
 func getCacheTTL(ttl int) time.Duration {
-	delta := rand.Intn(ttl) / 4 // nolint
+	delta := rand.Intn(ttl) / 4 //nolint
 	ttl = ttl - ttl/8 + delta
 	return time.Duration(ttl) * time.Second
 }
