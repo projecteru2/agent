@@ -3,9 +3,9 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"runtime/pprof" // nolint
+	"runtime/pprof" //nolint
 	// enable profile
-	_ "net/http/pprof" // nolint
+	_ "net/http/pprof" //nolint
 
 	"github.com/projecteru2/agent/manager/workload"
 	"github.com/projecteru2/agent/types"
@@ -98,7 +98,7 @@ func (h *Handler) Serve() {
 	http.Handle("/metrics", promhttp.Handler())
 	log.Infof("[apiServe] http api started %s", h.config.API.Addr)
 
-	err := http.ListenAndServe(h.config.API.Addr, nil)
+	err := http.ListenAndServe(h.config.API.Addr, nil) //nolint
 	if err != nil {
 		log.Panicf("http api failed %s", err)
 	}

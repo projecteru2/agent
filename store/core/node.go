@@ -148,7 +148,7 @@ func (c *Store) listPodeNodes(ctx context.Context, opt *pb.ListNodesOptions) (ch
 			for {
 				node, err := stream.Recv()
 				if err != nil {
-					if err != io.EOF {
+					if err != io.EOF { //nolint
 						// TODO:
 						// log it
 					}
