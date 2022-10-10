@@ -65,7 +65,7 @@ func checkOneURL(ctx context.Context, url string, expectedCode int, timeout time
 	var resp *http.Response
 	var err error
 	WithTimeout(ctx, timeout, func(ctx context.Context) {
-		resp, err = get(ctx, nil, url)
+		resp, err = get(ctx, nil, url) //nolint
 	})
 	if err != nil {
 		log.Warnf("[checkOneURL] Error when checking %s, %s", url, err.Error())

@@ -67,8 +67,9 @@ func TestNewWriters(t *testing.T) {
 		Discard:                 nil,
 		"udp://127.0.0.1:23456": nil,
 		"tcp://127.0.0.1:34567": nil,
-		"journal://system":      errJournalDisabled,
-		"invalid://hhh":         nil,
+		// journal if enabled totally depends upon the system settings,
+		// "journal://system":      errJournalDisabled,
+		"invalid://hhh": nil,
 	}
 	tcpL, err := net.Listen("tcp", ":34567")
 	assert.NoError(t, err)
@@ -80,7 +81,7 @@ func TestNewWriters(t *testing.T) {
 	for addr, expectedErr := range cases {
 		go func(addr string, expectedErr error) {
 			writer, err := NewWriter(ctx, addr, false)
-			assert.Equal(t, err, expectedErr)
+			assert.Equal(t, expectedErr, err)
 			if expectedErr != nil {
 				return
 			}

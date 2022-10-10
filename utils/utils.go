@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/url"
 	"os"
@@ -37,7 +36,7 @@ func MakeYavirtClient(config *types.Config) (yavirtclient.Client, error) {
 
 // WritePid write pid
 func WritePid(path string) {
-	if err := ioutil.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
 		log.Panicf("Save pid file failed %s", err)
 	}
 }
