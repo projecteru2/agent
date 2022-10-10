@@ -42,6 +42,17 @@ type MetricsClient struct {
 	errOut      *prometheus.GaugeVec
 	dropIn      *prometheus.GaugeVec
 	dropOut     *prometheus.GaugeVec
+
+	// diskio stats
+	ioServiceBytesRead  *prometheus.GaugeVec
+	ioServiceBytesWrite *prometheus.GaugeVec
+	ioServicedRead      *prometheus.GaugeVec
+	ioServicedWrite     *prometheus.GaugeVec
+	// io/byte per second
+	ioServiceBytesReadPerSecond  *prometheus.GaugeVec
+	ioServiceBytesWritePerSecond *prometheus.GaugeVec
+	ioServicedReadPerSecond      *prometheus.GaugeVec
+	ioServicedWritePerSecond     *prometheus.GaugeVec
 }
 
 var clients sync.Map
@@ -67,7 +78,6 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		"orchestrator": cluster.ERUMark,
 		"labels":       strings.Join(clables, ","),
 	}
-
 	cpuHostUsage := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name:        "cpu_host_usage",
 		Help:        "cpu usage in host view.",
@@ -163,7 +173,46 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		Help:        "drop out.",
 		ConstLabels: labels,
 	}, []string{"nic"})
-
+	ioServiceBytesRead := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "io_service_bytes_read",
+		Help:        "number of bytes read to the disk by the group.",
+		ConstLabels: labels,
+	}, []string{"dev"})
+	ioServiceBytesWrite := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "io_service_bytes_write",
+		Help:        "number of bytes write to the disk by the group.",
+		ConstLabels: labels,
+	}, []string{"dev"})
+	ioServicedRead := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "io_serviced_read",
+		Help:        "number of read IOs to the disk by the group.",
+		ConstLabels: labels,
+	}, []string{"dev"})
+	ioServicedWrite := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "io_serviced_write",
+		Help:        "number of write IOs to the disk by the group.",
+		ConstLabels: labels,
+	}, []string{"dev"})
+	ioServiceBytesReadPerSecond := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "io_service_bytes_read_per_second",
+		Help:        "number of bytes read per second to the disk by the group.",
+		ConstLabels: labels,
+	}, []string{"dev"})
+	ioServiceBytesWritePerSecond := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "io_service_bytes_write_per_second",
+		Help:        "number of bytes write per second to the disk by the group.",
+		ConstLabels: labels,
+	}, []string{"dev"})
+	ioServicedReadPerSecond := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "io_serviced_read_per_second",
+		Help:        "number of read IOs per second to the disk by the group.",
+		ConstLabels: labels,
+	}, []string{"dev"})
+	ioServicedWritePerSecond := prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "io_serviced_write_per_second",
+		Help:        "number of write IOs per second to the disk by the group.",
+		ConstLabels: labels,
+	}, []string{"dev"})
 	// TODO 这里已经没有了版本了
 	tag := fmt.Sprintf("%s.%s", hostname, coreutils.ShortID(container.ID))
 	endpoint := fmt.Sprintf("%s.%s", container.Name, container.EntryPoint)
@@ -174,7 +223,7 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		cpuContainerSysUsage, cpuContainerUsage, cpuContainerUserUsage,
 		memMaxUsage, memRss, memUsage, memPercent, memRSSPercent,
 		bytesRecv, bytesSent, packetsRecv, packetsSent,
-		errIn, errOut, dropIn, dropOut,
+		errIn, errOut, dropIn, dropOut, ioServiceBytesRead, ioServiceBytesWrite, ioServicedRead, ioServicedWrite, ioServiceBytesReadPerSecond, ioServiceBytesWritePerSecond, ioServicedReadPerSecond, ioServicedWritePerSecond,
 	)
 
 	metricsClient := &MetricsClient{
@@ -204,6 +253,16 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		errOut:      errOut,
 		dropIn:      dropIn,
 		dropOut:     dropOut,
+
+		ioServiceBytesRead:  ioServiceBytesRead,
+		ioServiceBytesWrite: ioServiceBytesWrite,
+		ioServicedRead:      ioServicedRead,
+		ioServicedWrite:     ioServicedWrite,
+
+		ioServiceBytesReadPerSecond:  ioServiceBytesReadPerSecond,
+		ioServiceBytesWritePerSecond: ioServiceBytesWritePerSecond,
+		ioServicedReadPerSecond:      ioServicedReadPerSecond,
+		ioServicedWritePerSecond:     ioServicedWritePerSecond,
 	}
 	clients.Store(container.ID, metricsClient)
 	return metricsClient
@@ -233,6 +292,16 @@ func (m *MetricsClient) Unregister() {
 	prometheus.Unregister(m.errOut)
 	prometheus.Unregister(m.dropIn)
 	prometheus.Unregister(m.dropOut)
+
+	prometheus.Unregister(m.ioServiceBytesRead)
+	prometheus.Unregister(m.ioServiceBytesWrite)
+	prometheus.Unregister(m.ioServicedRead)
+	prometheus.Unregister(m.ioServicedWrite)
+
+	prometheus.Unregister(m.ioServiceBytesReadPerSecond)
+	prometheus.Unregister(m.ioServiceBytesWritePerSecond)
+	prometheus.Unregister(m.ioServicedReadPerSecond)
+	prometheus.Unregister(m.ioServicedWritePerSecond)
 }
 
 // CPUHostUsage set cpu usage in host view
@@ -347,6 +416,54 @@ func (m *MetricsClient) DropIn(nic string, i float64) {
 func (m *MetricsClient) DropOut(nic string, i float64) {
 	m.data[nic+".drop.out"] = i
 	m.dropOut.WithLabelValues(nic).Set(i)
+}
+
+// IOServiceBytesRead .
+func (m *MetricsClient) IOServiceBytesRead(dev string, i float64) {
+	m.data[dev+".io_service_bytes_read"] = i
+	m.ioServiceBytesRead.WithLabelValues(dev).Set(i)
+}
+
+// IOServiceBytesWrite .
+func (m *MetricsClient) IOServiceBytesWrite(dev string, i float64) {
+	m.data[dev+".io_service_bytes_write"] = i
+	m.ioServiceBytesWrite.WithLabelValues(dev).Set(i)
+}
+
+// IOServicedRead .
+func (m *MetricsClient) IOServicedRead(dev string, i float64) {
+	m.data[dev+".io_serviced_read"] = i
+	m.ioServicedRead.WithLabelValues(dev).Set(i)
+}
+
+// IOServicedWrite .
+func (m *MetricsClient) IOServicedWrite(dev string, i float64) {
+	m.data[dev+".io_serviced_write"] = i
+	m.ioServicedWrite.WithLabelValues(dev).Set(i)
+}
+
+// IOServiceBytesReadPerSecond .
+func (m *MetricsClient) IOServiceBytesReadPerSecond(dev string, i float64) {
+	m.data[dev+".io_service_bytes_read_per_second"] = i
+	m.ioServiceBytesReadPerSecond.WithLabelValues(dev).Set(i)
+}
+
+// IOServiceBytesWritePerSecond .
+func (m *MetricsClient) IOServiceBytesWritePerSecond(dev string, i float64) {
+	m.data[dev+".io_service_bytes_write_per_second"] = i
+	m.ioServiceBytesWritePerSecond.WithLabelValues(dev).Set(i)
+}
+
+// IOServicedReadPerSecond .
+func (m *MetricsClient) IOServicedReadPerSecond(dev string, i float64) {
+	m.data[dev+".io_serviced_read_per_second"] = i
+	m.ioServicedReadPerSecond.WithLabelValues(dev).Set(i)
+}
+
+// IOServicedWritePerSecond .
+func (m *MetricsClient) IOServicedWritePerSecond(dev string, i float64) {
+	m.data[dev+".io_serviced_write_per_second"] = i
+	m.ioServicedWritePerSecond.WithLabelValues(dev).Set(i)
 }
 
 // Lazy connecting

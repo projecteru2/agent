@@ -331,6 +331,29 @@ func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]stri
 	return extra, nil
 }
 
+func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginetypes.StatsJSON, error) {
+	rawStat, err := d.client.ContainerStatsOneShot(ctx, ID)
+	if err != nil {
+		log.Errorf("[getContainerStats] failed to get container %s stats, err: %v", ID, err)
+		return nil, err
+	}
+	b, err := io.ReadAll(rawStat.Body)
+	if err != nil {
+		log.Errorf("[getContainerStats] failed to read container %s stats, err: %v", ID, err)
+		return nil, err
+	}
+	stats := &enginetypes.StatsJSON{}
+	return stats, json.Unmarshal(b, stats)
+}
+
+func (d *Docker) getBlkioStats(ctx context.Context, ID string) (*enginetypes.BlkioStats, error) {
+	fullStat, err := d.getContainerStats(ctx, ID)
+	if err != nil {
+		return nil, err
+	}
+	return &fullStat.BlkioStats, nil
+}
+
 // IsDaemonRunning returns if the runtime daemon is running.
 func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
 	var err error

@@ -12,7 +12,7 @@ import (
 )
 
 // CollectWorkloadMetrics .
-func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) {
+func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //nolint
 	// TODO
 	// FIXME fuck internal pkg
 	proc := "/proc"
@@ -31,7 +31,16 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) {
 		log.Errorf("[stat] get %s stats failed %v", container.ID, err)
 		return
 	}
-
+	rawBlkioStats, err := d.getBlkioStats(ctx, container.ID)
+	if err != nil {
+		log.Errorf("[stat] get %s diskio stats failed %v", container.ID, err)
+		return
+	}
+	blkioStats, err := fromEngineBlkioStats(rawBlkioStats)
+	if err != nil {
+		log.Errorf("[stat] get %s diskio stats failed %v", container.ID, err)
+		return
+	}
 	delta := float64(d.config.Metrics.Step)
 	timeout := time.Duration(d.config.Metrics.Step) * time.Second
 	tick := time.NewTicker(timeout)
@@ -128,6 +137,44 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) {
 			mClient.DropIn(nic.Name, float64(nic.Dropin-oldNICStats.Dropin)/delta)
 			mClient.DropOut(nic.Name, float64(nic.Dropout-oldNICStats.Dropout)/delta)
 		}
+		log.Debugf("[stat] start to get blkio stats for %s", container.ID)
+		newRawBlkioStats, err := d.getBlkioStats(ctx, container.ID)
+		if err != nil {
+			log.Errorf("[stat] get %s diskio stats failed %v", container.ID, err)
+			return
+		}
+		newBlkioStats, err := fromEngineBlkioStats(newRawBlkioStats)
+		if err != nil {
+			log.Errorf("[stat] get %s diskio stats failed %v", container.ID, err)
+			return
+		}
+		for _, entry := range newBlkioStats.IOServiceBytesReadRecursive {
+			mClient.IOServiceBytesRead(entry.Dev, float64(entry.Value))
+		}
+		for _, entry := range newBlkioStats.IOServiceBytesWriteRecursive {
+			mClient.IOServiceBytesWrite(entry.Dev, float64(entry.Value))
+		}
+		for _, entry := range newBlkioStats.IOServicedReadRecusive {
+			mClient.IOServicedRead(entry.Dev, float64(entry.Value))
+		}
+		for _, entry := range newBlkioStats.IOServicedWriteRecusive {
+			mClient.IOServicedWrite(entry.Dev, float64(entry.Value))
+		}
+		// update diff
+		diffBlkioStats := getBlkIOMetricsDifference(blkioStats, newBlkioStats)
+		for _, entry := range diffBlkioStats.IOServiceBytesReadRecursive {
+			mClient.IOServiceBytesReadPerSecond(entry.Dev, float64(entry.Value)/delta)
+		}
+		for _, entry := range diffBlkioStats.IOServiceBytesWriteRecursive {
+			mClient.IOServiceBytesWritePerSecond(entry.Dev, float64(entry.Value)/delta)
+		}
+		for _, entry := range diffBlkioStats.IOServicedReadRecusive {
+			mClient.IOServicedReadPerSecond(entry.Dev, float64(entry.Value)/delta)
+		}
+		for _, entry := range diffBlkioStats.IOServicedWriteRecusive {
+			mClient.IOServicedWritePerSecond(entry.Dev, float64(entry.Value)/delta)
+		}
+		rawBlkioStats, blkioStats = newRawBlkioStats, newBlkioStats
 		containerCPUStats, systemCPUStats, containerNetStats = newContainerCPUStats, newSystemCPUStats, newContainerNetStats
 		if err := mClient.Send(); err != nil {
 			log.Errorf("[stat] Send metrics failed %v", err)
