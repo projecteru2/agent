@@ -1,8 +1,9 @@
 package docker
 
 import (
-	"github.com/projecteru2/agent/utils"
 	enginetypes "github.com/docker/docker/api/types"
+
+	"github.com/projecteru2/agent/utils"
 )
 
 const (

@@ -12,7 +12,7 @@ import (
 )
 
 // CollectWorkloadMetrics .
-func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { // nolint
+func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //nolint
 	// TODO
 	// FIXME fuck internal pkg
 	proc := "/proc"
