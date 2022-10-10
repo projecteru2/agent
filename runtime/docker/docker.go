@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net/http/httputil"
 	"os"
@@ -338,7 +337,7 @@ func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginetypes
 		log.Errorf("[getContainerStats] failed to get container %s stats, err: %v", ID, err)
 		return nil, err
 	}
-	b, err := ioutil.ReadAll(rawStat.Body)
+	b, err := io.ReadAll(rawStat.Body)
 	if err != nil {
 		log.Errorf("[getContainerStats] failed to read container %s stats, err: %v", ID, err)
 		return nil, err
