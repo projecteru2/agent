@@ -143,10 +143,6 @@ func TestReplaceNonUtf8(t *testing.T) {
 	fmt.Println(ReplaceNonUtf8(string(data)))
 }
 
-func TestMax(t *testing.T) {
-	assert.EqualValues(t, Max(-10086, 10086), 10086)
-}
-
 func TestUseLabelAsFilter(t *testing.T) {
 	currentValue := os.Getenv("ERU_AGENT_EXPERIMENTAL_FILTER")
 	defer os.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", currentValue)

@@ -8,6 +8,7 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	pb "github.com/projecteru2/core/rpc/gen"
+	log "github.com/sirupsen/logrus"
 )
 
 // GetNode return a node by core
@@ -79,7 +80,7 @@ func (c *Store) NodeStatusStream(ctx context.Context) (<-chan *types.NodeStatus,
 	msgChan := make(chan *types.NodeStatus)
 	errChan := make(chan error)
 
-	go func() {
+	_ = utils.Pool.Submit(func() {
 		defer close(msgChan)
 		defer close(errChan)
 
@@ -106,7 +107,7 @@ func (c *Store) NodeStatusStream(ctx context.Context) (<-chan *types.NodeStatus,
 			}
 			msgChan <- nodeStatus
 		}
-	}()
+	})
 
 	return msgChan, errChan
 }
@@ -143,20 +144,19 @@ func (c *Store) listPodeNodes(ctx context.Context, opt *pb.ListNodesOptions) (ch
 			return
 		}
 
-		go func() {
+		_ = utils.Pool.Submit(func() {
 			defer close(ch)
 			for {
 				node, err := stream.Recv()
 				if err != nil {
-					if err != io.EOF { //nolint
-						// TODO:
-						// log it
+					if err != io.EOF { //nolint:nolintlint
+						log.Errorf("[listPodeNodes] get node stream failed %v", err)
 					}
 					return
 				}
 				ch <- node
 			}
-		}()
+		})
 	})
 
 	return ch, nil

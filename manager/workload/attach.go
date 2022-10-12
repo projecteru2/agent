@@ -57,7 +57,7 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 	log.Infof("[attach] attach %s workload %s success", workloadName, ID)
 
 	// attach metrics
-	go m.runtimeClient.CollectWorkloadMetrics(ctx, ID)
+	_ = utils.Pool.Submit(func() { m.runtimeClient.CollectWorkloadMetrics(ctx, ID) })
 
 	extra, err := m.runtimeClient.LogFieldsExtra(ctx, ID)
 	if err != nil {
@@ -100,7 +100,7 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 		}
 	}
 	wg.Add(2)
-	go pump("stdout", outr)
-	go pump("stderr", errr)
-	wg.Wait()
+	defer wg.Wait()
+	_ = utils.Pool.Submit(func() { pump("stdout", outr) })
+	_ = utils.Pool.Submit(func() { pump("stderr", errr) })
 }

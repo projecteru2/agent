@@ -135,7 +135,7 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 	outr, outw := utils.NewBufPipe(cap)
 	errr, errw := utils.NewBufPipe(cap)
 
-	go func() {
+	_ = utils.Pool.Submit(func() {
 		defer func() {
 			resp.Close()
 			outw.Close()
@@ -145,12 +145,11 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 			log.Debugf("[attach] %v buf pipes closed", ID)
 		}()
 
-		_, err = stdcopy.StdCopy(outw, errw, resp.Reader)
-		if err != nil {
+		if _, err = stdcopy.StdCopy(outw, errw, resp.Reader); err != nil {
 			log.Errorf("[attach] attach get stream failed %s", err)
 		}
 		log.Infof("[attach] attach workload %s finished", ID)
-	}()
+	})
 
 	return outr, errr, nil
 }
@@ -230,7 +229,7 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 	eventChan := make(chan *types.WorkloadEventMessage)
 	errChan := make(chan error)
 
-	go func() {
+	_ = utils.Pool.Submit(func() {
 		defer close(eventChan)
 		defer close(errChan)
 
@@ -254,7 +253,7 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 				return
 			}
 		}
-	}()
+	})
 
 	return eventChan, errChan
 }

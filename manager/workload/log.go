@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 	coreutils "github.com/projecteru2/core/utils"
 
 	"github.com/sirupsen/logrus"
@@ -72,7 +73,7 @@ func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.R
 	logrus.Infof("%s %s log subscribed", app, ID)
 	return ID, errChan, func() {
 		cancel()
-		go l.unsubscribe(app, ID)
+		_ = utils.Pool.Submit(func() { l.unsubscribe(app, ID) })
 	}
 }
 
@@ -81,12 +82,10 @@ func (l *logBroadcaster) unsubscribe(app string, ID string) {
 	defer l.Unlock()
 
 	subscribers := l.getSubscribers(app)
-
 	subscriber, ok := subscribers[ID]
 	if ok {
 		close(subscriber.errChan)
 	}
-
 	delete(subscribers, ID)
 
 	logrus.Infof("%s %s detached", app, ID)
@@ -116,12 +115,13 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(subscribers))
 	for ID, sub := range subscribers {
-		go func(ID string, sub *subscriber) {
+		ID := ID
+		sub := sub
+		_ = utils.Pool.Submit(func() {
 			defer wg.Done()
 			if sub.isDone() {
 				return
 			}
-
 			if _, err := sub.buf.Write([]byte(line)); err != nil {
 				logrus.Debugf("[broadcast] failed to write into %v, err: %v", ID, err)
 				sub.cancel()
@@ -129,7 +129,7 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 				return
 			}
 			sub.buf.Flush()
-		}(ID, sub)
+		})
 	}
 	wg.Wait()
 }

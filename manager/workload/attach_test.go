@@ -5,12 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/projecteru2/agent/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAttach(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	utils.NewPool(1000)
 	manager := newMockWorkloadManager(t)
 	go func() {
 		for {

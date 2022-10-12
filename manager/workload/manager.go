@@ -3,7 +3,6 @@ package workload
 import (
 	"bufio"
 	"context"
-	"errors"
 	"io"
 	"sync"
 
@@ -43,66 +42,58 @@ type Manager struct {
 
 // NewManager returns a workload manager
 func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
-	manager := &Manager{}
-	var err error
-
-	manager.config = config
+	m := &Manager{config: config}
 
 	switch config.Store {
 	case common.GRPCStore:
 		corestore.Init(ctx, config)
-		manager.store = corestore.Get()
-		if manager.store == nil {
-			log.Error("[NewManager] failed to create core store client")
-			return nil, err
+		if m.store = corestore.Get(); m.store == nil {
+			return nil, common.ErrGetStoreFailed
 		}
 	case common.MocksStore:
-		manager.store = storemocks.FromTemplate()
+		m.store = storemocks.NewFakeStore()
 	default:
-		log.Errorf("[NewManager] unknown store type %s", config.Store)
+		return nil, common.ErrInvalidStoreType
 	}
 
-	node, err := manager.store.GetNode(ctx, config.HostName)
+	node, err := m.store.GetNode(ctx, config.HostName)
 	if err != nil {
 		log.Errorf("[NewManager] failed to get node %s, err: %s", config.HostName, err)
 		return nil, err
 	}
 
-	manager.nodeIP = utils.GetIP(node.Endpoint)
-	if manager.nodeIP == "" {
-		manager.nodeIP = common.LocalIP
+	nodeIP := utils.GetIP(node.Endpoint)
+	if nodeIP == "" {
+		nodeIP = common.LocalIP
 	}
-
-	manager.forwards = utils.NewHashBackends(config.Log.Forwards)
-	manager.storeIdentifier = manager.store.GetIdentifier(ctx)
 
 	switch config.Runtime {
 	case common.DockerRuntime:
-		docker.InitClient(config, manager.nodeIP)
-		manager.runtimeClient = docker.GetClient()
-		if manager.runtimeClient == nil {
-			log.Error("[NewManager] failed to create runtime client")
-			return nil, err
+		docker.InitClient(config, nodeIP)
+		m.runtimeClient = docker.GetClient()
+		if m.runtimeClient == nil {
+			return nil, common.ErrGetRuntimeFailed
 		}
 	case common.YavirtRuntime:
 		yavirt.InitClient(config)
-		manager.runtimeClient = yavirt.GetClient()
-		if manager.runtimeClient == nil {
-			return nil, errors.New("failed to get runtime client")
+		m.runtimeClient = yavirt.GetClient()
+		if m.runtimeClient == nil {
+			return nil, common.ErrGetRuntimeFailed
 		}
 	case common.MocksRuntime:
-		manager.runtimeClient = runtimemocks.FromTemplate()
+		m.runtimeClient = runtimemocks.FromTemplate()
 	default:
-		log.Errorf("[NewManager] unknown runtime type %s", config.Runtime)
-		return nil, err
+		return nil, common.ErrInvalidRuntimeType
 	}
 
-	manager.logBroadcaster = newLogBroadcaster()
+	m.logBroadcaster = newLogBroadcaster()
+	m.forwards = utils.NewHashBackends(config.Log.Forwards)
+	m.storeIdentifier = m.store.GetIdentifier(ctx)
+	m.nodeIP = nodeIP
+	m.checkWorkloadMutex = &sync.Mutex{}
+	m.startingWorkloads = sync.Map{}
 
-	manager.checkWorkloadMutex = &sync.Mutex{}
-	manager.startingWorkloads = sync.Map{}
-
-	return manager, nil
+	return m, nil
 }
 
 // Run will start agent
@@ -110,7 +101,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 // either call this in a separated goroutine, or used in main to block main goroutine
 func (m *Manager) Run(ctx context.Context) error {
 	// start log broadcaster
-	go m.logBroadcaster.run(ctx)
+	_ = utils.Pool.Submit(func() { m.logBroadcaster.run(ctx) })
 
 	// initWorkloadStatus container
 	if err := m.initWorkloadStatus(ctx); err != nil {
@@ -118,10 +109,10 @@ func (m *Manager) Run(ctx context.Context) error {
 	}
 
 	// start status watcher
-	go m.monitor(ctx)
+	_ = utils.Pool.Submit(func() { m.monitor(ctx) })
 
 	// start health check
-	go m.healthCheck(ctx)
+	_ = utils.Pool.Submit(func() { m.healthCheck(ctx) })
 
 	// wait for signal
 	<-ctx.Done()

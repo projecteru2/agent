@@ -2,12 +2,12 @@ package mocks
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"sync"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/store"
 	"github.com/projecteru2/agent/types"
 )
@@ -41,8 +41,8 @@ func (m *MockStore) init() {
 	})
 }
 
-// FromTemplate returns a mock store instance created from template
-func FromTemplate() store.Store {
+// NewFakeStore returns a mock store instance created from mock
+func NewFakeStore() store.Store {
 	m := &MockStore{}
 	m.init()
 	m.On("GetNode", mock.Anything, mock.Anything).Return(func(ctx context.Context, nodename string) *types.Node {
@@ -59,7 +59,7 @@ func FromTemplate() store.Store {
 		}
 	}, nil)
 	m.On("SetNodeStatus", mock.Anything, mock.Anything).Return(func(ctx context.Context, ttl int64) error {
-		fmt.Printf("[MockStore] set node status\n")
+		log.Infof("[MockStore] set node status\n")
 		nodename := "fake"
 		m.Lock()
 		defer m.Unlock()
@@ -89,11 +89,16 @@ func FromTemplate() store.Store {
 		}
 	}, nil)
 	m.On("SetWorkloadStatus", mock.Anything, mock.Anything, mock.Anything).Return(func(ctx context.Context, status *types.WorkloadStatus, ttl int64) error {
-		fmt.Printf("[MockStore] set workload status: %+v\n", status)
+		log.Infof("[MockStore] set workload status: %+v\n", status)
 		m.workloadStatus.Store(status.ID, status)
 		return nil
 	})
 	m.On("GetIdentifier", mock.Anything).Return("fake-identifier")
+	m.On("NodeStatusStream", mock.Anything).Return(func(ctx context.Context) <-chan *types.NodeStatus {
+		return m.msgChan
+	}, func(ctx context.Context) <-chan error {
+		return m.errChan
+	})
 	m.On("ListPodNodes", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*types.Node{
 		{
 			Name: "fake",
@@ -102,11 +107,6 @@ func FromTemplate() store.Store {
 			Name: "faker",
 		},
 	}, nil)
-	m.On("NodeStatusStream", mock.Anything).Return(func(ctx context.Context) <-chan *types.NodeStatus {
-		return m.msgChan
-	}, func(ctx context.Context) <-chan error {
-		return m.errChan
-	})
 
 	return m
 }
@@ -134,5 +134,5 @@ func (m *MockStore) StartNodeStatusStream() {
 
 // StopNodeStatusStream send an err to errChan.
 func (m *MockStore) StopNodeStatusStream() {
-	m.errChan <- errors.New("closed")
+	m.errChan <- common.ErrClosedSteam
 }

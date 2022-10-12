@@ -4,12 +4,12 @@
 package utils
 
 import (
-	"errors"
 	"io/ioutil" //nolint
 	"os"
 	"path"
 	"syscall"
 
+	"github.com/projecteru2/agent/common"
 	"golang.org/x/sys/unix"
 )
 
@@ -27,7 +27,7 @@ func GetDevicePath(major, minor uint64) (devPath string, err error) {
 		if (fi.Mode() & os.ModeDevice) == os.ModeDevice {
 			stat, ok := fi.Sys().(*syscall.Stat_t)
 			if !ok {
-				err = errors.New("syscall fail, Not a syscall.Stat_t")
+				err = common.ErrSyscallFailed
 				return
 			}
 			if stat.Rdev == dev {
@@ -35,7 +35,7 @@ func GetDevicePath(major, minor uint64) (devPath string, err error) {
 			}
 		}
 	}
-	return "", errors.New("device not found")
+	return "", common.ErrDevNotFound
 }
 
 func getDev(major, minor uint64) (dev uint64) {

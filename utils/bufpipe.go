@@ -2,13 +2,9 @@ package utils
 
 import (
 	"bytes"
-	"errors"
 	"io"
 	"sync"
 )
-
-// ErrClosedPipe is the error used for read or write operations on a closed pipe.
-var ErrClosedPipe = errors.New("bufpipe: read/write on closed pipe")
 
 type pipe struct {
 	cond       *sync.Cond
@@ -79,7 +75,7 @@ func (r *PipeReader) CloseWithError(err error) error {
 	defer r.cond.L.Unlock()
 
 	if err == nil {
-		err = ErrClosedPipe
+		err = io.ErrClosedPipe
 	}
 	r.werr = err
 	return nil

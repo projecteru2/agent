@@ -9,6 +9,7 @@ import (
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -74,9 +75,42 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 		log.Infof("[writer] create writer for %s success", addr)
 	}
 
-	go writer.keepalive(ctx)
-
+	_ = utils.Pool.Submit(func() { writer.keepalive(ctx) })
 	return writer, nil
+}
+
+// Write write log to remote
+func (w *Writer) Write(logline *types.Log) error {
+	if w.stdout {
+		log.Info(logline)
+	}
+	if len(w.addr) == 0 && len(w.scheme) == 0 {
+		return nil
+	}
+	var err error
+	w.withLock(func() {
+		if w.enc == nil {
+			err = common.ErrConnecting
+			w.needReconnect = true
+			return
+		}
+		err = w.enc.Encode(logline)
+	})
+
+	w.checkError(err)
+	return err
+}
+
+func (w *Writer) close() error {
+	var err error
+	w.withLock(func() {
+		if w.enc != nil {
+			err = w.enc.Close()
+			w.enc = nil
+		}
+	})
+	log.Infof("[writer] writer for %s closed", w.addr)
+	return err
 }
 
 func (w *Writer) withLock(f func()) {
@@ -182,38 +216,4 @@ func (w *Writer) checkError(err error) {
 			}
 		})
 	}
-}
-
-// Write write log to remote
-func (w *Writer) Write(logline *types.Log) error {
-	if w.stdout {
-		log.Info(logline)
-	}
-	if len(w.addr) == 0 && len(w.scheme) == 0 {
-		return nil
-	}
-	var err error
-	w.withLock(func() {
-		if w.enc == nil {
-			err = common.ErrConnecting
-			w.needReconnect = true
-			return
-		}
-		err = w.enc.Encode(logline)
-	})
-
-	w.checkError(err)
-	return err
-}
-
-func (w *Writer) close() error {
-	var err error
-	w.withLock(func() {
-		if w.enc != nil {
-			err = w.enc.Close()
-			w.enc = nil
-		}
-	})
-	log.Infof("[writer] writer for %s closed", w.addr)
-	return err
 }

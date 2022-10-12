@@ -15,8 +15,7 @@ func (m *Manager) heartbeat(ctx context.Context) {
 	if m.config.HeartbeatInterval <= 0 {
 		return
 	}
-
-	go m.nodeStatusReport(ctx)
+	_ = utils.Pool.Submit(func() { m.nodeStatusReport(ctx) })
 
 	tick := time.NewTicker(time.Duration(m.config.HeartbeatInterval) * time.Second)
 	defer tick.Stop()
@@ -24,7 +23,7 @@ func (m *Manager) heartbeat(ctx context.Context) {
 	for {
 		select {
 		case <-tick.C:
-			go m.nodeStatusReport(ctx)
+			_ = utils.Pool.Submit(func() { m.nodeStatusReport(ctx) })
 		case <-ctx.Done():
 			return
 		}
@@ -46,16 +45,14 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 
 	ttl := int64(m.config.HeartbeatInterval * 3)
 
-	err := utils.BackoffRetry(ctx, 3, func() (err error) {
+	if err := utils.BackoffRetry(ctx, 3, func() (err error) {
 		utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
 			if err = m.store.SetNodeStatus(ctx, ttl); err != nil {
 				log.Errorf("[nodeStatusReport] failed to set node status of %v, err %v", m.config.HostName, err)
 			}
 		})
 		return err
-	})
-
-	if err != nil {
+	}); err != nil {
 		log.Errorf("[nodeStatusReport] failed to set node status of %v for 3 times", m.config.HostName)
 	}
 }

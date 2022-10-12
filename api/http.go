@@ -3,7 +3,9 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"runtime/pprof" //nolint
+	"runtime/pprof" //nolint:nolintlint
+	"time"
+
 	// enable profile
 	_ "net/http/pprof" //nolint
 
@@ -21,8 +23,8 @@ type JSON map[string]interface{}
 
 // Handler define handler
 type Handler struct {
-	config          *types.Config
-	workloadManager *workload.Manager
+	config           *types.Config
+	workloadsManager *workload.Manager
 }
 
 // URL /version/
@@ -59,15 +61,15 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		defer conn.Close()
-		h.workloadManager.PullLog(req.Context(), app, buf)
+		h.workloadsManager.PullLog(req.Context(), app, buf)
 	}
 }
 
 // NewHandler new api http handler
-func NewHandler(config *types.Config, workloadManager *workload.Manager) *Handler {
+func NewHandler(config *types.Config, workloadsManager *workload.Manager) *Handler {
 	return &Handler{
-		config:          config,
-		workloadManager: workloadManager,
+		config:           config,
+		workloadsManager: workloadsManager,
 	}
 }
 
@@ -98,8 +100,11 @@ func (h *Handler) Serve() {
 	http.Handle("/metrics", promhttp.Handler())
 	log.Infof("[apiServe] http api started %s", h.config.API.Addr)
 
-	err := http.ListenAndServe(h.config.API.Addr, nil) //nolint
-	if err != nil {
-		log.Panicf("http api failed %s", err)
+	server := &http.Server{
+		Addr:              h.config.API.Addr,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
+		log.Errorf("http api failed %s", err)
 	}
 }
