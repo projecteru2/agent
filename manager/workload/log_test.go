@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
 
 	"github.com/bmizerany/pat"
 	"github.com/sirupsen/logrus"
@@ -68,13 +67,12 @@ func TestLogBroadcaster(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	utils.NewPool(1000)
 	go manager.logBroadcaster.run(ctx)
 
 	// wait for http server to start
 	time.Sleep(time.Second)
 
-	reqCtx, reqCancel := context.WithTimeout(ctx, 5*time.Second)
+	reqCtx, reqCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer reqCancel()
 
 	req, err := http.NewRequestWithContext(reqCtx, "GET", "http://127.0.0.1:12310/log/?app=nerv", nil)

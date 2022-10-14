@@ -54,7 +54,6 @@ type Config struct {
 	Core              []string `yaml:"core" required:"true"`
 	HostName          string   `yaml:"-"`
 	HeartbeatInterval int      `yaml:"heartbeat_interval" default:"60"`
-	MaxConcurrency    int      `yaml:"max_concurrency"`
 
 	CheckOnlyMine bool `yaml:"check_only_mine" default:"false"`
 
@@ -141,9 +140,6 @@ func (config *Config) Prepare(c *cli.Context) {
 	}
 	if c.String("store") != "" {
 		config.Store = c.String("store")
-	}
-	if config.MaxConcurrency == 0 {
-		config.MaxConcurrency = c.Int("max-concurrency")
 	}
 	// validate
 	if config.PidFile == "" {

@@ -9,6 +9,7 @@ type GroupCAS struct {
 	*haxmap.Map[string, struct{}]
 }
 
+// NewGroupCAS .
 func NewGroupCAS() *GroupCAS {
 	return &GroupCAS{
 		Map: haxmap.New[string, struct{}](),

@@ -7,7 +7,6 @@ import (
 
 	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
 	storemocks "github.com/projecteru2/agent/store/mocks"
-	"github.com/projecteru2/agent/utils"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -35,7 +34,6 @@ func TestNodeStatusReport(t *testing.T) {
 func TestHeartbeat(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	utils.NewPool(1000)
 	manager := newMockNodeManager(t)
 	store := manager.store.(*storemocks.MockStore)
 

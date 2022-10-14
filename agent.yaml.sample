@@ -16,11 +16,6 @@ core:
 # The default value of this option is 60.
 heartbeat_interval: 120
 
-# max_concurrency defines the goroutine pool max size
-# need set a big number
-# The default value is 100X number of the CPU.
-max_concurrency: 1000
-
 # check_only_mine defines check agent itself or not
 # The default value is false
 check_only_mine: false

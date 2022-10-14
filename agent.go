@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
-	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -57,12 +56,6 @@ func serve(c *cli.Context) error {
 	utils.WritePid(config.PidFile)
 	defer os.Remove(config.PidFile)
 
-	if err := utils.NewPool(config.MaxConcurrency); err != nil {
-		log.Error(err)
-		return err
-	}
-	defer utils.Pool.Release()
-
 	ctx, cancel := context.WithCancel(c.Context)
 	defer cancel()
 
@@ -78,7 +71,7 @@ func serve(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	_ = utils.Pool.Submit(func() {
+	utils.Pool.Submit(func() {
 		defer wg.Done()
 		if err := workloadsManager.Run(ctx); err != nil {
 			log.Errorf("[agent] workload manager err: %v, exiting", err)
@@ -90,7 +83,7 @@ func serve(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	_ = utils.Pool.Submit(func() {
+	utils.Pool.Submit(func() {
 		defer wg.Done()
 		if err := nodeManager.Run(ctx); err != nil {
 			log.Errorf("[agent] node manager err: %v, exiting", err)
@@ -99,9 +92,9 @@ func serve(c *cli.Context) error {
 	})
 
 	apiHandler := api.NewHandler(config, workloadsManager)
-	_ = utils.Pool.Submit(apiHandler.Serve)
+	utils.Pool.Submit(apiHandler.Serve)
 
-	_ = utils.Pool.Submit(func() {
+	utils.Pool.Submit(func() {
 		select {
 		case <-ctx.Done():
 			log.Info("[agent] Agent exiting")
@@ -247,12 +240,6 @@ func main() {
 				Name:  "check-only-mine",
 				Value: false,
 				Usage: "will only check containers belong to this node if set",
-			},
-			&cli.IntFlag{
-				Name:    "max-concurrency",
-				Value:   runtime.NumCPU() * 100,
-				Usage:   "max concurrency for goroutine pool",
-				EnvVars: []string{"ERU_MAX_CONCURRENCY"},
 			},
 		},
 		Action: serve,

@@ -5,12 +5,12 @@ go 1.19
 require (
 	github.com/CMGS/statsd v0.0.0-20160223095033-48c421b3c1ab
 	github.com/alphadose/haxmap v1.1.0
+	github.com/alphadose/itogami v0.4.1-0.20221016160904-c25d0a36bfe7
 	github.com/bmizerany/pat v0.0.0-20170815010413-6226ea591a40
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/docker/docker v20.10.18+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/jinzhu/configor v1.2.1
-	github.com/panjf2000/ants/v2 v2.5.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/projecteru2/core v0.0.0-20221011033901-ff9e2848a9e1
 	github.com/projecteru2/libyavirt v0.0.0-20220621042712-95cdc6363b1c
@@ -47,6 +47,7 @@ require (
 	github.com/moby/term v0.0.0-20220808134915-39b0c02b01ae // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
+	github.com/panjf2000/ants/v2 v2.5.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect

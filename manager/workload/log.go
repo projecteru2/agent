@@ -78,7 +78,7 @@ func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.R
 	logrus.Infof("%s %s log subscribed", app, ID)
 	return ID, errChan, func() {
 		cancel()
-		_ = utils.Pool.Submit(func() { l.unsubscribe(app, ID) })
+		utils.Pool.Submit(func() { l.unsubscribe(app, ID) })
 	}
 }
 
@@ -122,7 +122,7 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 	for ID, sub := range subscribers {
 		ID := ID
 		sub := sub
-		_ = utils.Pool.Submit(func() {
+		utils.Pool.Submit(func() {
 			defer wg.Done()
 			if sub.isDone() {
 				return

@@ -30,7 +30,7 @@ func (m *Manager) watchEvent(ctx context.Context, eventChan <-chan *types.Worklo
 func (m *Manager) monitor(ctx context.Context) {
 	for {
 		eventChan, errChan := m.initMonitor(ctx)
-		_ = utils.Pool.Submit(func() { m.watchEvent(ctx, eventChan) })
+		utils.Pool.Submit(func() { m.watchEvent(ctx, eventChan) })
 		select {
 		case <-ctx.Done():
 			log.Info("[monitor] context canceled, stop monitoring")
@@ -61,7 +61,7 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 		return nil
 	})
 	m.startingWorkloads.Set(ID, retryTask)
-	_ = utils.Pool.Submit(func() {
+	utils.Pool.Submit(func() {
 		if err := retryTask.Run(); err != nil {
 			log.Debugf("[checkOneWorkloadWithBackoffRetry] workload %s still not healthy", ID)
 		}
@@ -77,7 +77,7 @@ func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.Workload
 	}
 
 	if workloadStatus.Running {
-		_ = utils.Pool.Submit(func() { m.attach(ctx, event.ID) })
+		utils.Pool.Submit(func() { m.attach(ctx, event.ID) })
 	}
 
 	if workloadStatus.Healthy {

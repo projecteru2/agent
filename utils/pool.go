@@ -1,15 +1,12 @@
-// Package utils for pool
 package utils
 
-import (
-	"github.com/panjf2000/ants/v2"
-)
+import "github.com/alphadose/itogami"
 
-// Pool indicate global Pool
-var Pool *ants.Pool
+const size = 10000
 
-// NewPool init global goroutine pool
-func NewPool(concurrency int) (err error) {
-	Pool, err = ants.NewPool(concurrency, ants.WithNonblocking(true))
-	return
+// Pool .
+var Pool *itogami.Pool
+
+func init() { //nolint
+	Pool = itogami.NewPool(size)
 }

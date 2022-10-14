@@ -31,7 +31,7 @@ func TestCASConccurently(t *testing.T) {
 	var wg sync.WaitGroup
 	cas := NewGroupCAS()
 
-	n := 2
+	n := 1000
 	key := "key"
 	var sum int32
 	wg.Add(n)
