@@ -4,5 +4,5 @@
 package utils
 
 func GetDevicePath(major, minor uint64) (devPath string, err error) {
-	return "", nil
+	return "/dev/random", nil
 }

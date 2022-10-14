@@ -23,6 +23,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var dockerized bool
+var once sync.Once
+
 // MakeDockerClient make a docker client
 func MakeDockerClient(config *types.Config) (*engineapi.Client, error) {
 	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("eru-agent-%s", version.VERSION)}
@@ -44,14 +47,6 @@ func WritePid(path string) {
 // GetAppInfo return app info
 func GetAppInfo(containerName string) (name, entrypoint, ident string, err error) {
 	return coreutils.ParseWorkloadName(containerName)
-}
-
-// Max return max value
-func Max(a, b int64) int64 {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 // UseLabelAsFilter return if use label as filter
@@ -99,9 +94,6 @@ func ReplaceNonUtf8(str string) string {
 	}
 	return string(v)
 }
-
-var dockerized bool
-var once sync.Once
 
 // IsDockerized returns if the agent is running in docker
 func IsDockerized() bool {

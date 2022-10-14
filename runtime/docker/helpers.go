@@ -5,6 +5,7 @@ import (
 
 	"github.com/projecteru2/agent/utils"
 	coretypes "github.com/projecteru2/core/types"
+	coreutils "github.com/projecteru2/core/utils"
 
 	enginetypes "github.com/docker/docker/api/types"
 	log "github.com/sirupsen/logrus"
@@ -40,7 +41,7 @@ func generateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.LabelMet
 		HealthCheck: meta.HealthCheck,
 		CPUQuota:    c.HostConfig.Resources.CPUQuota,
 		CPUPeriod:   c.HostConfig.Resources.CPUPeriod,
-		Memory:      utils.Max(c.HostConfig.Memory, c.HostConfig.MemoryReservation),
+		Memory:      coreutils.Max(c.HostConfig.Memory, c.HostConfig.MemoryReservation),
 	}
 
 	if !c.State.Running || c.State.Pid == 0 {

@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"syscall"
 	"time"
@@ -56,51 +57,56 @@ func serve(c *cli.Context) error {
 	utils.WritePid(config.PidFile)
 	defer os.Remove(config.PidFile)
 
+	if err := utils.NewPool(config.MaxConcurrency); err != nil {
+		log.Error(err)
+		return err
+	}
+	defer utils.Pool.Release()
+
 	ctx, cancel := context.WithCancel(c.Context)
 	defer cancel()
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGUSR1)
-
 	errChan := make(chan error, 2)
 	defer close(errChan)
 
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 
-	workloadManager, err := workload.NewManager(ctx, config)
+	workloadsManager, err := workload.NewManager(ctx, config)
 	if err != nil {
 		return err
 	}
-	go func() {
+	_ = utils.Pool.Submit(func() {
 		defer wg.Done()
-		if err := workloadManager.Run(ctx); err != nil {
+		if err := workloadsManager.Run(ctx); err != nil {
 			log.Errorf("[agent] workload manager err: %v, exiting", err)
 			errChan <- err
 		}
-	}()
+	})
 
 	nodeManager, err := node.NewManager(ctx, config)
 	if err != nil {
 		return err
 	}
-	go func() {
+	_ = utils.Pool.Submit(func() {
 		defer wg.Done()
 		if err := nodeManager.Run(ctx); err != nil {
 			log.Errorf("[agent] node manager err: %v, exiting", err)
 			errChan <- err
 		}
-	}()
+	})
 
-	apiHandler := api.NewHandler(config, workloadManager)
-	go apiHandler.Serve()
+	apiHandler := api.NewHandler(config, workloadsManager)
+	_ = utils.Pool.Submit(apiHandler.Serve)
 
-	go func() {
+	_ = utils.Pool.Submit(func() {
 		select {
 		case <-ctx.Done():
 			log.Info("[agent] Agent exiting")
 		case <-errChan:
-			log.Info("[agent] got err, exiting")
+			log.Error("[agent] Got error, exiting")
 			cancel()
 		case sig := <-signalChan:
 			log.Infof("[agent] Agent caught system signal %v", sig)
@@ -111,7 +117,7 @@ func serve(c *cli.Context) error {
 			}
 			cancel()
 		}
-	}()
+	})
 
 	wg.Wait()
 	return nil
@@ -241,6 +247,12 @@ func main() {
 				Name:  "check-only-mine",
 				Value: false,
 				Usage: "will only check containers belong to this node if set",
+			},
+			&cli.IntFlag{
+				Name:    "max-concurrency",
+				Value:   runtime.NumCPU() * 100,
+				Usage:   "max concurrency for goroutine pool",
+				EnvVars: []string{"ERU_MAX_CONCURRENCY"},
 			},
 		},
 		Action: serve,

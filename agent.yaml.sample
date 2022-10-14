@@ -4,14 +4,6 @@
 # This option is not required as the default value is "/tmp/agent.pid".
 pid: /tmp/agent.pid
 
-# store defines the type of core service.
-# This option is not required as the default value is "grpc".
-store: grpc
-
-# runtime defines the type of runtime.
-# This option is not required as the default value is "docker".
-runtime: docker
-
 # core defines the address of eru-core component.
 # This option is not required as the default value is "127.0.0.1:5001".
 core:
@@ -23,6 +15,23 @@ core:
 # If you don't want eru-agent to report this status, set it to 0.
 # The default value of this option is 60.
 heartbeat_interval: 120
+
+# max_concurrency defines the goroutine pool max size
+# need set a big number
+# The default value is 100X number of the CPU.
+max_concurrency: 1000
+
+# check_only_mine defines check agent itself or not
+# The default value is false
+check_only_mine: false
+
+# store defines the type of core service.
+# This option is not required as the default value is "grpc".
+store: grpc
+
+# runtime defines the type of runtime.
+# This option is not required as the default value is "docker".
+runtime: docker
 
 # auth defines the authentication values for eru-core.
 #

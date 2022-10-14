@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -38,9 +39,8 @@ func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventM
 			}
 			log.Infof("[Watch] Monitor: workload id %s action %s", ev.ID, ev.Action)
 			e.Lock()
-			h := e.handlers[ev.Action]
-			if h != nil {
-				go h(ctx, ev)
+			if h := e.handlers[ev.Action]; h != nil {
+				_ = utils.Pool.Submit(func() { h(ctx, ev) })
 			}
 			e.Unlock()
 		case <-ctx.Done():

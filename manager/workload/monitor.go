@@ -2,7 +2,6 @@ package workload
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/projecteru2/agent/common"
@@ -31,7 +30,7 @@ func (m *Manager) watchEvent(ctx context.Context, eventChan <-chan *types.Worklo
 func (m *Manager) monitor(ctx context.Context) {
 	for {
 		eventChan, errChan := m.initMonitor(ctx)
-		go m.watchEvent(ctx, eventChan)
+		_ = utils.Pool.Submit(func() { m.watchEvent(ctx, eventChan) })
 		select {
 		case <-ctx.Done():
 			log.Info("[monitor] context canceled, stop monitoring")
@@ -58,17 +57,16 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 	retryTask := utils.NewRetryTask(ctx, utils.GetMaxAttemptsByTTL(m.config.GetHealthCheckStatusTTL()), func() error {
 		if !m.checkOneWorkload(ctx, ID) {
 			// 这个err就是用来判断要不要继续的，不用打在日志里
-			return errors.New("not healthy")
+			return common.ErrWorkloadUnhealthy
 		}
 		return nil
 	})
 	m.startingWorkloads.Store(ID, retryTask)
-	go func() {
-		err := retryTask.Run()
-		if err != nil {
+	_ = utils.Pool.Submit(func() {
+		if err := retryTask.Run(); err != nil {
 			log.Debugf("[checkOneWorkloadWithBackoffRetry] workload %s still not healthy", ID)
 		}
-	}()
+	})
 }
 
 func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.WorkloadEventMessage) {
@@ -80,7 +78,7 @@ func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.Workload
 	}
 
 	if workloadStatus.Running {
-		go m.attach(ctx, event.ID)
+		_ = utils.Pool.Submit(func() { m.attach(ctx, event.ID) })
 	}
 
 	if workloadStatus.Healthy {

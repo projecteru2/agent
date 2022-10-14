@@ -54,6 +54,7 @@ type Config struct {
 	Core              []string `yaml:"core" required:"true"`
 	HostName          string   `yaml:"-"`
 	HeartbeatInterval int      `yaml:"heartbeat_interval" default:"60"`
+	MaxConcurrency    int      `yaml:"max_concurrency"`
 
 	CheckOnlyMine bool `yaml:"check_only_mine" default:"false"`
 
@@ -78,7 +79,7 @@ func (config *Config) GetHealthCheckStatusTTL() int64 {
 	return 0
 }
 
-// Prepare 从cli覆写并做准备
+// Prepare 从 cli 覆写并做准备
 func (config *Config) Prepare(c *cli.Context) {
 	if c.String("hostname") != "" {
 		config.HostName = c.String("hostname")
@@ -140,6 +141,9 @@ func (config *Config) Prepare(c *cli.Context) {
 	}
 	if c.String("store") != "" {
 		config.Store = c.String("store")
+	}
+	if config.MaxConcurrency == 0 {
+		config.MaxConcurrency = c.Int("max-concurrency")
 	}
 	// validate
 	if config.PidFile == "" {

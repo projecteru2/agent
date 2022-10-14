@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/projecteru2/agent/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -37,10 +38,11 @@ func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 	}
 
 	wg := &sync.WaitGroup{}
-	for _, wid := range workloadIDs {
-		log.Debugf("[initWorkloadStatus] detect workload %s", wid)
+	for _, workloadID := range workloadIDs {
+		log.Debugf("[initWorkloadStatus] detect workload %s", workloadID)
 		wg.Add(1)
-		go func(ID string) {
+		ID := workloadID
+		_ = utils.Pool.Submit(func() {
 			defer wg.Done()
 			workloadStatus, err := m.runtimeClient.GetStatus(ctx, ID, true)
 			if err != nil {
@@ -50,13 +52,13 @@ func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 
 			if workloadStatus.Running {
 				log.Debugf("[initWorkloadStatus] workload %s is running", workloadStatus.ID)
-				go m.attach(ctx, ID)
+				_ = utils.Pool.Submit(func() { m.attach(ctx, ID) })
 			}
 
 			if err := m.setWorkloadStatus(ctx, workloadStatus); err != nil {
 				log.Errorf("[initWorkloadStatus] update workload %v status failed %v", ID, err)
 			}
-		}(wid)
+		})
 	}
 	wg.Wait()
 	return nil

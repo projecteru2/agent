@@ -2,7 +2,6 @@ package node
 
 import (
 	"context"
-	"errors"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/runtime"
@@ -28,46 +27,47 @@ type Manager struct {
 // NewManager .
 func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 	m := &Manager{config: config}
+
 	switch config.Store {
 	case common.GRPCStore:
 		corestore.Init(ctx, config)
-		m.store = corestore.Get()
-		if m.store == nil {
-			return nil, errors.New("failed to get store client")
+		if m.store = corestore.Get(); m.store == nil {
+			return nil, common.ErrGetStoreFailed
 		}
 	case common.MocksStore:
-		m.store = storemocks.FromTemplate()
+		m.store = storemocks.NewFakeStore()
 	default:
-		return nil, errors.New("unknown store type")
+		return nil, common.ErrInvalidStoreType
+	}
+
+	node, err := m.store.GetNode(ctx, config.HostName)
+	if err != nil {
+		log.Errorf("[NewManager] failed to get node %s, err: %s", config.HostName, err)
+		return nil, err
+	}
+
+	nodeIP := utils.GetIP(node.Endpoint)
+	if nodeIP == "" {
+		nodeIP = common.LocalIP
 	}
 
 	switch config.Runtime {
 	case common.DockerRuntime:
-		node, err := m.store.GetNode(ctx, config.HostName)
-		if err != nil {
-			log.Errorf("[NewManager] failed to get node %s, err: %s", config.HostName, err)
-			return nil, err
-		}
-
-		nodeIP := utils.GetIP(node.Endpoint)
-		if nodeIP == "" {
-			nodeIP = common.LocalIP
-		}
 		docker.InitClient(config, nodeIP)
 		m.runtimeClient = docker.GetClient()
 		if m.runtimeClient == nil {
-			return nil, errors.New("failed to get runtime client")
+			return nil, common.ErrGetRuntimeFailed
 		}
 	case common.YavirtRuntime:
 		yavirt.InitClient(config)
 		m.runtimeClient = yavirt.GetClient()
 		if m.runtimeClient == nil {
-			return nil, errors.New("failed to get runtime client")
+			return nil, common.ErrGetRuntimeFailed
 		}
 	case common.MocksRuntime:
 		m.runtimeClient = runtimemocks.FromTemplate()
 	default:
-		return nil, errors.New("unknown runtime type")
+		return nil, common.ErrInvalidRuntimeType
 	}
 
 	return m, nil
@@ -76,7 +76,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 // Run runs a node manager
 func (m *Manager) Run(ctx context.Context) error {
 	log.Info("[NodeManager] start node status heartbeat")
-	go m.heartbeat(ctx)
+	_ = utils.Pool.Submit(func() { m.heartbeat(ctx) })
 
 	<-ctx.Done()
 	log.Info("[NodeManager] exiting")
@@ -85,7 +85,6 @@ func (m *Manager) Run(ctx context.Context) error {
 
 // Exit .
 func (m *Manager) Exit() error {
-	log.Info("[NodeManager] exiting")
 	log.Infof("[NodeManager] remove node status of %s", m.config.HostName)
 
 	// ctx is now canceled. use a new context.

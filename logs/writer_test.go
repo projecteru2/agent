@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewWriterWithUDP(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
+	utils.NewPool(1000)
 	defer cancel()
 	// udp writer
 	addr := "udp://127.0.0.1:23456"
