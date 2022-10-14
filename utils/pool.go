@@ -9,11 +9,7 @@ import (
 var Pool *ants.Pool
 
 // NewPool init global goroutine pool
-func NewPool(concurrency int) error {
-	p, err := ants.NewPool(concurrency, ants.WithNonblocking(true))
-	if err != nil {
-		return err
-	}
-	Pool = p
-	return nil
+func NewPool(concurrency int) (err error) {
+	Pool, err = ants.NewPool(concurrency, ants.WithNonblocking(true))
+	return
 }
