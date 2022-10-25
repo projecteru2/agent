@@ -3,8 +3,8 @@ package docker
 import (
 	"fmt"
 	"strings"
-	"sync"
 
+	"github.com/alphadose/haxmap"
 	"github.com/projecteru2/core/cluster"
 	coreutils "github.com/projecteru2/core/utils"
 
@@ -12,6 +12,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
+
+var clients *haxmap.Map[string, *MetricsClient]
 
 // MetricsClient combine statsd and prometheus
 type MetricsClient struct {
@@ -55,12 +57,14 @@ type MetricsClient struct {
 	ioServicedWritePerSecond     *prometheus.GaugeVec
 }
 
-var clients sync.Map
+func init() { //nolint:gochecknoinits
+	clients = haxmap.New[string, *MetricsClient]()
+}
 
 // NewMetricsClient new a metrics client
 func NewMetricsClient(statsd, hostname string, container *Container) *MetricsClient {
-	if metricsClient, ok := clients.Load(container.ID); ok {
-		return metricsClient.(*MetricsClient)
+	if metricsClient, ok := clients.Get(container.ID); ok {
+		return metricsClient
 	}
 
 	clables := []string{}
@@ -264,7 +268,7 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		ioServicedReadPerSecond:      ioServicedReadPerSecond,
 		ioServicedWritePerSecond:     ioServicedWritePerSecond,
 	}
-	clients.Store(container.ID, metricsClient)
+	clients.Set(container.ID, metricsClient)
 	return metricsClient
 }
 

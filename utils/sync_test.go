@@ -11,8 +11,8 @@ import (
 
 func TestCAS(t *testing.T) {
 	key := "key"
+	cas := NewGroupCAS()
 
-	var cas GroupCAS
 	free, acquired := cas.Acquire(key)
 	require.True(t, acquired)
 	require.NotNil(t, free)
@@ -28,10 +28,10 @@ func TestCAS(t *testing.T) {
 }
 
 func TestCASConccurently(t *testing.T) {
-	var cas GroupCAS
 	var wg sync.WaitGroup
+	cas := NewGroupCAS()
 
-	n := 1000
+	n := 2
 	key := "key"
 	var sum int32
 	wg.Add(n)
@@ -44,6 +44,7 @@ func TestCASConccurently(t *testing.T) {
 			require.True(t, acq)
 
 			free, acquired := cas.Acquire(key)
+			t.Log(acquired)
 			if !acquired {
 				return
 			}

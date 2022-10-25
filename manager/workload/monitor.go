@@ -49,8 +49,7 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 	m.checkWorkloadMutex.Lock()
 	defer m.checkWorkloadMutex.Unlock()
 
-	if v, ok := m.startingWorkloads.Load(ID); ok {
-		retryTask := v.(*utils.RetryTask)
+	if retryTask, ok := m.startingWorkloads.Get(ID); ok {
 		retryTask.Stop()
 	}
 
@@ -61,7 +60,7 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 		}
 		return nil
 	})
-	m.startingWorkloads.Store(ID, retryTask)
+	m.startingWorkloads.Set(ID, retryTask)
 	_ = utils.Pool.Submit(func() {
 		if err := retryTask.Run(); err != nil {
 			log.Debugf("[checkOneWorkloadWithBackoffRetry] workload %s still not healthy", ID)

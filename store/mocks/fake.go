@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/alphadose/haxmap"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/mock"
 
@@ -16,26 +17,26 @@ import (
 type MockStore struct {
 	Store
 	sync.Mutex
-	workloadStatus sync.Map // map[string]*types.WorkloadStatus
-	nodeStatus     sync.Map // map[string]*types.NodeStatus
-	nodeInfo       sync.Map // map[string]*types.Node
+	workloadStatus *haxmap.Map[string, *types.WorkloadStatus] // map[string]*types.WorkloadStatus
+	nodeStatus     *haxmap.Map[string, *types.NodeStatus]     // map[string]*types.NodeStatus
+	nodeInfo       *haxmap.Map[string, *types.Node]           // map[string]*types.Node
 
 	msgChan chan *types.NodeStatus
 	errChan chan error
 }
 
 func (m *MockStore) init() {
-	m.workloadStatus = sync.Map{}
-	m.nodeStatus = sync.Map{}
+	m.workloadStatus = haxmap.New[string, *types.WorkloadStatus]()
+	m.nodeStatus = haxmap.New[string, *types.NodeStatus]()
+	m.nodeInfo = haxmap.New[string, *types.Node]()
 	m.msgChan = make(chan *types.NodeStatus)
 	m.errChan = make(chan error)
 
-	m.nodeInfo = sync.Map{}
-	m.nodeInfo.Store("fake", &types.Node{
+	m.nodeInfo.Set("fake", &types.Node{
 		Name:     "fake",
 		Endpoint: "eva://127.0.0.1:6666",
 	})
-	m.nodeInfo.Store("faker", &types.Node{
+	m.nodeInfo.Set("faker", &types.Node{
 		Name:     "faker",
 		Endpoint: "eva://127.0.0.1:6667",
 	})
@@ -48,11 +49,10 @@ func NewFakeStore() store.Store {
 	m.On("GetNode", mock.Anything, mock.Anything).Return(func(ctx context.Context, nodename string) *types.Node {
 		m.Lock()
 		defer m.Unlock()
-		v, ok := m.nodeInfo.Load(nodename)
+		node, ok := m.nodeInfo.Get(nodename)
 		if !ok {
 			return nil
 		}
-		node := v.(*types.Node)
 		return &types.Node{
 			Name:      node.Name,
 			Available: node.Available,
@@ -63,10 +63,10 @@ func NewFakeStore() store.Store {
 		nodename := "fake"
 		m.Lock()
 		defer m.Unlock()
-		if status, ok := m.nodeStatus.Load(nodename); ok {
-			status.(*types.NodeStatus).Alive = true
+		if status, ok := m.nodeStatus.Get(nodename); ok {
+			status.Alive = true
 		} else {
-			m.nodeStatus.Store(nodename, &types.NodeStatus{
+			m.nodeStatus.Set(nodename, &types.NodeStatus{
 				Nodename: nodename,
 				Alive:    true,
 			})
@@ -76,8 +76,7 @@ func NewFakeStore() store.Store {
 	m.On("GetNodeStatus", mock.Anything, mock.Anything).Return(func(ctx context.Context, nodename string) *types.NodeStatus {
 		m.Lock()
 		defer m.Unlock()
-		if v, ok := m.nodeStatus.Load(nodename); ok {
-			status := v.(*types.NodeStatus)
+		if status, ok := m.nodeStatus.Get(nodename); ok {
 			return &types.NodeStatus{
 				Nodename: status.Nodename,
 				Alive:    status.Alive,
@@ -90,7 +89,7 @@ func NewFakeStore() store.Store {
 	}, nil)
 	m.On("SetWorkloadStatus", mock.Anything, mock.Anything, mock.Anything).Return(func(ctx context.Context, status *types.WorkloadStatus, ttl int64) error {
 		log.Infof("[MockStore] set workload status: %+v\n", status)
-		m.workloadStatus.Store(status.ID, status)
+		m.workloadStatus.Set(status.ID, status)
 		return nil
 	})
 	m.On("GetIdentifier", mock.Anything).Return("fake-identifier")
@@ -113,11 +112,11 @@ func NewFakeStore() store.Store {
 
 // GetMockWorkloadStatus returns the mock workload status by ID
 func (m *MockStore) GetMockWorkloadStatus(ID string) *types.WorkloadStatus {
-	status, ok := m.workloadStatus.Load(ID)
+	status, ok := m.workloadStatus.Get(ID)
 	if !ok {
 		return nil
 	}
-	return status.(*types.WorkloadStatus)
+	return status
 }
 
 // StartNodeStatusStream "faker" up, "fake" down.

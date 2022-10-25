@@ -25,13 +25,15 @@ type Yavirt struct {
 	client     client.Client
 	config     *types.Config
 	skipRegexp []*regexp.Regexp
-	cas        utils.GroupCAS
+	cas        *utils.GroupCAS
 }
 
 // New returns a wrapper of yavirt client
 func New(config *types.Config) (*Yavirt, error) {
-	y := &Yavirt{}
-	y.config = config
+	y := &Yavirt{
+		config: config,
+		cas:    utils.NewGroupCAS(),
+	}
 
 	var err error
 	if y.client, err = utils.MakeYavirtClient(config); err != nil {

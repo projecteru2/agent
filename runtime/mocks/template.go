@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alphadose/haxmap"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/runtime"
 	"github.com/projecteru2/agent/types"
@@ -28,15 +29,15 @@ type eva struct {
 type Nerv struct {
 	Runtime
 	sync.Mutex
-	workloads     sync.Map // map[string]*eva
+	workloads     *haxmap.Map[string, *eva] // map[string]*eva
 	msgChan       chan *types.WorkloadEventMessage
 	errChan       chan error
 	daemonRunning bool
 }
 
 func (n *Nerv) init() {
-	n.workloads = sync.Map{}
-	n.workloads.Store("Rei", &eva{
+	n.workloads = haxmap.New[string, *eva]()
+	n.workloads.Set("Rei", &eva{
 		ID:         "Rei",
 		Name:       "nerv_eva0_boiled",
 		EntryPoint: "eva0",
@@ -44,7 +45,7 @@ func (n *Nerv) init() {
 		Running:    true,
 		Healthy:    false,
 	})
-	n.workloads.Store("Shinji", &eva{
+	n.workloads.Set("Shinji", &eva{
 		ID:         "Shinji",
 		Name:       "nerv_eva1_related",
 		EntryPoint: "eva1",
@@ -52,7 +53,7 @@ func (n *Nerv) init() {
 		Running:    true,
 		Healthy:    true,
 	})
-	n.workloads.Store("Asuka", &eva{
+	n.workloads.Set("Asuka", &eva{
 		ID:         "Asuka",
 		Name:       "nerv_eva2_genius",
 		EntryPoint: "eva2",
@@ -89,8 +90,8 @@ func FromTemplate() runtime.Runtime {
 	n.On("ListWorkloadIDs", mock.Anything, mock.Anything).Return(func(ctx context.Context, filters map[string]string) []string {
 		var IDs []string
 		n.withLock(func() {
-			n.workloads.Range(func(ID, workload interface{}) bool {
-				IDs = append(IDs, ID.(string))
+			n.workloads.ForEach(func(ID string, workload *eva) bool {
+				IDs = append(IDs, ID)
 				return true
 			})
 		})
@@ -104,12 +105,11 @@ func FromTemplate() runtime.Runtime {
 	n.On("GetStatus", mock.Anything, mock.Anything, mock.Anything).Return(func(ctx context.Context, ID string, checkHealth bool) *types.WorkloadStatus {
 		var status *types.WorkloadStatus
 		n.withLock(func() {
-			v, ok := n.workloads.Load(ID)
+			workload, ok := n.workloads.Get(ID)
 			if !ok {
 				status = &types.WorkloadStatus{ID: ID}
 				return
 			}
-			workload := v.(*eva)
 			status = &types.WorkloadStatus{
 				ID:      workload.ID,
 				Running: workload.Running,
@@ -119,11 +119,11 @@ func FromTemplate() runtime.Runtime {
 		return status
 	}, nil)
 	n.On("GetWorkloadName", mock.Anything, mock.Anything).Return(func(ctx context.Context, ID string) string {
-		workload, ok := n.workloads.Load(ID)
+		workload, ok := n.workloads.Get(ID)
 		if !ok {
 			return ""
 		}
-		return workload.(*eva).Name
+		return workload.Name
 	}, nil)
 	n.On("LogFieldsExtra", mock.Anything, mock.Anything).Return(map[string]string{}, nil)
 	n.On("IsDaemonRunning", mock.Anything).Return(func(ctx context.Context) bool {
@@ -142,8 +142,7 @@ func (n *Nerv) StartEvents() {
 	}
 
 	n.withLock(func() {
-		v, _ := n.workloads.Load("Asuka")
-		asuka := v.(*eva)
+		asuka, _ := n.workloads.Get("Asuka")
 		asuka.Running = true
 		asuka.Healthy = true
 	})
@@ -155,8 +154,7 @@ func (n *Nerv) StartEvents() {
 	time.Sleep(time.Second)
 
 	n.withLock(func() {
-		v, _ := n.workloads.Load("Asuka")
-		asuka := v.(*eva)
+		asuka, _ := n.workloads.Get("Asuka")
 		asuka.Running = false
 		asuka.Healthy = false
 	})
@@ -168,8 +166,7 @@ func (n *Nerv) StartEvents() {
 	time.Sleep(time.Second)
 
 	n.withLock(func() {
-		v, _ := n.workloads.Load("Rei")
-		rei := v.(*eva)
+		rei, _ := n.workloads.Get("Rei")
 		rei.Running = false
 		rei.Healthy = false
 	})

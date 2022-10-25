@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 
 	"github.com/bmizerany/pat"
 	"github.com/sirupsen/logrus"
@@ -67,6 +68,7 @@ func TestLogBroadcaster(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
+	utils.NewPool(1000)
 	go manager.logBroadcaster.run(ctx)
 
 	// wait for http server to start
@@ -101,7 +103,7 @@ func TestLogBroadcaster(t *testing.T) {
 		Data:       "data1",
 	}
 	count := 0
-	manager.logBroadcaster.subscribersMap.Range(func(key, value interface{}) bool {
+	manager.logBroadcaster.subscribersMap.ForEach(func(_ string, _ map[string]*subscriber) bool {
 		count++
 		return true
 	})

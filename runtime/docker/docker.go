@@ -37,7 +37,7 @@ type Docker struct {
 	nodeIP    string
 	cpuCore   float64 // 因为到时候要乘以 float64 所以就直接转换成 float64 吧
 	memory    int64
-	cas       utils.GroupCAS
+	cas       *utils.GroupCAS
 	transfers *utils.HashBackends
 }
 
@@ -49,18 +49,19 @@ const (
 
 // New returns a wrapper of docker client
 func New(config *types.Config, nodeIP string) (*Docker, error) {
-	d := &Docker{}
-	d.config = config
+	d := &Docker{
+		config:    config,
+		cas:       utils.NewGroupCAS(),
+		nodeIP:    nodeIP,
+		transfers: utils.NewHashBackends(config.Metrics.Transfers),
+	}
 
+	log.Infof("[NewDocker] Host IP %s", d.nodeIP)
 	var err error
-	d.client, err = utils.MakeDockerClient(config)
-	if err != nil {
+	if d.client, err = utils.MakeDockerClient(config); err != nil {
 		log.Errorf("[NewDocker] failed to make docker client, err: %v", err)
 		return nil, err
 	}
-
-	d.nodeIP = nodeIP
-	log.Infof("[NewDocker] Host IP %s", d.nodeIP)
 
 	if utils.IsDockerized() {
 		os.Setenv("HOST_PROC", "/hostProc")
@@ -80,9 +81,6 @@ func New(config *types.Config, nodeIP string) (*Docker, error) {
 
 	d.cpuCore = float64(len(cpus))
 	d.memory = int64(memory.Total)
-
-	d.transfers = utils.NewHashBackends(config.Metrics.Transfers)
-
 	return d, nil
 }
 

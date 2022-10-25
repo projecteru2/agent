@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/CMGS/statsd v0.0.0-20160223095033-48c421b3c1ab
+	github.com/alphadose/haxmap v1.1.0
 	github.com/bmizerany/pat v0.0.0-20170815010413-6226ea591a40
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/docker/docker v20.10.18+incompatible

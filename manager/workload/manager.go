@@ -6,6 +6,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/alphadose/haxmap"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/runtime"
 	"github.com/projecteru2/agent/runtime/docker"
@@ -30,7 +31,7 @@ type Manager struct {
 	forwards *utils.HashBackends
 
 	checkWorkloadMutex *sync.Mutex
-	startingWorkloads  sync.Map
+	startingWorkloads  *haxmap.Map[string, *utils.RetryTask]
 
 	logBroadcaster *logBroadcaster
 
@@ -91,7 +92,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 	m.storeIdentifier = m.store.GetIdentifier(ctx)
 	m.nodeIP = nodeIP
 	m.checkWorkloadMutex = &sync.Mutex{}
-	m.startingWorkloads = sync.Map{}
+	m.startingWorkloads = haxmap.New[string, *utils.RetryTask]()
 
 	return m, nil
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/alphadose/haxmap"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	coreutils "github.com/projecteru2/core/utils"
@@ -34,23 +35,27 @@ func (s *subscriber) isDone() bool {
 type logBroadcaster struct {
 	sync.RWMutex
 	logC           chan *types.Log
-	subscribersMap sync.Map // format: map[app string]map[ID string]*subscriber
+	subscribersMap *haxmap.Map[string, map[string]*subscriber] // format: map[app string, map[ID string]*subscriber]
 }
 
 func newLogBroadcaster() *logBroadcaster {
 	return &logBroadcaster{
 		logC:           make(chan *types.Log),
-		subscribersMap: sync.Map{},
+		subscribersMap: haxmap.New[string, map[string]*subscriber](),
 	}
 }
 
 func (l *logBroadcaster) getSubscribers(app string) map[string]*subscriber {
-	v, _ := l.subscribersMap.LoadOrStore(app, map[string]*subscriber{})
-	return v.(map[string]*subscriber)
+	subs, ok := l.subscribersMap.Get(app)
+	if !ok {
+		l.subscribersMap.Set(app, map[string]*subscriber{})
+		subs = map[string]*subscriber{}
+	}
+	return subs
 }
 
 func (l *logBroadcaster) deleteSubscribers(app string) {
-	l.subscribersMap.Delete(app)
+	l.subscribersMap.Del(app)
 }
 
 // subscribe subscribes logs of the specific app.
