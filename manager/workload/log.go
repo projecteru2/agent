@@ -48,8 +48,8 @@ func newLogBroadcaster() *logBroadcaster {
 func (l *logBroadcaster) getSubscribers(app string) map[string]*subscriber {
 	subs, ok := l.subscribersMap.Get(app)
 	if !ok {
-		l.subscribersMap.Set(app, map[string]*subscriber{})
 		subs = map[string]*subscriber{}
+		l.subscribersMap.Set(app, subs)
 	}
 	return subs
 }

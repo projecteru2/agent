@@ -22,7 +22,7 @@ binary:
 
 unit-test:
 	go vet `go list ./... | grep -v '/vendor/'`
-	go test -count=1 -timeout 240s -cover ./logs/... \
+	go test -race -count=1 -timeout 240s -cover ./logs/... \
 	./manager/node/... \
 	./manager/workload/... \
 	./types/... \
