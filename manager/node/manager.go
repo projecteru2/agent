@@ -76,7 +76,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 // Run runs a node manager
 func (m *Manager) Run(ctx context.Context) error {
 	log.Info("[NodeManager] start node status heartbeat")
-	utils.Pool.Submit(func() { m.heartbeat(ctx) })
+	_ = utils.Pool.Submit(func() { m.heartbeat(ctx) })
 
 	<-ctx.Done()
 	log.Info("[NodeManager] exiting")

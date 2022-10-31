@@ -52,8 +52,6 @@ github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk5
 github.com/alexcesaro/statsd v2.0.0+incompatible h1:HG17k1Qk8V1F4UOoq6tx+IUoAbOcI5PHzzEUGeDD72w=
 github.com/alphadose/haxmap v1.1.0 h1:M7Dxdr+civMQkWCgDpoktNpLofDBz7XzdS3rF3Y6r4U=
 github.com/alphadose/haxmap v1.1.0/go.mod h1:Pq2IXbl9/ytYHfrIAd7rIVtZQ2ezdIhZfvdqOizDeWY=
-github.com/alphadose/itogami v0.4.1-0.20221016160904-c25d0a36bfe7 h1:YaYmhNYMp53C10C+Fzd4OMuwUjO7R9e/F17OOCHcjqQ=
-github.com/alphadose/itogami v0.4.1-0.20221016160904-c25d0a36bfe7/go.mod h1:djI1vuSef+44Ik61DOZcd04m7eyyY0kqcf7LmH98vC4=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=

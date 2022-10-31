@@ -75,7 +75,7 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 		log.Infof("[writer] create writer for %s success", addr)
 	}
 
-	utils.Pool.Submit(func() { writer.keepalive(ctx) })
+	_ = utils.Pool.Submit(func() { writer.keepalive(ctx) })
 	return writer, nil
 }
 

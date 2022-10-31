@@ -71,7 +71,7 @@ func serve(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	utils.Pool.Submit(func() {
+	_ = utils.Pool.Submit(func() {
 		defer wg.Done()
 		if err := workloadsManager.Run(ctx); err != nil {
 			log.Errorf("[agent] workload manager err: %v, exiting", err)
@@ -83,7 +83,7 @@ func serve(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	utils.Pool.Submit(func() {
+	_ = utils.Pool.Submit(func() {
 		defer wg.Done()
 		if err := nodeManager.Run(ctx); err != nil {
 			log.Errorf("[agent] node manager err: %v, exiting", err)
@@ -92,9 +92,9 @@ func serve(c *cli.Context) error {
 	})
 
 	apiHandler := api.NewHandler(config, workloadsManager)
-	utils.Pool.Submit(apiHandler.Serve)
+	_ = utils.Pool.Submit(apiHandler.Serve)
 
-	utils.Pool.Submit(func() {
+	_ = utils.Pool.Submit(func() {
 		select {
 		case <-ctx.Done():
 			log.Info("[agent] Agent exiting")

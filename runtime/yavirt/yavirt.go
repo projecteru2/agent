@@ -137,7 +137,7 @@ func (y *Yavirt) Events(ctx context.Context, filters map[string]string) (<-chan 
 	errChan := make(chan error)
 	yaEventChan, yaErrChan := y.client.Events(ctx, filters)
 
-	utils.Pool.Submit(func() {
+	_ = utils.Pool.Submit(func() {
 		defer close(eventChan)
 		defer close(errChan)
 

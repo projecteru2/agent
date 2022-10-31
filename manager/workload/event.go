@@ -40,7 +40,7 @@ func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventM
 			log.Infof("[Watch] Monitor: workload id %s action %s", ev.ID, ev.Action)
 			e.Lock()
 			if h := e.handlers[ev.Action]; h != nil {
-				utils.Pool.Submit(func() { h(ctx, ev) })
+				_ = utils.Pool.Submit(func() { h(ctx, ev) })
 			}
 			e.Unlock()
 		case <-ctx.Done():

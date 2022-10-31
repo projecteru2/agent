@@ -102,7 +102,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 // either call this in a separated goroutine, or used in main to block main goroutine
 func (m *Manager) Run(ctx context.Context) error {
 	// start log broadcaster
-	utils.Pool.Submit(func() { m.logBroadcaster.run(ctx) })
+	_ = utils.Pool.Submit(func() { m.logBroadcaster.run(ctx) })
 
 	// initWorkloadStatus container
 	if err := m.initWorkloadStatus(ctx); err != nil {
@@ -110,10 +110,10 @@ func (m *Manager) Run(ctx context.Context) error {
 	}
 
 	// start status watcher
-	utils.Pool.Submit(func() { m.monitor(ctx) })
+	_ = utils.Pool.Submit(func() { m.monitor(ctx) })
 
 	// start health check
-	utils.Pool.Submit(func() { m.healthCheck(ctx) })
+	_ = utils.Pool.Submit(func() { m.healthCheck(ctx) })
 
 	// wait for signal
 	<-ctx.Done()

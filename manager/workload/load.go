@@ -42,7 +42,7 @@ func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 		log.Debugf("[initWorkloadStatus] detect workload %s", workloadID)
 		wg.Add(1)
 		ID := workloadID
-		utils.Pool.Submit(func() {
+		_ = utils.Pool.Submit(func() {
 			defer wg.Done()
 			workloadStatus, err := m.runtimeClient.GetStatus(ctx, ID, true)
 			if err != nil {
@@ -52,7 +52,7 @@ func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 
 			if workloadStatus.Running {
 				log.Debugf("[initWorkloadStatus] workload %s is running", workloadStatus.ID)
-				utils.Pool.Submit(func() { m.attach(ctx, ID) })
+				_ = utils.Pool.Submit(func() { m.attach(ctx, ID) })
 			}
 
 			if err := m.setWorkloadStatus(ctx, workloadStatus); err != nil {
