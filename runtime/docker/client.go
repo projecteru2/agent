@@ -5,7 +5,7 @@ import (
 
 	"github.com/projecteru2/agent/types"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 var (
@@ -19,7 +19,7 @@ func InitClient(config *types.Config, nodeIP string) {
 		var err error
 		client, err = New(config, nodeIP)
 		if err != nil {
-			log.Errorf("[GetDockerClient] failed to make docker client, err: %s", err)
+			log.Error(nil, err, "[GetDockerClient] failed to make docker client") //nolint
 		}
 	})
 }

@@ -8,7 +8,7 @@ import (
 	coreutils "github.com/projecteru2/core/utils"
 
 	enginetypes "github.com/docker/docker/api/types"
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 func normalizeEnv(env []string) map[string]string {
@@ -56,7 +56,7 @@ func generateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.LabelMet
 		container.Healthy = !(meta.HealthCheck != nil)
 	}
 
-	log.Debugf("[generateContainerMeta] Generate container meta %v %v", container.Name, container.EntryPoint)
+	log.Debugf(nil, "[generateContainerMeta] Generate container meta %v %v", container.Name, container.EntryPoint) //nolint
 	return container, nil
 }
 

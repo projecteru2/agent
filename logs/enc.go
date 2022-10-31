@@ -6,6 +6,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 
 	"github.com/coreos/go-systemd/journal"
@@ -41,8 +42,6 @@ func (e *StreamEncoder) Close() error {
 	return e.wt.Close()
 }
 
-var errJournalDisabled = fmt.Errorf("journal disabled")
-
 // JournalEncoder .
 type JournalEncoder struct {
 	sync.Mutex
@@ -51,7 +50,7 @@ type JournalEncoder struct {
 // CreateJournalEncoder .
 func CreateJournalEncoder() (*JournalEncoder, error) {
 	if !journal.Enabled() {
-		return nil, errJournalDisabled
+		return nil, common.ErrJournalDisable
 	}
 	return &JournalEncoder{}, nil
 }

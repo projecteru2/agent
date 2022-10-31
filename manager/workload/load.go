@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/projecteru2/agent/utils"
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[string]string) ([]string, error) {
@@ -21,7 +21,7 @@ func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[strin
 		case <-ticker.C:
 			workloadIDs, err = m.runtimeClient.ListWorkloadIDs(ctx, filter)
 			if err != nil {
-				log.Errorf("[initWorkloadStatus] Failed to load workloads: %v, will retry", err)
+				log.Error(ctx, err, "[initWorkloadStatus] Failed to load workloads, will retry")
 				continue
 			}
 			return workloadIDs, nil
@@ -30,33 +30,33 @@ func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[strin
 }
 
 func (m *Manager) initWorkloadStatus(ctx context.Context) error {
-	log.Info("[initWorkloadStatus] Load workloads")
+	log.Info(ctx, "[initWorkloadStatus] Load workloads")
 	workloadIDs, err := m.listWorkloadIDsWithRetry(ctx, m.getBaseFilter())
 	if err != nil {
-		log.Errorf("[initWorkloadStatus] Failed to load workloads: %v", err)
+		log.Error(ctx, err, "[initWorkloadStatus] Failed to load workloads")
 		return err
 	}
 
 	wg := &sync.WaitGroup{}
 	for _, workloadID := range workloadIDs {
-		log.Debugf("[initWorkloadStatus] detect workload %s", workloadID)
+		log.Debugf(ctx, "[initWorkloadStatus] detect workload %s", workloadID)
 		wg.Add(1)
 		ID := workloadID
 		_ = utils.Pool.Submit(func() {
 			defer wg.Done()
 			workloadStatus, err := m.runtimeClient.GetStatus(ctx, ID, true)
 			if err != nil {
-				log.Errorf("[initWorkloadStatus] get workload %v status failed %v", ID, err)
+				log.Errorf(ctx, err, "[initWorkloadStatus] get workload %v status failed", ID)
 				return
 			}
 
 			if workloadStatus.Running {
-				log.Debugf("[initWorkloadStatus] workload %s is running", workloadStatus.ID)
+				log.Debugf(ctx, "[initWorkloadStatus] workload %s is running", workloadStatus.ID)
 				_ = utils.Pool.Submit(func() { m.attach(ctx, ID) })
 			}
 
 			if err := m.setWorkloadStatus(ctx, workloadStatus); err != nil {
-				log.Errorf("[initWorkloadStatus] update workload %v status failed %v", ID, err)
+				log.Errorf(ctx, err, "[initWorkloadStatus] update workload %v status failed", ID)
 			}
 		})
 	}

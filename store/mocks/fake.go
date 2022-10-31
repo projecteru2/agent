@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/alphadose/haxmap"
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/projecteru2/agent/common"
@@ -59,7 +59,7 @@ func NewFakeStore() store.Store {
 		}
 	}, nil)
 	m.On("SetNodeStatus", mock.Anything, mock.Anything).Return(func(ctx context.Context, ttl int64) error {
-		log.Infof("[MockStore] set node status\n")
+		log.Infof(ctx, "[MockStore] set node status\n")
 		nodename := "fake"
 		m.Lock()
 		defer m.Unlock()
@@ -88,7 +88,7 @@ func NewFakeStore() store.Store {
 		}
 	}, nil)
 	m.On("SetWorkloadStatus", mock.Anything, mock.Anything, mock.Anything).Return(func(ctx context.Context, status *types.WorkloadStatus, ttl int64) error {
-		log.Infof("[MockStore] set workload status: %+v\n", status)
+		log.Infof(ctx, "[MockStore] set workload status: %+v\n", status)
 		m.workloadStatus.Set(status.ID, status)
 		return nil
 	})

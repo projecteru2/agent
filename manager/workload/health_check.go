@@ -7,7 +7,7 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 func (m *Manager) healthCheck(ctx context.Context) {
@@ -29,10 +29,10 @@ func (m *Manager) healthCheck(ctx context.Context) {
 // 但是这时候 health check 刚返回 true 回来并写入 core
 // 为了保证最终数据一致性这里也要检测
 func (m *Manager) checkAllWorkloads(ctx context.Context) {
-	log.Debug("[checkAllWorkloads] health check begin")
+	log.Debug(ctx, "[checkAllWorkloads] health check begin")
 	workloadIDs, err := m.runtimeClient.ListWorkloadIDs(ctx, m.getBaseFilter())
 	if err != nil {
-		log.Errorf("[checkAllWorkloads] Error when list all workloads with label \"ERU=1\": %v", err)
+		log.Error(ctx, err, "[checkAllWorkloads] Error when list all workloads with label \"ERU=1\"")
 		return
 	}
 
@@ -47,12 +47,12 @@ func (m *Manager) checkAllWorkloads(ctx context.Context) {
 func (m *Manager) checkOneWorkload(ctx context.Context, ID string) bool {
 	workloadStatus, err := m.runtimeClient.GetStatus(ctx, ID, true)
 	if err != nil {
-		log.Errorf("[checkOneWorkload] failed to get status of workload %s, err: %v", ID, err)
+		log.Errorf(ctx, err, "[checkOneWorkload] failed to get status of workload %s", ID)
 		return false
 	}
 
 	if err = m.setWorkloadStatus(ctx, workloadStatus); err != nil {
-		log.Errorf("[checkOneWorkload] update workload status for %v failed, err: %v", ID, err)
+		log.Errorf(ctx, err, "[checkOneWorkload] update workload status for %v failed", ID)
 	}
 	return workloadStatus.Healthy
 }

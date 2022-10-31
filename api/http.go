@@ -12,10 +12,10 @@ import (
 	"github.com/projecteru2/agent/manager/workload"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/version"
+	"github.com/projecteru2/core/log"
 
 	"github.com/bmizerany/pat"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
 )
 
 // JSON define a json
@@ -57,7 +57,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 	if hijack, ok := w.(http.Hijacker); ok {
 		conn, buf, err := hijack.Hijack()
 		if err != nil {
-			log.Errorf("[apiLog] connect failed %v", err)
+			log.Error(req.Context(), err, "[apiLog] connect failed")
 			return
 		}
 		defer conn.Close()
@@ -98,13 +98,13 @@ func (h *Handler) Serve() {
 
 	http.Handle("/", restfulAPIServer)
 	http.Handle("/metrics", promhttp.Handler())
-	log.Infof("[apiServe] http api started %s", h.config.API.Addr)
+	log.Infof(nil, "[apiServe] http api started %s", h.config.API.Addr) //nolint
 
 	server := &http.Server{
 		Addr:              h.config.API.Addr,
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 	if err := server.ListenAndServe(); err != nil {
-		log.Errorf("http api failed %s", err)
+		log.Error(nil, err, "http api start failed") //nolint
 	}
 }

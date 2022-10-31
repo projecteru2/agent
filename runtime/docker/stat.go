@@ -7,8 +7,8 @@ import (
 
 	"github.com/projecteru2/agent/utils"
 
+	"github.com/projecteru2/core/log"
 	"github.com/shirou/gopsutil/net"
-	log "github.com/sirupsen/logrus"
 )
 
 // CollectWorkloadMetrics .
@@ -22,23 +22,23 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
-		log.Errorf("[CollectWorkloadMetrics] failed to detect container %v, err: %v", ID, err)
+		log.Errorf(ctx, err, "[CollectWorkloadMetrics] failed to detect container %v", ID)
 	}
 
 	// init stats
 	containerCPUStats, systemCPUStats, containerNetStats, err := getStats(ctx, container.ID, container.Pid, proc)
 	if err != nil {
-		log.Errorf("[stat] get %s stats failed %v", container.ID, err)
+		log.Errorf(ctx, err, "[stat] get %s stats failed", container.ID)
 		return
 	}
 	rawBlkioStats, err := d.getBlkioStats(ctx, container.ID)
 	if err != nil {
-		log.Errorf("[stat] get %s diskio stats failed %v", container.ID, err)
+		log.Errorf(ctx, err, "[stat] get %s diskio stats failed", container.ID)
 		return
 	}
 	blkioStats, err := fromEngineBlkioStats(rawBlkioStats)
 	if err != nil {
-		log.Errorf("[stat] get %s diskio stats failed %v", container.ID, err)
+		log.Errorf(ctx, err, "[stat] get %s diskio stats failed", container.ID)
 		return
 	}
 	delta := float64(d.config.Metrics.Step)
@@ -55,13 +55,13 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 	hostCPUCount := d.cpuCore * period
 
 	mClient := NewMetricsClient(addr, hostname, container)
-	defer log.Infof("[stat] container %s %s metric report stop", container.Name, container.ID)
-	log.Infof("[stat] container %s %s metric report start", container.Name, container.ID)
+	defer log.Infof(ctx, "[stat] container %s %s metric report stop", container.Name, container.ID)
+	log.Infof(ctx, "[stat] container %s %s metric report start", container.Name, container.ID)
 
 	updateMetrics := func() {
 		newContainer, err := d.detectWorkload(ctx, container.ID)
 		if err != nil {
-			log.Errorf("[stat] can not refresh container meta %s", container.ID)
+			log.Errorf(ctx, err, "[stat] can not refresh container meta %s", container.ID)
 			return
 		}
 		containerCPUCount := newContainer.CPUNum * period
@@ -69,12 +69,12 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		defer cancel()
 		newContainerCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(timeoutCtx, newContainer.ID, newContainer.Pid, proc)
 		if err != nil {
-			log.Errorf("[stat] get %s stats failed %v", newContainer.ID, err)
+			log.Errorf(ctx, err, "[stat] get %s stats failed", newContainer.ID)
 			return
 		}
 		containerMemStats, err := getMemStats(timeoutCtx, newContainer.ID)
 		if err != nil {
-			log.Errorf("[stat] get %s mem stats failed %v", newContainer.ID, err)
+			log.Errorf(ctx, err, "[stat] get %s mem stats failed", newContainer.ID)
 			return
 		}
 
@@ -137,15 +137,15 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 			mClient.DropIn(nic.Name, float64(nic.Dropin-oldNICStats.Dropin)/delta)
 			mClient.DropOut(nic.Name, float64(nic.Dropout-oldNICStats.Dropout)/delta)
 		}
-		log.Debugf("[stat] start to get blkio stats for %s", container.ID)
+		log.Debugf(ctx, "[stat] start to get blkio stats for %s", container.ID)
 		newRawBlkioStats, err := d.getBlkioStats(ctx, container.ID)
 		if err != nil {
-			log.Errorf("[stat] get %s diskio stats failed %v", container.ID, err)
+			log.Errorf(ctx, err, "[stat] get %s diskio stats failed", container.ID)
 			return
 		}
 		newBlkioStats, err := fromEngineBlkioStats(newRawBlkioStats)
 		if err != nil {
-			log.Errorf("[stat] get %s diskio stats failed %v", container.ID, err)
+			log.Errorf(ctx, err, "[stat] get %s diskio stats failed", container.ID)
 			return
 		}
 		for _, entry := range newBlkioStats.IOServiceBytesReadRecursive {
@@ -177,7 +177,7 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		rawBlkioStats, blkioStats = newRawBlkioStats, newBlkioStats
 		containerCPUStats, systemCPUStats, containerNetStats = newContainerCPUStats, newSystemCPUStats, newContainerNetStats
 		if err := mClient.Send(); err != nil {
-			log.Errorf("[stat] Send metrics failed %v", err)
+			log.Error(ctx, err, "[stat] Send metrics failed")
 		}
 	}
 	for {

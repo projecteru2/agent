@@ -9,7 +9,7 @@ import (
 
 	"github.com/projecteru2/agent/utils"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 // LabelMeta .
@@ -60,7 +60,7 @@ func (g *Guest) CheckHealth(ctx context.Context, timeout time.Duration) bool {
 			hcm := &healthCheckMeta{}
 			err := json.Unmarshal([]byte(meta), hcm)
 			if err != nil {
-				log.Errorf("[CheckHealth] invalid json format, guest %v, meta %v, err %v", g.ID, meta, err)
+				log.Error(ctx, err, "[CheckHealth] invalid json format, guest %v, meta %v", g.ID, meta)
 				return
 			}
 			g.HealthCheck = hcm.HealthCheck

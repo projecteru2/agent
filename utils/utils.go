@@ -20,7 +20,7 @@ import (
 	yavirtclient "github.com/projecteru2/libyavirt/client"
 
 	engineapi "github.com/docker/docker/client"
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 var dockerized bool
@@ -40,7 +40,7 @@ func MakeYavirtClient(config *types.Config) (yavirtclient.Client, error) {
 // WritePid write pid
 func WritePid(path string) {
 	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
-		log.Panicf("Save pid file failed %s", err)
+		log.Fatalf(nil, err, "Save pid file failed %s", err) //nolint
 	}
 }
 

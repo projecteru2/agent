@@ -11,7 +11,7 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 // Discard .
@@ -64,15 +64,15 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 
 	switch {
 	case err == common.ErrInvalidScheme:
-		log.Infof("[writer] create an empty writer for %s success", addr)
+		log.Infof(ctx, "[writer] create an empty writer for %s success", addr)
 		writer.enc = NewStreamEncoder(discard{})
-	case err == errJournalDisabled:
+	case err == common.ErrJournalDisable:
 		return nil, err
 	case err != nil:
-		log.Errorf("[writer] failed to create writer encoder for %s, err: %v, will retry", addr, err)
+		log.Errorf(ctx, err, "[writer] failed to create writer encoder for %s, will retry", addr)
 		writer.needReconnect = true
 	default:
-		log.Infof("[writer] create writer for %s success", addr)
+		log.Infof(ctx, "[writer] create writer for %s success", addr)
 	}
 
 	_ = utils.Pool.Submit(func() { writer.keepalive(ctx) })
@@ -82,7 +82,7 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 // Write write log to remote
 func (w *Writer) Write(logline *types.Log) error {
 	if w.stdout {
-		log.Info(logline)
+		log.Info(nil, logline) //nolint
 	}
 	if len(w.addr) == 0 && len(w.scheme) == 0 {
 		return nil
@@ -109,7 +109,7 @@ func (w *Writer) close() error {
 			w.enc = nil
 		}
 	})
-	log.Infof("[writer] writer for %s closed", w.addr)
+	log.Infof(nil, "[writer] writer for %s closed", w.addr) //nolint
 	return err
 }
 
@@ -159,7 +159,7 @@ func (w *Writer) createEncoder() (enc Encoder, err error) {
 	case "journal":
 		enc, err = CreateJournalEncoder()
 	default:
-		log.Errorf("[writer] Invalid scheme: %s", w.scheme)
+		log.Errorf(nil, err, "[writer] Invalid scheme: %s", w.scheme) //nolint
 		err = common.ErrInvalidScheme
 	}
 	return enc, err
@@ -174,17 +174,17 @@ func (w *Writer) reconnect() {
 		return
 	}
 
-	log.Debugf("[writer] Reconnecting to %s...", w.addr)
+	log.Debugf(nil, "[writer] Reconnecting to %s...", w.addr) //nolint
 	enc, err := w.createEncoder()
 	if err == nil {
 		w.withLock(func() {
 			w.enc = enc
 			w.needReconnect = false
 		})
-		log.Debugf("[writer] Connect to %s successfully", w.addr)
+		log.Debugf(nil, "[writer] Connect to %s successfully", w.addr) //nolint
 		return
 	}
-	log.Warnf("[writer] Failed to connect to %s: %s", w.addr, err)
+	log.Warnf(nil, "[writer] Failed to connect to %s: %s", w.addr, err) //nolint
 }
 
 func (w *Writer) keepalive(ctx context.Context) {
@@ -198,7 +198,7 @@ func (w *Writer) keepalive(ctx context.Context) {
 			// leave some time for the pending writing
 			time.Sleep(CloseWaitInterval)
 			if err := w.close(); err != nil {
-				log.Errorf("[keepalive] failed to close writer %s, err: %s", w.addr, err)
+				log.Errorf(nil, err, "[keepalive] failed to close writer %s", w.addr) //nolint
 			}
 			return
 		}
@@ -207,7 +207,7 @@ func (w *Writer) keepalive(ctx context.Context) {
 
 func (w *Writer) checkError(err error) {
 	if err != nil && err != common.ErrConnecting {
-		log.Errorf("[writer] Sending log failed %s", err)
+		log.Error(nil, err, "[writer] Sending log failed") //nolint
 		w.withLock(func() {
 			if w.enc != nil {
 				w.enc.Close()

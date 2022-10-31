@@ -7,7 +7,7 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 // EventHandler define event handler
@@ -34,17 +34,17 @@ func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventM
 		select {
 		case ev, ok := <-c:
 			if !ok {
-				log.Info("[Watch] event chan closed")
+				log.Info(ctx, "[Watch] event chan closed")
 				return
 			}
-			log.Infof("[Watch] Monitor: workload id %s action %s", ev.ID, ev.Action)
+			log.Infof(ctx, "[Watch] Monitor: workload id %s action %s", ev.ID, ev.Action)
 			e.Lock()
 			if h := e.handlers[ev.Action]; h != nil {
 				_ = utils.Pool.Submit(func() { h(ctx, ev) })
 			}
 			e.Unlock()
 		case <-ctx.Done():
-			log.Info("[Watch] context canceled, stop watching")
+			log.Info(ctx, "[Watch] context canceled, stop watching")
 			return
 		}
 	}

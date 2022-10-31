@@ -1,6 +1,6 @@
 package common
 
-import "errors"
+import "github.com/pkg/errors"
 
 // ErrNotImplemented .
 var (
@@ -25,4 +25,12 @@ var (
 	ErrSyscallFailed = errors.New("syscall fail, Not a syscall.Stat_t")
 	// ErrDevNotFound .
 	ErrDevNotFound = errors.New("device not found")
+	// ErrJournalDisable .
+	ErrJournalDisable = errors.New("journal disabled")
+	// ErrInvaildContainer .
+	ErrInvaildContainer = errors.New("invaild container")
+	// ErrGetLockFailed .
+	ErrGetLockFailed = errors.New("get lock failed")
+	// ErrInvaildVM .
+	ErrInvaildVM = errors.New("invaild vm")
 )

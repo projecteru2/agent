@@ -9,8 +9,8 @@ import (
 	coreutils "github.com/projecteru2/core/utils"
 
 	statsdlib "github.com/CMGS/statsd"
+	"github.com/projecteru2/core/log"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 var clients *haxmap.Map[string, *MetricsClient]
@@ -479,9 +479,9 @@ func (m *MetricsClient) checkConn() error {
 	// We should add an `errorCount` to reconnect when implementing TCP protocol
 	var err error
 	if m.statsdClient, err = statsdlib.New(m.statsd, statsdlib.WithErrorHandler(func(err error) {
-		log.Errorf("[statsd] Sending statsd failed: %v", err)
+		log.Error(nil, err, "[statsd] Sending statsd failed") //nolint
 	})); err != nil {
-		log.Errorf("[statsd] Connect statsd failed: %v", err)
+		log.Error(nil, err, "[statsd] Connect statsd failed") //nolint
 		return err
 	}
 	return nil

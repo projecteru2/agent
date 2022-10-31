@@ -24,9 +24,9 @@ import (
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-units"
+	"github.com/projecteru2/core/log"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
-	log "github.com/sirupsen/logrus"
 )
 
 // Docker .
@@ -56,10 +56,10 @@ func New(config *types.Config, nodeIP string) (*Docker, error) {
 		transfers: utils.NewHashBackends(config.Metrics.Transfers),
 	}
 
-	log.Infof("[NewDocker] Host IP %s", d.nodeIP)
+	log.Infof(nil, "[NewDocker] Host IP %s", d.nodeIP) //nolint
 	var err error
 	if d.client, err = utils.MakeDockerClient(config); err != nil {
-		log.Errorf("[NewDocker] failed to make docker client, err: %v", err)
+		log.Error(nil, err, "[NewDocker] failed to make docker client") //nolint
 		return nil, err
 	}
 
@@ -71,13 +71,13 @@ func New(config *types.Config, nodeIP string) (*Docker, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("[NewDocker] Host has %d cpus", len(cpus))
+	log.Infof(nil, "[NewDocker] Host has %d cpus", len(cpus)) //nolint
 
 	memory, err := mem.VirtualMemory()
 	if err != nil {
 		return nil, err
 	}
-	log.Infof("[NewDocker] Host has %d memory", memory.Total)
+	log.Infof(nil, "[NewDocker] Host has %d memory", memory.Total) //nolint
 
 	d.cpuCore = float64(len(cpus))
 	d.memory = int64(memory.Total)
@@ -105,7 +105,7 @@ func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 		containers, err = d.client.ContainerList(ctx, opts)
 	})
 	if err != nil {
-		log.Errorf("[ListWorkloadIDs] failed to list workloads, err: %v", err)
+		log.Error(ctx, err, "[ListWorkloadIDs] failed to list workloads")
 		return nil, err
 	}
 
@@ -125,7 +125,7 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 		Stderr: true,
 	})
 	if err != nil && err != httputil.ErrPersistEOF { //nolint
-		log.Errorf("[AttachWorkload] failed to attach workload %v, err: %v", ID, err)
+		log.Errorf(ctx, err, "[AttachWorkload] failed to attach workload %v", ID)
 		return nil, nil, err
 	}
 
@@ -140,13 +140,13 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 			errw.Close()
 			outr.Close()
 			errr.Close()
-			log.Debugf("[attach] %v buf pipes closed", ID)
+			log.Debugf(ctx, "[attach] %v buf pipes closed", ID)
 		}()
 
 		if _, err = stdcopy.StdCopy(outw, errw, resp.Reader); err != nil {
-			log.Errorf("[attach] attach get stream failed %s", err)
+			log.Error(ctx, err, "[attach] attach get stream failed")
 		}
-		log.Infof("[attach] attach workload %s finished", ID)
+		log.Infof(ctx, "[attach] attach workload %s finished", ID)
 	})
 
 	return outr, errr, nil
@@ -181,12 +181,12 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 	label := c.Config.Labels
 
 	if _, ok := label[cluster.ERUMark]; !ok {
-		return nil, fmt.Errorf("not a eru container %s", ID)
+		return nil, common.ErrInvaildContainer
 	}
 
 	// TODO should be removed in the future
 	if d.config.CheckOnlyMine && !utils.UseLabelAsFilter() && !d.checkHostname(c.Config.Env) {
-		return nil, fmt.Errorf("should ignore this container")
+		return nil, common.ErrInvaildContainer
 	}
 
 	// 生成基准 meta
@@ -260,13 +260,13 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error) {
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
-		log.Errorf("[GetStatus] failed to detect workload %v, err: %v", ID, err)
+		log.Errorf(ctx, err, "[GetStatus] failed to detect workload %v", ID)
 		return nil, err
 	}
 
 	bytes, err := json.Marshal(container.Labels)
 	if err != nil {
-		log.Errorf("[GetStatus] failed to marshal labels, err: %v", err)
+		log.Error(ctx, err, "[GetStatus] failed to marshal labels")
 		return nil, err
 	}
 
@@ -285,7 +285,7 @@ func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*t
 	if checkHealth && container.Running {
 		free, acquired := d.cas.Acquire(container.ID)
 		if !acquired {
-			return nil, fmt.Errorf("[GetStatus] failed to get the lock")
+			return nil, common.ErrGetLockFailed
 		}
 		defer free()
 		status.Healthy = container.CheckHealth(ctx, time.Duration(d.config.HealthCheck.Timeout)*time.Second)
@@ -302,7 +302,7 @@ func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error)
 		containerJSON, err = d.client.ContainerInspect(ctx, ID)
 	})
 	if err != nil {
-		log.Errorf("[GetWorkloadName] failed to get container by id %v, err: %v", ID, err)
+		log.Errorf(ctx, err, "[GetWorkloadName] failed to get container by id %v", ID)
 		return "", err
 	}
 
@@ -313,7 +313,7 @@ func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error)
 func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]string, error) {
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
-		log.Errorf("[LogFieldsExtra] failed to detect container %v, err: %v", ID, err)
+		log.Errorf(ctx, err, "[LogFieldsExtra] failed to detect container %v", ID)
 		return nil, err
 	}
 
@@ -331,12 +331,12 @@ func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]stri
 func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginetypes.StatsJSON, error) {
 	rawStat, err := d.client.ContainerStatsOneShot(ctx, ID)
 	if err != nil {
-		log.Errorf("[getContainerStats] failed to get container %s stats, err: %v", ID, err)
+		log.Errorf(ctx, err, "[getContainerStats] failed to get container %s stats", ID)
 		return nil, err
 	}
 	b, err := io.ReadAll(rawStat.Body)
 	if err != nil {
-		log.Errorf("[getContainerStats] failed to read container %s stats, err: %v", ID, err)
+		log.Errorf(ctx, err, "[getContainerStats] failed to read container %s stats", ID)
 		return nil, err
 	}
 	stats := &enginetypes.StatsJSON{}
@@ -358,7 +358,7 @@ func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
 		_, err = d.client.Ping(ctx)
 	})
 	if err != nil {
-		log.Errorf("[IsDaemonRunning] connect to docker daemon failed, err: %v", err)
+		log.Error(ctx, err, "[IsDaemonRunning] connect to docker daemon failed")
 		return false
 	}
 	return true

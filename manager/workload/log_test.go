@@ -10,13 +10,12 @@ import (
 	"github.com/projecteru2/agent/types"
 
 	"github.com/bmizerany/pat"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLogBroadcaster(t *testing.T) {
 	manager := newMockWorkloadManager(t)
-	logrus.SetLevel(logrus.DebugLevel)
+	//	log.SetupLog("debug")
 
 	logCtx, logCancel := context.WithCancel(context.Background())
 	defer logCancel()
@@ -65,14 +64,14 @@ func TestLogBroadcaster(t *testing.T) {
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
 	defer cancel()
 	go manager.logBroadcaster.run(ctx)
 
 	// wait for http server to start
 	time.Sleep(time.Second)
 
-	reqCtx, reqCancel := context.WithTimeout(ctx, 10*time.Second)
+	reqCtx, reqCancel := context.WithTimeout(ctx, 3*time.Second)
 	defer reqCancel()
 
 	req, err := http.NewRequestWithContext(reqCtx, "GET", "http://127.0.0.1:12310/log/?app=nerv", nil)

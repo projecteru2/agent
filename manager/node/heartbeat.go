@@ -6,7 +6,7 @@ import (
 
 	"github.com/projecteru2/agent/utils"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 // heartbeat creates a new goroutine to report status every HeartbeatInterval seconds
@@ -35,11 +35,11 @@ func (m *Manager) heartbeat(ctx context.Context) {
 // which means if a node is not available, subcriber will notice this after at least 360s.
 // HealthCheck.Timeout is used as timeout of requesting core Profile
 func (m *Manager) nodeStatusReport(ctx context.Context) {
-	log.Debug("[nodeStatusReport] report begins")
-	defer log.Debug("[nodeStatusReport] report ends")
+	log.Debug(ctx, "[nodeStatusReport] report begins")
+	defer log.Debug(ctx, "[nodeStatusReport] report ends")
 
 	if !m.runtimeClient.IsDaemonRunning(ctx) {
-		log.Error("[nodeStatusReport] cannot connect to runtime daemon")
+		log.Warn(ctx, "[nodeStatusReport] cannot connect to runtime daemon")
 		return
 	}
 
@@ -48,11 +48,11 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 	if err := utils.BackoffRetry(ctx, 3, func() (err error) {
 		utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
 			if err = m.store.SetNodeStatus(ctx, ttl); err != nil {
-				log.Errorf("[nodeStatusReport] failed to set node status of %v, err %v", m.config.HostName, err)
+				log.Errorf(ctx, err, "[nodeStatusReport] failed to set node status of %v", m.config.HostName)
 			}
 		})
 		return err
 	}); err != nil {
-		log.Errorf("[nodeStatusReport] failed to set node status of %v for 3 times", m.config.HostName)
+		log.Errorf(ctx, err, "[nodeStatusReport] failed to set node status of %v for 3 times", m.config.HostName)
 	}
 }

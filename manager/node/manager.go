@@ -14,7 +14,7 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 // Manager manages node status
@@ -42,7 +42,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 
 	node, err := m.store.GetNode(ctx, config.HostName)
 	if err != nil {
-		log.Errorf("[NewManager] failed to get node %s, err: %s", config.HostName, err)
+		log.Errorf(ctx, err, "[NewManager] failed to get node %s", config.HostName)
 		return nil, err
 	}
 
@@ -75,17 +75,17 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 
 // Run runs a node manager
 func (m *Manager) Run(ctx context.Context) error {
-	log.Info("[NodeManager] start node status heartbeat")
+	log.Info(ctx, "[NodeManager] start node status heartbeat")
 	_ = utils.Pool.Submit(func() { m.heartbeat(ctx) })
 
 	<-ctx.Done()
-	log.Info("[NodeManager] exiting")
+	log.Info(ctx, "[NodeManager] exiting")
 	return nil
 }
 
 // Exit .
 func (m *Manager) Exit() error {
-	log.Infof("[NodeManager] remove node status of %s", m.config.HostName)
+	log.Infof(nil, "[NodeManager] remove node status of %s", m.config.HostName) //nolint
 
 	// ctx is now canceled. use a new context.
 	var err error
@@ -94,7 +94,7 @@ func (m *Manager) Exit() error {
 		err = m.store.SetNodeStatus(ctx, -1)
 	})
 	if err != nil {
-		log.Errorf("[NodeManager] failed to remove node status of %v, err: %s", m.config.HostName, err)
+		log.Errorf(nil, err, "[NodeManager] failed to remove node status of %v", m.config.HostName) //nolint
 		return err
 	}
 	return nil

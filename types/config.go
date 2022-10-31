@@ -3,12 +3,13 @@ package types
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"os"
 	"time"
 
 	coretypes "github.com/projecteru2/core/types"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 	cli "github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v2"
 )
@@ -85,7 +86,7 @@ func (config *Config) Prepare(c *cli.Context) {
 	} else {
 		hostname, err := os.Hostname()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf(c.Context, err, "Get hostname failed %v", err)
 		}
 		config.HostName = hostname
 	}
@@ -143,10 +144,10 @@ func (config *Config) Prepare(c *cli.Context) {
 	}
 	// validate
 	if config.PidFile == "" {
-		log.Fatal("need to set pidfile")
+		config.PidFile = "./agent.pid"
 	}
 	if config.HealthCheck.Interval == 0 {
-		log.Fatal("healthcheck.interval == 0, this is not allowed")
+		config.HealthCheck.Interval = 60
 	}
 	if config.HealthCheck.Timeout == 0 {
 		config.HealthCheck.Timeout = 10
@@ -160,13 +161,13 @@ func (config *Config) Prepare(c *cli.Context) {
 func (config *Config) Print() {
 	bs, err := yaml.Marshal(config)
 	if err != nil {
-		log.Fatalf("[config] print config failed %v", err)
+		log.Fatalf(nil, err, "[config] print config failed %v", err) //nolint
 	}
 
-	log.Info("---- current config ----")
+	fmt.Println("---- current config ----")
 	scanner := bufio.NewScanner(bytes.NewBuffer(bs))
 	for scanner.Scan() {
-		log.Info(scanner.Text())
+		fmt.Println(scanner.Text())
 	}
-	log.Info("------------------------")
+	fmt.Println("------------------------")
 }

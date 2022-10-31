@@ -18,7 +18,7 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 // Manager .
@@ -48,9 +48,11 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 	switch config.Store {
 	case common.GRPCStore:
 		corestore.Init(ctx, config)
-		if m.store = corestore.Get(); m.store == nil {
+		store := corestore.Get()
+		if store == nil {
 			return nil, common.ErrGetStoreFailed
 		}
+		m.store = store
 	case common.MocksStore:
 		m.store = storemocks.NewFakeStore()
 	default:
@@ -59,7 +61,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 
 	node, err := m.store.GetNode(ctx, config.HostName)
 	if err != nil {
-		log.Errorf("[NewManager] failed to get node %s, err: %s", config.HostName, err)
+		log.Errorf(ctx, err, "[NewManager] failed to get node %s", config.HostName)
 		return nil, err
 	}
 
@@ -117,7 +119,7 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	// wait for signal
 	<-ctx.Done()
-	log.Info("[WorkloadManager] exiting")
+	log.Info(ctx, "[WorkloadManager] exiting")
 	return nil
 }
 
@@ -132,7 +134,7 @@ func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter
 			return
 		case err := <-errChan:
 			if err != io.EOF {
-				log.Errorf("[PullLog] %v failed to pull log, err: %v", ID, err)
+				log.Errorf(ctx, err, "[PullLog] %v failed to pull log", ID)
 			}
 			return
 		}

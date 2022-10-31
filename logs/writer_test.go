@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 
 	"github.com/stretchr/testify/assert"
@@ -39,7 +40,7 @@ func TestNewWriterWithJournal(t *testing.T) {
 	defer cancel()
 	addr := "journal://system"
 	enc, err := CreateJournalEncoder()
-	if err == errJournalDisabled {
+	if err == common.ErrJournalDisable {
 		return
 	}
 	assert.NoError(t, err)

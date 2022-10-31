@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 // RetryTask .
@@ -32,7 +32,7 @@ func NewRetryTask(ctx context.Context, maxAttempts int, f func() error) *RetryTa
 
 // Run start running retry task
 func (r *RetryTask) Run() error {
-	log.Debug("[RetryTask] start")
+	log.Debug(nil, "[RetryTask] start") //nolint
 	defer r.Stop()
 
 	var err error
@@ -43,14 +43,14 @@ func (r *RetryTask) Run() error {
 	for i := 0; i < r.MaxAttempts; i++ {
 		select {
 		case <-r.ctx.Done():
-			log.Debug("[RetryTask] abort")
+			log.Debug(nil, "[RetryTask] abort") //nolint
 			return r.ctx.Err()
 		case <-timer.C:
 			err = r.Func()
 			if err == nil {
 				return nil
 			}
-			log.Debugf("[RetryTask] will retry after %v seconds", interval)
+			log.Debugf(nil, "[RetryTask] will retry after %v seconds", interval) //nolint
 			timer.Reset(time.Duration(interval) * time.Second)
 			interval *= 2
 		}
@@ -60,7 +60,7 @@ func (r *RetryTask) Run() error {
 
 // Stop stops running task
 func (r *RetryTask) Stop() {
-	log.Debug("[RetryTask] stop")
+	log.Debug(nil, "[RetryTask] stop") //nolint
 	r.cancel()
 }
 

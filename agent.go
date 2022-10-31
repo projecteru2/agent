@@ -16,28 +16,19 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/version"
+	"github.com/projecteru2/core/log"
 
 	"github.com/jinzhu/configor"
-	log "github.com/sirupsen/logrus"
+	zerolog "github.com/rs/zerolog/log"
 	cli "github.com/urfave/cli/v2"
 	_ "go.uber.org/automaxprocs"
 )
-
-func setupLogLevel(l string) error {
-	level, err := log.ParseLevel(l)
-	if err != nil {
-		return err
-	}
-	log.SetLevel(level)
-	log.SetOutput(os.Stdout)
-	return nil
-}
 
 func initConfig(c *cli.Context) *types.Config {
 	config := &types.Config{}
 
 	if err := configor.Load(config, c.String("config")); err != nil {
-		log.Fatalf("[main] load config failed %v", err)
+		log.Fatalf(c.Context, err, "[main] load config failed %v", err)
 	}
 
 	config.Prepare(c)
@@ -48,8 +39,8 @@ func initConfig(c *cli.Context) *types.Config {
 func serve(c *cli.Context) error {
 	rand.Seed(time.Now().UnixNano())
 
-	if err := setupLogLevel(c.String("log-level")); err != nil {
-		log.Fatal(err)
+	if err := log.SetupLog(c.String("log-level")); err != nil {
+		zerolog.Fatal().Err(err).Send()
 	}
 
 	config := initConfig(c)
@@ -74,7 +65,7 @@ func serve(c *cli.Context) error {
 	_ = utils.Pool.Submit(func() {
 		defer wg.Done()
 		if err := workloadsManager.Run(ctx); err != nil {
-			log.Errorf("[agent] workload manager err: %v, exiting", err)
+			log.Error(c.Context, err, "[agent] workload manager failed")
 			errChan <- err
 		}
 	})
@@ -86,7 +77,7 @@ func serve(c *cli.Context) error {
 	_ = utils.Pool.Submit(func() {
 		defer wg.Done()
 		if err := nodeManager.Run(ctx); err != nil {
-			log.Errorf("[agent] node manager err: %v, exiting", err)
+			log.Error(c.Context, err, "[agent] node manager failed")
 			errChan <- err
 		}
 	})
@@ -97,15 +88,15 @@ func serve(c *cli.Context) error {
 	_ = utils.Pool.Submit(func() {
 		select {
 		case <-ctx.Done():
-			log.Info("[agent] Agent exiting")
-		case <-errChan:
-			log.Error("[agent] Got error, exiting")
+			log.Info(c.Context, "[agent] Agent exiting")
+		case err := <-errChan:
+			log.Error(c.Context, err, "[agent] Got error, exiting")
 			cancel()
 		case sig := <-signalChan:
-			log.Infof("[agent] Agent caught system signal %v", sig)
+			log.Infof(c.Context, "[agent] Agent caught system signal %v", sig)
 			if sig != syscall.SIGUSR1 {
 				if err := nodeManager.Exit(); err != nil {
-					log.Errorf("[agent] node manager exits with err: %v", err)
+					log.Error(c.Context, err, "[agent] node manager exits with err")
 				}
 			}
 			cancel()
@@ -245,6 +236,6 @@ func main() {
 		Action: serve,
 	}
 	if err := app.Run(os.Args); err != nil {
-		log.Errorf("Error running agent: %v", err)
+		zerolog.Fatal().Err(err).Send()
 	}
 }

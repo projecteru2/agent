@@ -10,9 +10,8 @@ import (
 	"github.com/alphadose/haxmap"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
+	corelog "github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
-
-	"github.com/sirupsen/logrus"
 )
 
 type subscriber struct {
@@ -75,7 +74,7 @@ func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.R
 		errChan: errChan,
 	}
 
-	logrus.Infof("%s %s log subscribed", app, ID)
+	corelog.Infof(ctx, "%s %s log subscribed", app, ID)
 	return ID, errChan, func() {
 		cancel()
 		_ = utils.Pool.Submit(func() { l.unsubscribe(app, ID) })
@@ -93,7 +92,7 @@ func (l *logBroadcaster) unsubscribe(app string, ID string) {
 	}
 	delete(subscribers, ID)
 
-	logrus.Infof("%s %s detached", app, ID)
+	corelog.Infof(nil, "%s %s detached", app, ID) //nolint
 
 	// if no subscribers for this app, remove the key
 	if len(subscribers) == 0 {
@@ -111,7 +110,7 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 	}
 	data, err := json.Marshal(log)
 	if err != nil {
-		logrus.Error(err)
+		corelog.Error(nil, err) //nolint
 		return
 	}
 	line := fmt.Sprintf("%X\r\n%s\r\n\r\n", len(data)+2, string(data))
@@ -128,7 +127,7 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 				return
 			}
 			if _, err := sub.buf.Write([]byte(line)); err != nil {
-				logrus.Debugf("[broadcast] failed to write into %v, err: %v", ID, err)
+				corelog.Debugf(nil, "[broadcast] failed to write into %v, err: %v", ID, err) //nolint
 				sub.cancel()
 				sub.errChan <- err
 				return
@@ -143,7 +142,7 @@ func (l *logBroadcaster) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			logrus.Info("[logBroadcaster] stops")
+			corelog.Info(ctx, "[logBroadcaster] stops")
 			return
 		case log := <-l.logC:
 			l.broadcast(log)

@@ -10,7 +10,7 @@ import (
 	pb "github.com/projecteru2/core/rpc/gen"
 
 	"github.com/patrickmn/go-cache"
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 // Store use core to store meta
@@ -49,7 +49,7 @@ func Init(ctx context.Context, config *types.Config) {
 		var err error
 		coreStore, err = New(ctx, config)
 		if err != nil {
-			log.Errorf("[Init] failed to create core store, err: %v", err)
+			log.Error(ctx, err, "[Init] failed to create core store")
 			return
 		}
 	})

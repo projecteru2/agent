@@ -7,8 +7,8 @@ import (
 
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
+	"github.com/projecteru2/core/log"
 	pb "github.com/projecteru2/core/rpc/gen"
-	log "github.com/sirupsen/logrus"
 )
 
 // GetNode return a node by core
@@ -150,7 +150,7 @@ func (c *Store) listPodeNodes(ctx context.Context, opt *pb.ListNodesOptions) (ch
 				node, err := stream.Recv()
 				if err != nil {
 					if err != io.EOF { //nolint:nolintlint
-						log.Errorf("[listPodeNodes] get node stream failed %v", err)
+						log.Error(ctx, err, "[listPodeNodes] get node stream failed")
 					}
 					return
 				}

@@ -8,7 +8,7 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/projecteru2/core/log"
 )
 
 var eventHandler = NewEventHandler()
@@ -22,7 +22,7 @@ func (m *Manager) initMonitor(ctx context.Context) (<-chan *types.WorkloadEventM
 }
 
 func (m *Manager) watchEvent(ctx context.Context, eventChan <-chan *types.WorkloadEventMessage) {
-	log.Info("[watchEvent] Status watch start")
+	log.Info(ctx, "[watchEvent] Status watch start")
 	eventHandler.Watch(ctx, eventChan)
 }
 
@@ -33,10 +33,10 @@ func (m *Manager) monitor(ctx context.Context) {
 		_ = utils.Pool.Submit(func() { m.watchEvent(ctx, eventChan) })
 		select {
 		case <-ctx.Done():
-			log.Info("[monitor] context canceled, stop monitoring")
+			log.Info(ctx, "[monitor] context canceled, stop monitoring")
 			return
 		case err := <-errChan:
-			log.Errorf("[monitor] received an err: %v, will retry", err)
+			log.Error(ctx, err, "[monitor] received an err, will retry")
 			time.Sleep(m.config.GlobalConnectionTimeout)
 		}
 	}
@@ -44,7 +44,7 @@ func (m *Manager) monitor(ctx context.Context) {
 
 // 检查一个workload，允许重试
 func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID string) {
-	log.Debugf("[checkOneWorkloadWithBackoffRetry] check workload %s", ID)
+	log.Debugf(ctx, "[checkOneWorkloadWithBackoffRetry] check workload %s", ID)
 
 	m.checkWorkloadMutex.Lock()
 	defer m.checkWorkloadMutex.Unlock()
@@ -63,16 +63,16 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 	m.startingWorkloads.Set(ID, retryTask)
 	_ = utils.Pool.Submit(func() {
 		if err := retryTask.Run(); err != nil {
-			log.Debugf("[checkOneWorkloadWithBackoffRetry] workload %s still not healthy", ID)
+			log.Debugf(ctx, "[checkOneWorkloadWithBackoffRetry] workload %s still not healthy", ID)
 		}
 	})
 }
 
 func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.WorkloadEventMessage) {
-	log.Debugf("[handleWorkloadStart] workload %s start", event.ID)
+	log.Debugf(ctx, "[handleWorkloadStart] workload %s start", event.ID)
 	workloadStatus, err := m.runtimeClient.GetStatus(ctx, event.ID, true)
 	if err != nil {
-		log.Errorf("[handleWorkloadStart] faild to get workload %v status, err: %v", event.ID, err)
+		log.Errorf(ctx, err, "[handleWorkloadStart] faild to get workload %v status", event.ID)
 		return
 	}
 
@@ -82,7 +82,7 @@ func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.Workload
 
 	if workloadStatus.Healthy {
 		if err := m.store.SetWorkloadStatus(ctx, workloadStatus, m.config.GetHealthCheckStatusTTL()); err != nil {
-			log.Errorf("[handleWorkloadStart] update deploy status failed %v", err)
+			log.Error(ctx, err, "[handleWorkloadStart] update deploy status failed")
 		}
 	} else {
 		m.checkOneWorkloadWithBackoffRetry(ctx, event.ID)
@@ -90,14 +90,14 @@ func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.Workload
 }
 
 func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEventMessage) {
-	log.Debugf("[handleWorkloadDie] container %s die", event.ID)
+	log.Debugf(ctx, "[handleWorkloadDie] container %s die", event.ID)
 	workloadStatus, err := m.runtimeClient.GetStatus(ctx, event.ID, true)
 	if err != nil {
-		log.Errorf("[handleWorkloadDie] faild to get workload %v status, err: %v", event.ID, err)
+		log.Errorf(ctx, err, "[handleWorkloadDie] faild to get workload %v status", event.ID)
 		return
 	}
 
 	if err := m.store.SetWorkloadStatus(ctx, workloadStatus, m.config.GetHealthCheckStatusTTL()); err != nil {
-		log.Errorf("[handleWorkloadDie] update deploy status failed %v", err)
+		log.Error(ctx, err, "[handleWorkloadDie] update deploy status failed")
 	}
 }
