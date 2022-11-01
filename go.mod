@@ -13,7 +13,7 @@ require (
 	github.com/panjf2000/ants/v2 v2.5.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/projecteru2/core v0.0.0-20221027062222-5e76472a0774
+	github.com/projecteru2/core v0.0.0-20221101084940-0899829619a5
 	github.com/projecteru2/libyavirt v0.0.0-20220621042712-95cdc6363b1c
 	github.com/prometheus/client_golang v1.13.0
 	github.com/rs/zerolog v1.28.0
@@ -32,7 +32,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/cornelk/hashmap v1.0.8 // indirect
+	github.com/cornelk/hashmap v1.0.9-0.20221031160728-c3a0e7bb43df // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect

@@ -8,5 +8,6 @@ debug.test
 update_core.sh
 build.yaml
 cscope.*
+dev.yaml
 *~
 dist/*

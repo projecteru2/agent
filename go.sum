@@ -76,8 +76,8 @@ github.com/cncf/xds/go v0.0.0-20210312221358-fbca930ec8ed/go.mod h1:eXthEFrGJvWH
 github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf h1:iW4rZ826su+pqaw19uhpSCzhj44qo35pNgKFGqzDKkU=
 github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf/go.mod h1:F5haX7vjVVG0kc13fIWeqUViNPyEJxv/OmvnBo0Yme4=
 github.com/coreos/go-systemd/v22 v22.3.3-0.20220203105225-a9a7ef127534/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
-github.com/cornelk/hashmap v1.0.8 h1:nv0AWgw02n+iDcawr5It4CjQIAcdMMKRrs10HOJYlrc=
-github.com/cornelk/hashmap v1.0.8/go.mod h1:RfZb7JO3RviW/rT6emczVuC/oxpdz4UsSB2LJSclR1k=
+github.com/cornelk/hashmap v1.0.9-0.20221031160728-c3a0e7bb43df h1:nZzJODCK5L5pocFghtum9MZJWz9avjtYfowjO3Wt/uI=
+github.com/cornelk/hashmap v1.0.9-0.20221031160728-c3a0e7bb43df/go.mod h1:RfZb7JO3RviW/rT6emczVuC/oxpdz4UsSB2LJSclR1k=
 github.com/cpuguy83/go-md2man/v2 v2.0.2 h1:p1EgwI/C7NhT0JmVkwCD2ZBK8j4aeHQX2pMHHBfMQ6w=
 github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
@@ -244,8 +244,8 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/prashantv/gostub v1.1.0 h1:BTyx3RfQjRHnUWaGF9oQos79AlQ5k8WNktv7VGvVH4g=
-github.com/projecteru2/core v0.0.0-20221027062222-5e76472a0774 h1:hVUfTHt/IXDNWOCXIJeyAlHpWQDVYvpOMlkcKte/768=
-github.com/projecteru2/core v0.0.0-20221027062222-5e76472a0774/go.mod h1:Z2unoE5X/P8RrYa8PsMGbTlmEgZWgxOl8W3DRwR17Bw=
+github.com/projecteru2/core v0.0.0-20221101084940-0899829619a5 h1:S7EbkUtfPiMMsJDcqp5LOkEl9P+YOPu/0z2PnDHFBdg=
+github.com/projecteru2/core v0.0.0-20221101084940-0899829619a5/go.mod h1:bXLL12D2FOMxikvP8A+D+ndSLkjwullU+OwlDQ72FqA=
 github.com/projecteru2/libyavirt v0.0.0-20220621042712-95cdc6363b1c h1:bsQMtiuDy3vH/+2Bm4o+0dSqhHGrzvNfoHW9C/7Tyqw=
 github.com/projecteru2/libyavirt v0.0.0-20220621042712-95cdc6363b1c/go.mod h1:M4iuzX/GsUF8cnkZujoJ8OWULi0+fuwg0D4Zahhzco0=
 github.com/prometheus/client_golang v0.9.1/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
