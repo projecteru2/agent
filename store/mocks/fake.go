@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/alphadose/haxmap"
+	"github.com/cornelk/hashmap"
 	"github.com/projecteru2/core/log"
 	"github.com/stretchr/testify/mock"
 
@@ -17,18 +17,18 @@ import (
 type MockStore struct {
 	Store
 	sync.Mutex
-	workloadStatus *haxmap.Map[string, *types.WorkloadStatus] // map[string]*types.WorkloadStatus
-	nodeStatus     *haxmap.Map[string, *types.NodeStatus]     // map[string]*types.NodeStatus
-	nodeInfo       *haxmap.Map[string, *types.Node]           // map[string]*types.Node
+	workloadStatus *hashmap.Map[string, *types.WorkloadStatus] // map[string]*types.WorkloadStatus
+	nodeStatus     *hashmap.Map[string, *types.NodeStatus]     // map[string]*types.NodeStatus
+	nodeInfo       *hashmap.Map[string, *types.Node]           // map[string]*types.Node
 
 	msgChan chan *types.NodeStatus
 	errChan chan error
 }
 
 func (m *MockStore) init() {
-	m.workloadStatus = haxmap.New[string, *types.WorkloadStatus]()
-	m.nodeStatus = haxmap.New[string, *types.NodeStatus]()
-	m.nodeInfo = haxmap.New[string, *types.Node]()
+	m.workloadStatus = hashmap.New[string, *types.WorkloadStatus]()
+	m.nodeStatus = hashmap.New[string, *types.NodeStatus]()
+	m.nodeInfo = hashmap.New[string, *types.Node]()
 	m.msgChan = make(chan *types.NodeStatus)
 	m.errChan = make(chan error)
 

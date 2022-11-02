@@ -4,9 +4,9 @@ go 1.19
 
 require (
 	github.com/CMGS/statsd v0.0.0-20160223095033-48c421b3c1ab
-	github.com/alphadose/haxmap v1.1.0
 	github.com/bmizerany/pat v0.0.0-20170815010413-6226ea591a40
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
+	github.com/cornelk/hashmap v1.0.9-0.20221102000129-36b3b9c2b7ec
 	github.com/docker/docker v20.10.18+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/jinzhu/configor v1.2.1
@@ -32,7 +32,6 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/cornelk/hashmap v1.0.9-0.20221031160728-c3a0e7bb43df // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect

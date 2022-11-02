@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/alphadose/haxmap"
+	"github.com/cornelk/hashmap"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	corelog "github.com/projecteru2/core/log"
@@ -34,13 +34,13 @@ func (s *subscriber) isDone() bool {
 type logBroadcaster struct {
 	sync.RWMutex
 	logC           chan *types.Log
-	subscribersMap *haxmap.Map[string, map[string]*subscriber] // format: map[app string, map[ID string]*subscriber]
+	subscribersMap *hashmap.Map[string, map[string]*subscriber] // format: map[app string, map[ID string]*subscriber]
 }
 
 func newLogBroadcaster() *logBroadcaster {
 	return &logBroadcaster{
 		logC:           make(chan *types.Log),
-		subscribersMap: haxmap.New[string, map[string]*subscriber](),
+		subscribersMap: hashmap.New[string, map[string]*subscriber](),
 	}
 }
 
