@@ -60,7 +60,7 @@ func (g *Guest) CheckHealth(ctx context.Context, timeout time.Duration) bool {
 			hcm := &healthCheckMeta{}
 			err := json.Unmarshal([]byte(meta), hcm)
 			if err != nil {
-				log.Error(ctx, err, "[CheckHealth] invalid json format, guest %v, meta %v", g.ID, meta)
+				log.WithFunc("CheckHealth").Error(ctx, err, "invalid json format, guest %v, meta %v", g.ID, meta)
 				return
 			}
 			g.HealthCheck = hcm.HealthCheck
@@ -88,6 +88,6 @@ func (g *Guest) CheckHealth(ctx context.Context, timeout time.Duration) bool {
 	}
 
 	f1 := utils.CheckHTTP(ctx, g.ID, httpChecker, healthCheck.HTTPCode, timeout)
-	f2 := utils.CheckTCP(g.ID, tcpChecker, timeout)
+	f2 := utils.CheckTCP(ctx, g.ID, tcpChecker, timeout)
 	return f1 && f2
 }

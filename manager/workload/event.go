@@ -30,21 +30,22 @@ func (e *EventHandler) Handle(action string, h func(context.Context, *types.Work
 
 // Watch watch change
 func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventMessage) {
+	logger := log.WithFunc("Watch")
 	for {
 		select {
 		case ev, ok := <-c:
 			if !ok {
-				log.Info(ctx, "[Watch] event chan closed")
+				logger.Info(ctx, "event chan closed")
 				return
 			}
-			log.Infof(ctx, "[Watch] Monitor: workload id %s action %s", ev.ID, ev.Action)
+			logger.Infof(ctx, "monitor: workload id %s action %s", ev.ID, ev.Action)
 			e.Lock()
 			if h := e.handlers[ev.Action]; h != nil {
 				_ = utils.Pool.Submit(func() { h(ctx, ev) })
 			}
 			e.Unlock()
 		case <-ctx.Done():
-			log.Info(ctx, "[Watch] context canceled, stop watching")
+			logger.Info(ctx, "context canceled, stop watching")
 			return
 		}
 	}

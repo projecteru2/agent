@@ -52,12 +52,13 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	logger := log.WithFunc("log").WithField("path", "/log")
 	// fuck httpie
 	w.WriteHeader(http.StatusOK)
 	if hijack, ok := w.(http.Hijacker); ok {
 		conn, buf, err := hijack.Hijack()
 		if err != nil {
-			log.Error(req.Context(), err, "[apiLog] connect failed")
+			logger.Error(req.Context(), err, "connect failed")
 			return
 		}
 		defer conn.Close()
@@ -80,6 +81,7 @@ func (h *Handler) Serve() {
 	if h.config.API.Addr == "" {
 		return
 	}
+	logger := log.WithFunc("serve")
 
 	restfulAPIServer := pat.New()
 	handlers := map[string]map[string]func(http.ResponseWriter, *http.Request){
@@ -98,13 +100,13 @@ func (h *Handler) Serve() {
 
 	http.Handle("/", restfulAPIServer)
 	http.Handle("/metrics", promhttp.Handler())
-	log.Infof(nil, "[apiServe] http api started %s", h.config.API.Addr) //nolint
+	logger.Infof(nil, "http api started %s", h.config.API.Addr) //nolint
 
 	server := &http.Server{
 		Addr:              h.config.API.Addr,
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 	if err := server.ListenAndServe(); err != nil {
-		log.Error(nil, err, "http api start failed") //nolint
+		logger.Error(nil, err, "http api start failed") //nolint
 	}
 }

@@ -24,26 +24,29 @@ import (
 	_ "go.uber.org/automaxprocs"
 )
 
-func initConfig(c *cli.Context) *types.Config {
+func initConfig(c *cli.Context) (*types.Config, error) {
 	config := &types.Config{}
 
 	if err := configor.Load(config, c.String("config")); err != nil {
-		log.Fatalf(c.Context, err, "[main] load config failed %v", err)
+		return nil, err
 	}
 
 	config.Prepare(c)
 	config.Print()
-	return config
+	return config, nil
 }
 
 func serve(c *cli.Context) error {
 	rand.Seed(time.Now().UnixNano())
 
-	if err := log.SetupLog(c.String("log-level")); err != nil {
+	if err := log.SetupLog(c.Context, c.String("log-level"), ""); err != nil {
 		zerolog.Fatal().Err(err).Send()
 	}
 
-	config := initConfig(c)
+	config, err := initConfig(c)
+	if err != nil {
+		zerolog.Fatal().Err(err).Send()
+	}
 	utils.WritePid(config.PidFile)
 	defer os.Remove(config.PidFile)
 
@@ -55,6 +58,8 @@ func serve(c *cli.Context) error {
 	errChan := make(chan error, 2)
 	defer close(errChan)
 
+	logger := log.WithFunc("main")
+
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 
@@ -65,7 +70,7 @@ func serve(c *cli.Context) error {
 	_ = utils.Pool.Submit(func() {
 		defer wg.Done()
 		if err := workloadsManager.Run(ctx); err != nil {
-			log.Error(c.Context, err, "[agent] workload manager failed")
+			logger.Error(c.Context, err, "[agent] workload manager failed")
 			errChan <- err
 		}
 	})
@@ -77,7 +82,7 @@ func serve(c *cli.Context) error {
 	_ = utils.Pool.Submit(func() {
 		defer wg.Done()
 		if err := nodeManager.Run(ctx); err != nil {
-			log.Error(c.Context, err, "[agent] node manager failed")
+			logger.Error(c.Context, err, "[agent] node manager failed")
 			errChan <- err
 		}
 	})
@@ -88,15 +93,15 @@ func serve(c *cli.Context) error {
 	_ = utils.Pool.Submit(func() {
 		select {
 		case <-ctx.Done():
-			log.Info(c.Context, "[agent] Agent exiting")
+			logger.Info(c.Context, "[agent] Agent exiting")
 		case err := <-errChan:
-			log.Error(c.Context, err, "[agent] Got error, exiting")
+			logger.Error(c.Context, err, "[agent] Got error, exiting")
 			cancel()
 		case sig := <-signalChan:
-			log.Infof(c.Context, "[agent] Agent caught system signal %v", sig)
+			logger.Infof(c.Context, "[agent] Agent caught system signal %v", sig)
 			if sig != syscall.SIGUSR1 {
 				if err := nodeManager.Exit(); err != nil {
-					log.Error(c.Context, err, "[agent] node manager exits with err")
+					logger.Error(c.Context, err, "[agent] node manager exits with err")
 				}
 			}
 			cancel()

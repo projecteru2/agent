@@ -19,7 +19,7 @@ func InitClient(config *types.Config) {
 		var err error
 		yavirt, err = New(config)
 		if err != nil {
-			log.Error(nil, err, "[InitClient] failed to create yavirt client") //nolint
+			log.WithFunc("InitClient").Error(nil, err, "failed to create yavirt client") //nolint
 		}
 	})
 }

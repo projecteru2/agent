@@ -19,26 +19,27 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 	if utils.IsDockerized() {
 		proc = "/hostProc"
 	}
+	logger := log.WithFunc("CollectWorkloadMetrics").WithField("ID", ID)
 
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
-		log.Errorf(ctx, err, "[CollectWorkloadMetrics] failed to detect container %v", ID)
+		logger.Error(ctx, err, "failed to detect container")
 	}
 
 	// init stats
 	containerCPUStats, systemCPUStats, containerNetStats, err := getStats(ctx, container.ID, container.Pid, proc)
 	if err != nil {
-		log.Errorf(ctx, err, "[stat] get %s stats failed", container.ID)
+		logger.Error(ctx, err, "get stats failed")
 		return
 	}
 	rawBlkioStats, err := d.getBlkioStats(ctx, container.ID)
 	if err != nil {
-		log.Errorf(ctx, err, "[stat] get %s diskio stats failed", container.ID)
+		logger.Error(ctx, err, "get diskio stats failed")
 		return
 	}
 	blkioStats, err := fromEngineBlkioStats(rawBlkioStats)
 	if err != nil {
-		log.Errorf(ctx, err, "[stat] get %s diskio stats failed", container.ID)
+		logger.Error(ctx, err, "get diskio stats failed")
 		return
 	}
 	delta := float64(d.config.Metrics.Step)
@@ -55,13 +56,13 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 	hostCPUCount := d.cpuCore * period
 
 	mClient := NewMetricsClient(addr, hostname, container)
-	defer log.Infof(ctx, "[stat] container %s %s metric report stop", container.Name, container.ID)
-	log.Infof(ctx, "[stat] container %s %s metric report start", container.Name, container.ID)
+	defer logger.Infof(ctx, "container %s metric report stop", container.Name)
+	logger.Infof(ctx, "container %s metric report start", container.Name)
 
 	updateMetrics := func() {
 		newContainer, err := d.detectWorkload(ctx, container.ID)
 		if err != nil {
-			log.Errorf(ctx, err, "[stat] can not refresh container meta %s", container.ID)
+			logger.Error(ctx, err, "can not refresh container meta")
 			return
 		}
 		containerCPUCount := newContainer.CPUNum * period
@@ -69,12 +70,12 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		defer cancel()
 		newContainerCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(timeoutCtx, newContainer.ID, newContainer.Pid, proc)
 		if err != nil {
-			log.Errorf(ctx, err, "[stat] get %s stats failed", newContainer.ID)
+			logger.Error(ctx, err, "get stats failed")
 			return
 		}
 		containerMemStats, err := getMemStats(timeoutCtx, newContainer.ID)
 		if err != nil {
-			log.Errorf(ctx, err, "[stat] get %s mem stats failed", newContainer.ID)
+			logger.Error(ctx, err, "get mem stats failed")
 			return
 		}
 
@@ -137,15 +138,15 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 			mClient.DropIn(nic.Name, float64(nic.Dropin-oldNICStats.Dropin)/delta)
 			mClient.DropOut(nic.Name, float64(nic.Dropout-oldNICStats.Dropout)/delta)
 		}
-		log.Debugf(ctx, "[stat] start to get blkio stats for %s", container.ID)
+		logger.Debug(ctx, "start to get blkio stats for")
 		newRawBlkioStats, err := d.getBlkioStats(ctx, container.ID)
 		if err != nil {
-			log.Errorf(ctx, err, "[stat] get %s diskio stats failed", container.ID)
+			logger.Error(ctx, err, "get diskio stats failed")
 			return
 		}
 		newBlkioStats, err := fromEngineBlkioStats(newRawBlkioStats)
 		if err != nil {
-			log.Errorf(ctx, err, "[stat] get %s diskio stats failed", container.ID)
+			logger.Error(ctx, err, "get diskio stats failed")
 			return
 		}
 		for _, entry := range newBlkioStats.IOServiceBytesReadRecursive {
@@ -176,8 +177,8 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		}
 		rawBlkioStats, blkioStats = newRawBlkioStats, newBlkioStats
 		containerCPUStats, systemCPUStats, containerNetStats = newContainerCPUStats, newSystemCPUStats, newContainerNetStats
-		if err := mClient.Send(); err != nil {
-			log.Error(ctx, err, "[stat] Send metrics failed")
+		if err := mClient.Send(ctx); err != nil {
+			logger.Error(ctx, err, "send metrics failed")
 		}
 	}
 	for {

@@ -49,7 +49,7 @@ func Init(ctx context.Context, config *types.Config) {
 		var err error
 		coreStore, err = New(ctx, config)
 		if err != nil {
-			log.Error(ctx, err, "[Init] failed to create core store")
+			log.WithFunc("core.client").Error(ctx, err, "failed to create core store")
 			return
 		}
 	})

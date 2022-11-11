@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"context"
 	"sync"
 
 	"github.com/projecteru2/agent/types"
@@ -17,9 +18,9 @@ var (
 func InitClient(config *types.Config, nodeIP string) {
 	once.Do(func() {
 		var err error
-		client, err = New(config, nodeIP)
-		if err != nil {
-			log.Error(nil, err, "[GetDockerClient] failed to make docker client") //nolint
+		ctx := context.TODO()
+		if client, err = New(ctx, config, nodeIP); err != nil {
+			log.WithFunc("InitClient").Error(nil, err, "failed to make docker client") //nolint
 		}
 	})
 }

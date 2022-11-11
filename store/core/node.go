@@ -150,7 +150,7 @@ func (c *Store) listPodeNodes(ctx context.Context, opt *pb.ListNodesOptions) (ch
 				node, err := stream.Recv()
 				if err != nil {
 					if err != io.EOF { //nolint:nolintlint
-						log.Error(ctx, err, "[listPodeNodes] get node stream failed")
+						log.WithFunc("listPodeNodes").Error(ctx, err, "get node stream failed")
 					}
 					return
 				}

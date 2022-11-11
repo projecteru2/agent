@@ -17,7 +17,8 @@ import (
 )
 
 func (m *Manager) attach(ctx context.Context, ID string) {
-	log.Debugf(ctx, "[attach] attaching workload %v", ID)
+	logger := log.WithFunc("attach").WithField("ID", ID)
+	logger.Debug(ctx, "attaching workload")
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -27,7 +28,7 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 	}
 	writer, err := logs.NewWriter(ctx, transfer, m.config.Log.Stdout)
 	if err != nil {
-		log.Errorf(ctx, err, "[attach] Create log forward %s failed", transfer)
+		logger.Errorf(ctx, err, "create log forward %s failed", transfer)
 		return
 	}
 
@@ -35,47 +36,47 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 	workloadName, err := m.runtimeClient.GetWorkloadName(ctx, ID)
 	if err != nil {
 		if err != common.ErrNotImplemented {
-			log.Errorf(ctx, err, "[attach] failed to get workload name, id: %v", ID)
+			logger.Error(ctx, err, "failed to get workload name")
 		} else {
-			log.Debug(ctx, "[attach] should ignore this workload")
+			logger.Debug(ctx, "should ignore this workload")
 		}
 		return
 	}
 
 	name, entryPoint, ident, err := utils.GetAppInfo(workloadName)
 	if err != nil {
-		log.Errorf(ctx, err, "[attach] invalid workload name %s", workloadName)
+		logger.Errorf(ctx, err, "invalid workload name %s", workloadName)
 		return
 	}
 
 	// attach workload
 	outr, errr, err := m.runtimeClient.AttachWorkload(ctx, ID)
 	if err != nil {
-		log.Errorf(ctx, err, "[attach] failed to attach workload %s", workloadName)
+		logger.Errorf(ctx, err, "failed to attach workload %s", workloadName)
 		return
 	}
-	log.Infof(ctx, "[attach] attach %s workload %s success", workloadName, ID)
+	logger.Infof(ctx, "attach %s workload success", workloadName)
 
 	// attach metrics
 	_ = utils.Pool.Submit(func() { m.runtimeClient.CollectWorkloadMetrics(ctx, ID) })
 
 	extra, err := m.runtimeClient.LogFieldsExtra(ctx, ID)
 	if err != nil {
-		log.Error(ctx, err, "[attach] failed to get log fields extra")
+		logger.Error(ctx, err, "failed to get log fields extra")
 	}
 
 	wg := &sync.WaitGroup{}
 	pump := func(typ string, source io.Reader) {
 		defer wg.Done()
-		log.Debugf(ctx, "[attach] attach pump %s %s %s start", workloadName, ID, typ)
-		defer log.Debugf(ctx, "[attach] attach pump %s %s %s finished", workloadName, ID, typ)
+		logger.Debugf(ctx, "attach pump %s %s start", workloadName, typ)
+		defer logger.Debugf(ctx, "attach pump %s %s finished", workloadName, typ)
 
 		buf := bufio.NewReader(source)
 		for {
 			data, err := buf.ReadString('\n')
 			if err != nil {
 				if err != io.EOF {
-					log.Errorf(ctx, err, "[attach] attach pump %s %s %s failed, err: %v", workloadName, ID, typ, err)
+					logger.Errorf(ctx, err, "attach pump %s %s failed", workloadName, typ)
 				}
 				return
 			}
@@ -95,7 +96,7 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 				m.logBroadcaster.logC <- l
 			}
 			if err := writer.Write(l); err != nil && !(entryPoint == "agent" && utils.IsDockerized()) {
-				log.Errorf(ctx, err, "[attach] %s workload %s_%s write failed", workloadName, entryPoint, ID)
+				logger.Errorf(ctx, err, "%s workload %s write failed", workloadName, entryPoint)
 			}
 		}
 	}

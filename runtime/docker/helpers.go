@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"context"
 	"strings"
 
 	"github.com/projecteru2/agent/utils"
@@ -25,7 +26,7 @@ func normalizeEnv(env []string) map[string]string {
 }
 
 // generateContainerMeta make meta obj
-func generateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.LabelMeta, labels map[string]string) (*Container, error) {
+func generateContainerMeta(ctx context.Context, c enginetypes.ContainerJSON, meta *coretypes.LabelMeta, labels map[string]string) (*Container, error) {
 	name, entrypoint, ident, err := utils.GetAppInfo(c.Name)
 	if err != nil {
 		return nil, err
@@ -56,7 +57,7 @@ func generateContainerMeta(c enginetypes.ContainerJSON, meta *coretypes.LabelMet
 		container.Healthy = !(meta.HealthCheck != nil)
 	}
 
-	log.Debugf(nil, "[generateContainerMeta] Generate container meta %v %v", container.Name, container.EntryPoint) //nolint
+	log.WithFunc("generateContainerMeta").Debugf(ctx, "Generate container meta %v %v", container.Name, container.EntryPoint)
 	return container, nil
 }
 

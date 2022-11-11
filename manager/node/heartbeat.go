@@ -35,11 +35,12 @@ func (m *Manager) heartbeat(ctx context.Context) {
 // which means if a node is not available, subcriber will notice this after at least 360s.
 // HealthCheck.Timeout is used as timeout of requesting core Profile
 func (m *Manager) nodeStatusReport(ctx context.Context) {
-	log.Debug(ctx, "[nodeStatusReport] report begins")
-	defer log.Debug(ctx, "[nodeStatusReport] report ends")
+	logger := log.WithFunc("nodeStatusReport").WithField("hostname", m.config.HostName)
+	logger.Debug(ctx, "report begins")
+	defer logger.Debug(ctx, "report ends")
 
 	if !m.runtimeClient.IsDaemonRunning(ctx) {
-		log.Warn(ctx, "[nodeStatusReport] cannot connect to runtime daemon")
+		logger.Warn(ctx, "cannot connect to runtime daemon")
 		return
 	}
 
@@ -48,11 +49,11 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 	if err := utils.BackoffRetry(ctx, 3, func() (err error) {
 		utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
 			if err = m.store.SetNodeStatus(ctx, ttl); err != nil {
-				log.Errorf(ctx, err, "[nodeStatusReport] failed to set node status of %v", m.config.HostName)
+				logger.Error(ctx, err, "failed to set node status")
 			}
 		})
 		return err
 	}); err != nil {
-		log.Errorf(ctx, err, "[nodeStatusReport] failed to set node status of %v for 3 times", m.config.HostName)
+		logger.Error(ctx, err, "failed to set node status for 3 times")
 	}
 }

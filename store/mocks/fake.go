@@ -44,6 +44,7 @@ func (m *MockStore) init() {
 
 // NewFakeStore returns a mock store instance created from mock
 func NewFakeStore() store.Store {
+	logger := log.WithFunc("fakestore")
 	m := &MockStore{}
 	m.init()
 	m.On("GetNode", mock.Anything, mock.Anything).Return(func(ctx context.Context, nodename string) *types.Node {
@@ -59,7 +60,7 @@ func NewFakeStore() store.Store {
 		}
 	}, nil)
 	m.On("SetNodeStatus", mock.Anything, mock.Anything).Return(func(ctx context.Context, ttl int64) error {
-		log.Infof(ctx, "[MockStore] set node status\n")
+		logger.Info(ctx, "set node status")
 		nodename := "fake"
 		m.Lock()
 		defer m.Unlock()
@@ -88,7 +89,7 @@ func NewFakeStore() store.Store {
 		}
 	}, nil)
 	m.On("SetWorkloadStatus", mock.Anything, mock.Anything, mock.Anything).Return(func(ctx context.Context, status *types.WorkloadStatus, ttl int64) error {
-		log.Infof(ctx, "[MockStore] set workload status: %+v\n", status)
+		logger.Infof(ctx, "set workload status: %+v\n", status)
 		m.workloadStatus.Set(status.ID, status)
 		return nil
 	})

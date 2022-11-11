@@ -42,7 +42,7 @@ func New(config *types.Config) (*Yavirt, error) {
 	for _, expr := range y.config.Yavirt.SkipGuestReportRegexps {
 		reg, err := regexp.Compile(expr)
 		if err != nil {
-			log.Errorf(nil, err, "[NewYavirt] failed to compile regexp %v", expr) //nolint
+			log.WithFunc("runtime.yavirt.New").Errorf(nil, err, "failed to compile regexp %v", expr) //nolint
 			return nil, err
 		}
 		y.skipRegexp = append(y.skipRegexp, reg)
@@ -66,6 +66,7 @@ func (y *Yavirt) detectWorkload(ctx context.Context, ID string) (*Guest, error) 
 	if y.needSkip(ID) {
 		return nil, common.ErrInvaildVM
 	}
+	logger := log.WithFunc("detectWorkload").WithField("ID", ID)
 
 	var guest yavirttypes.Guest
 	var err error
@@ -75,7 +76,7 @@ func (y *Yavirt) detectWorkload(ctx context.Context, ID string) (*Guest, error) 
 	})
 
 	if err != nil {
-		log.Errorf(ctx, err, "[detectWorkload] failed to detect workload %v", ID)
+		logger.Error(ctx, err, "failed to detect workload")
 		return nil, err
 	}
 
@@ -84,7 +85,7 @@ func (y *Yavirt) detectWorkload(ctx context.Context, ID string) (*Guest, error) 
 	}
 
 	if y.config.CheckOnlyMine && y.config.HostName != guest.Hostname {
-		log.Debugf(ctx, "[detectWorkload] guest's hostname is %s instead of %s", guest.Hostname, y.config.HostName)
+		logger.Debugf(ctx, "guest's hostname is %s instead of %s", guest.Hostname, y.config.HostName)
 		return nil, common.ErrInvaildVM
 	}
 
@@ -124,7 +125,7 @@ func (y *Yavirt) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 		ids, err = y.client.GetGuestIDList(ctx, yavirttypes.GetGuestIDListReq{Filters: filters})
 	})
 	if err != nil && !strings.Contains(err.Error(), "key not exists") {
-		log.Error(ctx, err, "[ListWorkloadIDs] failed to get workload ids")
+		log.WithFunc("ListWorkloadIDs").Error(ctx, err, "failed to get workload ids")
 		return nil, err
 	}
 	return ids, nil
@@ -163,15 +164,16 @@ func (y *Yavirt) Events(ctx context.Context, filters map[string]string) (<-chan 
 
 // GetStatus checks workload's status first, then returns workload status
 func (y *Yavirt) GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error) {
+	logger := log.WithFunc("GetStatus").WithField("ID", ID)
 	guest, err := y.detectWorkload(ctx, ID)
 	if err != nil {
-		log.Errorf(ctx, err, "[GetStatus] failed to get guest %v status", ID)
+		logger.Error(ctx, err, "failed to get guest status")
 		return nil, err
 	}
 
 	bytes, err := json.Marshal(guest.Labels)
 	if err != nil {
-		log.Error(ctx, err, "[GetStatus] failed to marshal labels")
+		logger.Error(ctx, err, "failed to marshal labels")
 		return nil, err
 	}
 
@@ -213,7 +215,7 @@ func (y *Yavirt) IsDaemonRunning(ctx context.Context) bool {
 		_, err = y.client.Info(ctx)
 	})
 	if err != nil {
-		log.Debugf(ctx, "[IsDaemonRunning] connect to yavirt daemon failed, err: %v", err)
+		log.WithFunc("IsDaemonRunning").Error(ctx, err, "connect to yavirt daemon failed")
 		return false
 	}
 	return true

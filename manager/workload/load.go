@@ -21,7 +21,7 @@ func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[strin
 		case <-ticker.C:
 			workloadIDs, err = m.runtimeClient.ListWorkloadIDs(ctx, filter)
 			if err != nil {
-				log.Error(ctx, err, "[initWorkloadStatus] Failed to load workloads, will retry")
+				log.WithFunc("listWorkloadIDsWithRetry").Error(ctx, err, "failed to load workloads, will retry")
 				continue
 			}
 			return workloadIDs, nil
@@ -30,33 +30,34 @@ func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[strin
 }
 
 func (m *Manager) initWorkloadStatus(ctx context.Context) error {
-	log.Info(ctx, "[initWorkloadStatus] Load workloads")
+	logger := log.WithFunc("initWorkloadStatus")
+	logger.Info(ctx, "load workloads")
 	workloadIDs, err := m.listWorkloadIDsWithRetry(ctx, m.getBaseFilter())
 	if err != nil {
-		log.Error(ctx, err, "[initWorkloadStatus] Failed to load workloads")
+		logger.Error(ctx, err, "failed to load workloads")
 		return err
 	}
 
 	wg := &sync.WaitGroup{}
 	for _, workloadID := range workloadIDs {
-		log.Debugf(ctx, "[initWorkloadStatus] detect workload %s", workloadID)
+		logger.Debugf(ctx, "detect workload %s", workloadID)
 		wg.Add(1)
 		ID := workloadID
 		_ = utils.Pool.Submit(func() {
 			defer wg.Done()
 			workloadStatus, err := m.runtimeClient.GetStatus(ctx, ID, true)
 			if err != nil {
-				log.Errorf(ctx, err, "[initWorkloadStatus] get workload %v status failed", ID)
+				logger.Errorf(ctx, err, "get workload %v status failed", ID)
 				return
 			}
 
 			if workloadStatus.Running {
-				log.Debugf(ctx, "[initWorkloadStatus] workload %s is running", workloadStatus.ID)
+				logger.Debugf(ctx, "workload %s is running", workloadStatus.ID)
 				_ = utils.Pool.Submit(func() { m.attach(ctx, ID) })
 			}
 
 			if err := m.setWorkloadStatus(ctx, workloadStatus); err != nil {
-				log.Errorf(ctx, err, "[initWorkloadStatus] update workload %v status failed", ID)
+				logger.Errorf(ctx, err, "update workload %v status failed", ID)
 			}
 		})
 	}

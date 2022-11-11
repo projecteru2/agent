@@ -1,6 +1,7 @@
 package docker
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -471,28 +472,29 @@ func (m *MetricsClient) IOServicedWritePerSecond(dev string, i float64) {
 }
 
 // Lazy connecting
-func (m *MetricsClient) checkConn() error {
+func (m *MetricsClient) checkConn(ctx context.Context) error {
 	if m.statsdClient != nil {
 		return nil
 	}
+	logger := log.WithFunc("checkConn")
 	// We needn't try to renew/reconnect because of only supporting UDP protocol now
 	// We should add an `errorCount` to reconnect when implementing TCP protocol
 	var err error
 	if m.statsdClient, err = statsdlib.New(m.statsd, statsdlib.WithErrorHandler(func(err error) {
-		log.Error(nil, err, "[statsd] Sending statsd failed") //nolint
+		logger.Error(ctx, err, "[statsd] Sending statsd failed")
 	})); err != nil {
-		log.Error(nil, err, "[statsd] Connect statsd failed") //nolint
+		logger.Error(ctx, err, "[statsd] Connect statsd failed")
 		return err
 	}
 	return nil
 }
 
 // Send to statsd
-func (m *MetricsClient) Send() error {
+func (m *MetricsClient) Send(ctx context.Context) error {
 	if m.statsd == "" {
 		return nil
 	}
-	if err := m.checkConn(); err != nil {
+	if err := m.checkConn(ctx); err != nil {
 		return err
 	}
 	for k, v := range m.data {

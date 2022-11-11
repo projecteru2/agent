@@ -29,10 +29,11 @@ func (m *Manager) healthCheck(ctx context.Context) {
 // 但是这时候 health check 刚返回 true 回来并写入 core
 // 为了保证最终数据一致性这里也要检测
 func (m *Manager) checkAllWorkloads(ctx context.Context) {
-	log.Debug(ctx, "[checkAllWorkloads] health check begin")
+	logger := log.WithFunc("checkAllWorkloads")
+	logger.Debug(ctx, "health check begin")
 	workloadIDs, err := m.runtimeClient.ListWorkloadIDs(ctx, m.getBaseFilter())
 	if err != nil {
-		log.Error(ctx, err, "[checkAllWorkloads] Error when list all workloads with label \"ERU=1\"")
+		logger.Error(ctx, err, "error when list all workloads with label \"ERU=1\"")
 		return
 	}
 
@@ -45,14 +46,15 @@ func (m *Manager) checkAllWorkloads(ctx context.Context) {
 // 检查并保存一个workload的状态，最后返回workload是否healthy。
 // 返回healthy是为了重试用的，没啥别的意义。
 func (m *Manager) checkOneWorkload(ctx context.Context, ID string) bool {
+	logger := log.WithFunc("checkOneWorkload").WithField("ID", ID)
 	workloadStatus, err := m.runtimeClient.GetStatus(ctx, ID, true)
 	if err != nil {
-		log.Errorf(ctx, err, "[checkOneWorkload] failed to get status of workload %s", ID)
+		logger.Error(ctx, err, "failed to get status of workload")
 		return false
 	}
 
 	if err = m.setWorkloadStatus(ctx, workloadStatus); err != nil {
-		log.Errorf(ctx, err, "[checkOneWorkload] update workload status for %v failed", ID)
+		logger.Error(ctx, err, "update workload status failed")
 	}
 	return workloadStatus.Healthy
 }

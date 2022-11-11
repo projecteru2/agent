@@ -12,10 +12,11 @@ import (
 // CheckHTTP 检查一个workload的所有URL
 // CheckHTTP 事实上一般也就一个
 func CheckHTTP(ctx context.Context, ID string, backends []string, code int, timeout time.Duration) bool {
+	logger := log.WithFunc("CheckHTTP").WithField("ID", ID).WithField("backends", backends).WithField("code", code)
 	for _, backend := range backends {
-		log.Debugf(ctx, "[checkHTTP] Check health via http: workload %s, url %s, expect code %d", ID, backend, code)
+		logger.Debug(ctx, "Check health via http")
 		if !checkOneURL(ctx, backend, code, timeout) {
-			log.Infof(ctx, "[checkHTTP] Check health failed via http: workload %s, url %s, expect code %d", ID, backend, code)
+			logger.Info(ctx, "Check health failed via http")
 			return false
 		}
 	}
@@ -24,12 +25,13 @@ func CheckHTTP(ctx context.Context, ID string, backends []string, code int, time
 
 // CheckTCP 检查一个TCP
 // 这里不支持ctx?
-func CheckTCP(ID string, backends []string, timeout time.Duration) bool {
+func CheckTCP(ctx context.Context, ID string, backends []string, timeout time.Duration) bool {
+	logger := log.WithFunc("CheckTCP").WithField("ID", ID).WithField("backends", backends)
 	for _, backend := range backends {
-		log.Debugf(nil, "[checkTCP] Check health via tcp: workload %s, backend %s", ID, backend) //nolint
+		logger.Debug(ctx, "Check health via tcp")
 		conn, err := net.DialTimeout("tcp", backend, timeout)
 		if err != nil {
-			log.Debugf(nil, "[checkTCP] Check health failed via tcp: workload %s, backend %s", ID, backend) //nolint
+			logger.Debug(ctx, "Check health failed via tcp")
 			return false
 		}
 		conn.Close()
@@ -62,13 +64,14 @@ func get(ctx context.Context, client *http.Client, url string) (*http.Response, 
 
 // 就先定义 [200, 500) 这个区间的 code 都算是成功吧
 func checkOneURL(ctx context.Context, url string, expectedCode int, timeout time.Duration) bool {
+	logger := log.WithFunc("checkOneURL").WithField("url", url)
 	var resp *http.Response
 	var err error
 	WithTimeout(ctx, timeout, func(ctx context.Context) {
 		resp, err = get(ctx, nil, url) //nolint
 	})
 	if err != nil {
-		log.Warnf(ctx, "[checkOneURL] Error when checking %s, %s", url, err.Error())
+		logger.Error(ctx, err, "Error when checking")
 		return false
 	}
 	defer resp.Body.Close()
@@ -76,7 +79,7 @@ func checkOneURL(ctx context.Context, url string, expectedCode int, timeout time
 		return resp.StatusCode < 500 && resp.StatusCode >= 200
 	}
 	if resp.StatusCode != expectedCode {
-		log.Infof(ctx, "[checkOneURL] Error when checking %s, expect %d, got %d", url, expectedCode, resp.StatusCode)
+		logger.Warnf(ctx, "Error when checking, expect %d, got %d", expectedCode, resp.StatusCode)
 	}
 	return resp.StatusCode == expectedCode
 }

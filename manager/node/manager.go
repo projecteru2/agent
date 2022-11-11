@@ -42,7 +42,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 
 	node, err := m.store.GetNode(ctx, config.HostName)
 	if err != nil {
-		log.Errorf(ctx, err, "[NewManager] failed to get node %s", config.HostName)
+		log.WithFunc("NewManager").WithField("hostname", config.HostName).Error(ctx, err, "failed to get node")
 		return nil, err
 	}
 
@@ -75,26 +75,29 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 
 // Run runs a node manager
 func (m *Manager) Run(ctx context.Context) error {
-	log.Info(ctx, "[NodeManager] start node status heartbeat")
+	logger := log.WithFunc("Run")
+	logger.Info(ctx, "start node status heartbeat")
 	_ = utils.Pool.Submit(func() { m.heartbeat(ctx) })
 
 	<-ctx.Done()
-	log.Info(ctx, "[NodeManager] exiting")
+	logger.Info(ctx, "exiting")
 	return nil
 }
 
 // Exit .
 func (m *Manager) Exit() error {
-	log.Infof(nil, "[NodeManager] remove node status of %s", m.config.HostName) //nolint
+	ctx := context.TODO()
+	logger := log.WithFunc("Exit").WithField("hostname", m.config.HostName)
+	logger.Info(ctx, "remove node status")
 
 	// ctx is now canceled. use a new context.
 	var err error
-	utils.WithTimeout(context.TODO(), m.config.GlobalConnectionTimeout, func(ctx context.Context) {
+	utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
 		// remove node status
 		err = m.store.SetNodeStatus(ctx, -1)
 	})
 	if err != nil {
-		log.Errorf(nil, err, "[NodeManager] failed to remove node status of %v", m.config.HostName) //nolint
+		logger.Error(ctx, err, "failed to remove node status")
 		return err
 	}
 	return nil

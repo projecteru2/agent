@@ -48,18 +48,19 @@ const (
 )
 
 // New returns a wrapper of docker client
-func New(config *types.Config, nodeIP string) (*Docker, error) {
+func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, error) {
 	d := &Docker{
 		config:    config,
 		cas:       utils.NewGroupCAS(),
 		nodeIP:    nodeIP,
 		transfers: utils.NewHashBackends(config.Metrics.Transfers),
 	}
+	logger := log.WithFunc("runtime.docker.New").WithField("nodeIP", d.nodeIP)
 
-	log.Infof(nil, "[NewDocker] Host IP %s", d.nodeIP) //nolint
+	logger.Infof(ctx, "Host IP %s", d.nodeIP)
 	var err error
 	if d.client, err = utils.MakeDockerClient(config); err != nil {
-		log.Error(nil, err, "[NewDocker] failed to make docker client") //nolint
+		logger.Error(ctx, err, "failed to make docker client")
 		return nil, err
 	}
 
@@ -71,13 +72,13 @@ func New(config *types.Config, nodeIP string) (*Docker, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Infof(nil, "[NewDocker] Host has %d cpus", len(cpus)) //nolint
+	logger.Infof(ctx, "Host has %d cpus", len(cpus))
 
 	memory, err := mem.VirtualMemory()
 	if err != nil {
 		return nil, err
 	}
-	log.Infof(nil, "[NewDocker] Host has %d memory", memory.Total) //nolint
+	logger.Infof(ctx, "Host has %d memory", memory.Total)
 
 	d.cpuCore = float64(len(cpus))
 	d.memory = int64(memory.Total)
@@ -105,7 +106,7 @@ func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 		containers, err = d.client.ContainerList(ctx, opts)
 	})
 	if err != nil {
-		log.Error(ctx, err, "[ListWorkloadIDs] failed to list workloads")
+		log.WithFunc("ListWorkloadIDs").Error(ctx, err, "failed to list workloads")
 		return nil, err
 	}
 
@@ -118,6 +119,7 @@ func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 
 // AttachWorkload .
 func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.Reader, error) {
+	logger := log.WithFunc("AttachWorkload").WithField("ID", ID)
 	resp, err := d.client.ContainerAttach(ctx, ID, enginetypes.ContainerAttachOptions{
 		Stream: true,
 		Stdin:  false,
@@ -125,7 +127,7 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 		Stderr: true,
 	})
 	if err != nil && err != httputil.ErrPersistEOF { //nolint
-		log.Errorf(ctx, err, "[AttachWorkload] failed to attach workload %v", ID)
+		logger.Error(ctx, err, "failed to attach workload")
 		return nil, nil, err
 	}
 
@@ -140,13 +142,13 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 			errw.Close()
 			outr.Close()
 			errr.Close()
-			log.Debugf(ctx, "[attach] %v buf pipes closed", ID)
+			logger.Debug(ctx, "buf pipes closed")
 		}()
 
 		if _, err = stdcopy.StdCopy(outw, errw, resp.Reader); err != nil {
-			log.Error(ctx, err, "[attach] attach get stream failed")
+			logger.Error(ctx, err, "attach get stream failed")
 		}
-		log.Infof(ctx, "[attach] attach workload %s finished", ID)
+		logger.Info(ctx, "attach workload finished")
 	})
 
 	return outr, errr, nil
@@ -193,7 +195,7 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 	meta := coreutils.DecodeMetaInLabel(ctx, label)
 
 	// 是否符合 eru pattern，如果一个容器又有 ERUMark 又是三段式的 name，那它就是个 ERU 容器
-	container, err := generateContainerMeta(c, meta, label)
+	container, err := generateContainerMeta(ctx, c, meta, label)
 	if err != nil {
 		return nil, err
 	}
@@ -258,15 +260,16 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 
 // GetStatus checks workload's status first, then returns workload status
 func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error) {
+	logger := log.WithFunc("GetStatus").WithField("ID", ID)
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
-		log.Errorf(ctx, err, "[GetStatus] failed to detect workload %v", ID)
+		logger.Error(ctx, err, "failed to detect workload")
 		return nil, err
 	}
 
 	bytes, err := json.Marshal(container.Labels)
 	if err != nil {
-		log.Error(ctx, err, "[GetStatus] failed to marshal labels")
+		logger.Error(ctx, err, "failed to marshal labels")
 		return nil, err
 	}
 
@@ -302,7 +305,7 @@ func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error)
 		containerJSON, err = d.client.ContainerInspect(ctx, ID)
 	})
 	if err != nil {
-		log.Errorf(ctx, err, "[GetWorkloadName] failed to get container by id %v", ID)
+		log.WithFunc("GetWorkloadName").WithField("ID", ID).Error(ctx, err, "failed to get container by id")
 		return "", err
 	}
 
@@ -313,7 +316,7 @@ func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error)
 func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]string, error) {
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
-		log.Errorf(ctx, err, "[LogFieldsExtra] failed to detect container %v", ID)
+		log.WithFunc("LogFieldsExtra").WithField("ID", ID).Error(ctx, err, "failed to detect container")
 		return nil, err
 	}
 
@@ -329,14 +332,15 @@ func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]stri
 }
 
 func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginetypes.StatsJSON, error) {
+	logger := log.WithFunc("getContainerStats").WithField("ID", ID)
 	rawStat, err := d.client.ContainerStatsOneShot(ctx, ID)
 	if err != nil {
-		log.Errorf(ctx, err, "[getContainerStats] failed to get container %s stats", ID)
+		logger.Error(ctx, err, "failed to get container stats")
 		return nil, err
 	}
 	b, err := io.ReadAll(rawStat.Body)
 	if err != nil {
-		log.Errorf(ctx, err, "[getContainerStats] failed to read container %s stats", ID)
+		logger.Error(ctx, err, "failed to read container stats")
 		return nil, err
 	}
 	stats := &enginetypes.StatsJSON{}
@@ -358,7 +362,7 @@ func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
 		_, err = d.client.Ping(ctx)
 	})
 	if err != nil {
-		log.Error(ctx, err, "[IsDaemonRunning] connect to docker daemon failed")
+		log.WithFunc("IsDaemonRunning").Error(ctx, err, "connect to docker daemon failed")
 		return false
 	}
 	return true

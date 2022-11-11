@@ -61,7 +61,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 
 	node, err := m.store.GetNode(ctx, config.HostName)
 	if err != nil {
-		log.Errorf(ctx, err, "[NewManager] failed to get node %s", config.HostName)
+		log.WithFunc("NewManager").Errorf(ctx, err, "failed to get node %s", config.HostName)
 		return nil, err
 	}
 
@@ -119,7 +119,7 @@ func (m *Manager) Run(ctx context.Context) error {
 
 	// wait for signal
 	<-ctx.Done()
-	log.Info(ctx, "[WorkloadManager] exiting")
+	log.WithFunc("Run").Info(ctx, "exiting")
 	return nil
 }
 
@@ -134,7 +134,7 @@ func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter
 			return
 		case err := <-errChan:
 			if err != io.EOF {
-				log.Errorf(ctx, err, "[PullLog] %v failed to pull log", ID)
+				log.WithFunc("PullLog").WithField("ID", ID).Error(ctx, err, "failed to pull log")
 			}
 			return
 		}

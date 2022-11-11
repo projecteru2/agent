@@ -86,7 +86,7 @@ func (config *Config) Prepare(c *cli.Context) {
 	} else {
 		hostname, err := os.Hostname()
 		if err != nil {
-			log.Fatalf(c.Context, err, "Get hostname failed %v", err)
+			log.WithFunc("Prepare").Fatalf(c.Context, err, "Get hostname failed %v", err)
 		}
 		config.HostName = hostname
 	}
@@ -161,7 +161,7 @@ func (config *Config) Prepare(c *cli.Context) {
 func (config *Config) Print() {
 	bs, err := yaml.Marshal(config)
 	if err != nil {
-		log.Fatalf(nil, err, "[config] print config failed %v", err) //nolint
+		log.WithFunc("Print").Fatalf(nil, err, "print config failed %v", err) //nolint
 	}
 
 	fmt.Println("---- current config ----")

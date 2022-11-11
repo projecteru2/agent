@@ -43,6 +43,6 @@ func (c *Container) CheckHealth(ctx context.Context, timeout time.Duration) bool
 
 	ID := c.ID
 	f1 := utils.CheckHTTP(ctx, ID, httpChecker, c.HealthCheck.HTTPCode, timeout)
-	f2 := utils.CheckTCP(ID, tcpChecker, timeout)
+	f2 := utils.CheckTCP(ctx, ID, tcpChecker, timeout)
 	return f1 && f2
 }
