@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cornelk/hashmap"
+	"github.com/alphadose/haxmap"
 	"github.com/projecteru2/core/cluster"
 	coreutils "github.com/projecteru2/core/utils"
 
@@ -14,7 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-var clients *hashmap.Map[string, *MetricsClient]
+var clients *haxmap.Map[string, *MetricsClient]
 
 // MetricsClient combine statsd and prometheus
 type MetricsClient struct {
@@ -59,7 +59,7 @@ type MetricsClient struct {
 }
 
 func init() { //nolint:gochecknoinits
-	clients = hashmap.New[string, *MetricsClient]()
+	clients = haxmap.New[string, *MetricsClient]()
 }
 
 // NewMetricsClient new a metrics client

@@ -100,7 +100,7 @@ func TestLogBroadcaster(t *testing.T) {
 		Data:       "data1",
 	}
 	count := 0
-	manager.logBroadcaster.subscribersMap.Range(func(_ string, _ map[string]*subscriber) bool {
+	manager.logBroadcaster.subscribersMap.ForEach(func(_ string, _ map[string]*subscriber) bool {
 		count++
 		return true
 	})

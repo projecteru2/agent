@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cornelk/hashmap"
+	"github.com/alphadose/haxmap"
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/runtime"
 	"github.com/projecteru2/agent/types"
@@ -29,14 +29,14 @@ type eva struct {
 type Nerv struct {
 	Runtime
 	sync.Mutex
-	workloads     *hashmap.Map[string, *eva] // map[string]*eva
+	workloads     *haxmap.Map[string, *eva] // map[string]*eva
 	msgChan       chan *types.WorkloadEventMessage
 	errChan       chan error
 	daemonRunning bool
 }
 
 func (n *Nerv) init() {
-	n.workloads = hashmap.New[string, *eva]()
+	n.workloads = haxmap.New[string, *eva]()
 	n.workloads.Set("Rei", &eva{
 		ID:         "Rei",
 		Name:       "nerv_eva0_boiled",
@@ -90,7 +90,7 @@ func FromTemplate() runtime.Runtime {
 	n.On("ListWorkloadIDs", mock.Anything, mock.Anything).Return(func(ctx context.Context, filters map[string]string) []string {
 		var IDs []string
 		n.withLock(func() {
-			n.workloads.Range(func(ID string, workload *eva) bool {
+			n.workloads.ForEach(func(ID string, workload *eva) bool {
 				IDs = append(IDs, ID)
 				return true
 			})
