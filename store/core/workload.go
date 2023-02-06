@@ -2,8 +2,9 @@ package core
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"time"
 
 	"github.com/projecteru2/agent/types"
@@ -11,8 +12,9 @@ import (
 	pb "github.com/projecteru2/core/rpc/gen"
 )
 
-func getCacheTTL(ttl int) time.Duration {
-	delta := rand.Intn(ttl) / 4 //nolint
+func getCacheTTL(ttl int64) time.Duration {
+	n, _ := rand.Int(rand.Reader, big.NewInt(ttl))
+	delta := n.Int64() / 4
 	ttl = ttl - ttl/8 + delta
 	return time.Duration(ttl) * time.Second
 }

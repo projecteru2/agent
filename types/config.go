@@ -44,9 +44,9 @@ type LogConfig struct {
 
 // HealthCheckConfig contain healthcheck config
 type HealthCheckConfig struct {
-	Interval int `yaml:"interval" default:"60"`
-	Timeout  int `yaml:"timeout" default:"10"`
-	CacheTTL int `yaml:"cache_ttl" default:"300"`
+	Interval int   `yaml:"interval" default:"60"`
+	Timeout  int   `yaml:"timeout" default:"10"`
+	CacheTTL int64 `yaml:"cache_ttl" default:"300"`
 }
 
 // Config contain all configs
@@ -113,7 +113,7 @@ func (config *Config) Prepare(c *cli.Context) {
 		config.HealthCheck.Timeout = c.Int("health-check-timeout")
 	}
 	if c.Int("health-check-cache-ttl") > 0 {
-		config.HealthCheck.CacheTTL = c.Int("health-check-cache-ttl")
+		config.HealthCheck.CacheTTL = c.Int64("health-check-cache-ttl")
 	}
 	if c.String("docker-endpoint") != "" {
 		config.Docker.Endpoint = c.String("docker-endpoint")

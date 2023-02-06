@@ -3,12 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/projecteru2/agent/api"
 	"github.com/projecteru2/agent/manager/node"
@@ -37,8 +35,6 @@ func initConfig(c *cli.Context) (*types.Config, error) {
 }
 
 func serve(c *cli.Context) error {
-	rand.Seed(time.Now().UnixNano())
-
 	if err := log.SetupLog(c.Context, c.String("log-level"), ""); err != nil {
 		zerolog.Fatal().Err(err).Send()
 	}
