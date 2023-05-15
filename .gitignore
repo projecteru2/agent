@@ -11,3 +11,4 @@ cscope.*
 dev.yaml
 *~
 dist/*
+.DS_Store
