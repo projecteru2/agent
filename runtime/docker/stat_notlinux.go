@@ -11,7 +11,7 @@ import (
 	"github.com/shirou/gopsutil/net"
 )
 
-func getStats(ctx context.Context, ID string, pid int, proc string) (*docker.CgroupCPUStat, cpu.TimesStat, []net.IOCountersStat, error) {
+func getStats(ctx context.Context, _ string, _ int, _ string) (*docker.CgroupCPUStat, cpu.TimesStat, []net.IOCountersStat, error) {
 	containerCPUStats := &docker.CgroupCPUStat{
 		TimesStat: cpu.TimesStat{},
 		Usage:     0.0,
@@ -26,6 +26,6 @@ func getStats(ctx context.Context, ID string, pid int, proc string) (*docker.Cgr
 	return containerCPUStats, systemCPUStats, []net.IOCountersStat{}, nil
 }
 
-func getMemStats(ctx context.Context, ID string) (*docker.CgroupMemStat, error) {
+func getMemStats(context.Context, string) (*docker.CgroupMemStat, error) {
 	return &docker.CgroupMemStat{}, nil
 }

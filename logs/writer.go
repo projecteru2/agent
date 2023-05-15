@@ -37,7 +37,7 @@ type discard struct {
 }
 
 // Write writer
-func (d discard) Write(p []byte) (n int, err error) {
+func (d discard) Write([]byte) (n int, err error) {
 	return 0, nil
 }
 

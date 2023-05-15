@@ -60,7 +60,7 @@ func (r *RetryTask) Run(ctx context.Context) error {
 }
 
 // Stop stops running task
-func (r *RetryTask) Stop(ctx context.Context) {
+func (r *RetryTask) Stop(context.Context) {
 	r.cancel()
 }
 

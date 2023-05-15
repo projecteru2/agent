@@ -112,12 +112,12 @@ func (y *Yavirt) detectWorkload(ctx context.Context, ID string) (*Guest, error) 
 }
 
 // AttachWorkload not implemented yet
-func (y *Yavirt) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.Reader, error) {
+func (y *Yavirt) AttachWorkload(context.Context, string) (io.Reader, io.Reader, error) {
 	return nil, nil, common.ErrNotImplemented
 }
 
 // CollectWorkloadMetrics no need yet
-func (y *Yavirt) CollectWorkloadMetrics(ctx context.Context, ID string) {}
+func (y *Yavirt) CollectWorkloadMetrics(context.Context, string) {}
 
 // ListWorkloadIDs lists workload IDs filtered by given condition
 func (y *Yavirt) ListWorkloadIDs(ctx context.Context, filters map[string]string) (ids []string, err error) {
@@ -199,12 +199,12 @@ func (y *Yavirt) GetStatus(ctx context.Context, ID string, checkHealth bool) (*t
 }
 
 // GetWorkloadName not implemented yet
-func (y *Yavirt) GetWorkloadName(ctx context.Context, ID string) (string, error) {
+func (y *Yavirt) GetWorkloadName(context.Context, string) (string, error) {
 	return "", common.ErrNotImplemented
 }
 
 // LogFieldsExtra .
-func (y *Yavirt) LogFieldsExtra(ctx context.Context, ID string) (map[string]string, error) {
+func (y *Yavirt) LogFieldsExtra(context.Context, string) (map[string]string, error) {
 	return map[string]string{}, nil
 }
 

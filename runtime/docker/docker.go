@@ -131,9 +131,9 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 		return nil, nil, err
 	}
 
-	cap, _ := units.RAMInBytes("10M")
-	outr, outw := utils.NewBufPipe(cap)
-	errr, errw := utils.NewBufPipe(cap)
+	capacity, _ := units.RAMInBytes("10M")
+	outr, outw := utils.NewBufPipe(capacity)
+	errr, errw := utils.NewBufPipe(capacity)
 
 	_ = utils.Pool.Submit(func() {
 		defer func() {
