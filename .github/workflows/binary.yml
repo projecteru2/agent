@@ -19,9 +19,9 @@ jobs:
 
       - name: "Build binary"
         run: |
-          go build
+          make binary
 
       - uses: actions/upload-artifact@v3
         with:
-          name: agent-ubuntu
-          path: agent
+          name: eru-agent-ubuntu
+          path: eru-agent
