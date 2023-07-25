@@ -18,6 +18,7 @@ import (
 	"github.com/projecteru2/agent/version"
 	coreutils "github.com/projecteru2/core/utils"
 	yavirtclient "github.com/projecteru2/libyavirt/client"
+	yavirttypes "github.com/projecteru2/libyavirt/types"
 
 	engineapi "github.com/docker/docker/client"
 	"github.com/projecteru2/core/log"
@@ -34,7 +35,10 @@ func MakeDockerClient(config *types.Config) (*engineapi.Client, error) {
 
 // MakeYavirtClient make a yavirt client
 func MakeYavirtClient(config *types.Config) (yavirtclient.Client, error) {
-	return yavirtclient.New(config.Yavirt.Endpoint)
+	yCfg := &yavirttypes.Config{
+		URI: config.Yavirt.Endpoint,
+	}
+	return yavirtclient.New(yCfg)
 }
 
 // WritePid write pid

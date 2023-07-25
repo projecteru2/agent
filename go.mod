@@ -14,7 +14,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/projecteru2/core v0.0.0-20230515031536-7fdaea78417e
-	github.com/projecteru2/libyavirt v0.0.0-20230514051104-0d756894b738
+	github.com/projecteru2/libyavirt v0.0.0-20230725071905-9785e974d625
 	github.com/prometheus/client_golang v1.15.0
 	github.com/rs/zerolog v1.29.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
