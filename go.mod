@@ -20,6 +20,7 @@ require (
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli/v2 v2.25.1
+	github.com/vishvananda/netns v0.0.4
 	go.uber.org/automaxprocs v1.5.2
 	golang.org/x/sys v0.8.0
 	gopkg.in/yaml.v2 v2.4.0

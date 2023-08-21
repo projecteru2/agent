@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http/httputil"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/core/cluster"
 	coreutils "github.com/projecteru2/core/utils"
+	"github.com/vishvananda/netns"
 
 	enginetypes "github.com/docker/docker/api/types"
 	enginecontainer "github.com/docker/docker/api/types/container"
@@ -169,6 +172,36 @@ func (d *Docker) checkHostname(env []string) bool {
 	return false
 }
 
+func getAddrsFromNS(cid string, ifname string) ([]net.Addr, error) {
+	// Lock the OS Thread so we don't accidentally switch namespaces
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	// Save the current network namespace
+	origns, _ := netns.Get()
+	defer origns.Close()
+	defer netns.Set(origns) //nolint:errcheck
+
+	containerNS, err := netns.GetFromDocker(cid)
+	if err != nil {
+		return nil, err
+	}
+	defer containerNS.Close()
+
+	if err := netns.Set(containerNS); err != nil {
+		return nil, err
+	}
+	eth0, err := net.InterfaceByName(ifname)
+	if err != nil {
+		return nil, err
+	}
+	addrs, err := eth0.Addrs()
+	if err != nil {
+		return nil, err
+	}
+	return addrs, nil
+}
+
 // detectWorkload detect a container by ID
 func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, error) {
 	// 标准化为 inspect 的数据
@@ -205,7 +238,7 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 		container.Memory = d.memory
 	}
 	// 活着才有发布必要
-	if c.NetworkSettings != nil && container.Running {
+	if c.NetworkSettings != nil && container.Running { //nolint:nestif
 		networks := map[string]string{}
 		for name, endpoint := range c.NetworkSettings.Networks {
 			networkmode := enginecontainer.NetworkMode(name)
@@ -215,6 +248,20 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 			} else {
 				container.LocalIP = endpoint.IPAddress
 				networks[name] = endpoint.IPAddress
+			}
+			if networks[name] == "" {
+				addrs, err := getAddrsFromNS(c.ID, "eth0")
+				if err != nil {
+					log.Error(ctx, err, "failed to get eth0 addrs")
+				}
+				if len(addrs) > 0 {
+					ip, _, err := net.ParseCIDR(addrs[0].String())
+					if err == nil {
+						networks[name] = ip.String()
+					} else {
+						log.Error(ctx, err, "failed to parse cidr %s", addrs[0].String())
+					}
+				}
 			}
 			break
 		}
