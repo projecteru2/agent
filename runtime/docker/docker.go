@@ -257,6 +257,7 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 				if len(addrs) > 0 {
 					ip, _, err := net.ParseCIDR(addrs[0].String())
 					if err == nil {
+						container.LocalIP = ip.String()
 						networks[name] = ip.String()
 					} else {
 						log.Error(ctx, err, "failed to parse cidr %s", addrs[0].String())
