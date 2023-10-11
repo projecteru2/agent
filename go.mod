@@ -13,8 +13,8 @@ require (
 	github.com/panjf2000/ants/v2 v2.7.3
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
-	github.com/projecteru2/core v0.0.0-20230515031536-7fdaea78417e
-	github.com/projecteru2/libyavirt v0.0.0-20230725071905-9785e974d625
+	github.com/projecteru2/core v0.0.0-20231011045726-f834c8786ef0
+	github.com/projecteru2/libyavirt v0.0.0-20230921032447-a617cf0c746c
 	github.com/prometheus/client_golang v1.15.0
 	github.com/rs/zerolog v1.29.1
 	github.com/shirou/gopsutil v3.21.11+incompatible
@@ -45,7 +45,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/juju/errors v1.0.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
