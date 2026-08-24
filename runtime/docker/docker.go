@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -315,29 +317,33 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 	if container.Memory == 0 || container.Memory == math.MaxInt64 {
 		container.Memory = d.memory
 	}
-	if c.NetworkSettings != nil && container.Running { //nolint:nestif
-		networks := map[string]string{}
-		for name, endpoint := range c.NetworkSettings.Networks {
-			networkmode := enginecontainer.NetworkMode(name)
-			if networkmode.IsHost() {
-				container.LocalIP = common.LocalIP
-				networks[name] = d.nodeIP
-			} else {
-				container.LocalIP = endpoint.IPAddress
-				networks[name] = endpoint.IPAddress
-			}
-			if networks[name] == "" {
-				if ip := addrFromNS(ctx, c.ID, defaultNIC); ip != "" {
-					container.LocalIP = ip
-					networks[name] = ip
-				}
-			}
-			break
-		}
-		container.Networks = networks
+	if c.NetworkSettings != nil && container.Running {
+		container.LocalIP, container.Networks = d.workloadNetworks(ctx, c)
 	}
 
 	return container, nil
+}
+
+func (d *Docker) workloadNetworks(ctx context.Context, c enginecontainer.InspectResponse) (string, map[string]string) {
+	networks := map[string]string{}
+	names := slices.Sorted(maps.Keys(c.NetworkSettings.Networks))
+	if len(names) == 0 {
+		return "", networks
+	}
+
+	name := names[0]
+	localIP, addr := c.NetworkSettings.Networks[name].IPAddress, c.NetworkSettings.Networks[name].IPAddress
+	if enginecontainer.NetworkMode(name).IsHost() {
+		localIP, addr = common.LocalIP, d.nodeIP
+	}
+	if addr == "" {
+		if ip := addrFromNS(ctx, c.ID, defaultNIC); ip != "" {
+			localIP, addr = ip, ip
+		}
+	}
+	networks[name] = addr
+
+	return localIP, networks
 }
 
 func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginecontainer.StatsResponse, error) {
