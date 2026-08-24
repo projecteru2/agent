@@ -4,12 +4,11 @@ import (
 	"context"
 	"strings"
 
+	enginecontainer "github.com/docker/docker/api/types/container"
+	"github.com/projecteru2/core/log"
 	coretypes "github.com/projecteru2/core/types"
 
 	"github.com/projecteru2/agent/utils"
-
-	enginecontainer "github.com/docker/docker/api/types/container"
-	"github.com/projecteru2/core/log"
 )
 
 func normalizeEnv(env []string) map[string]string {
@@ -50,7 +49,6 @@ func generateContainerMeta(ctx context.Context, c enginecontainer.InspectRespons
 	} else {
 		container.Pid = c.State.Pid
 		container.Running = c.State.Running
-		// a running workload without a declared health check is always healthy
 		container.Healthy = meta.HealthCheck == nil
 	}
 

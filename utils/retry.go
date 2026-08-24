@@ -7,14 +7,17 @@ import (
 	"github.com/projecteru2/core/log"
 )
 
+// RetryFunc is one attempt of a retried operation.
+type RetryFunc func() error
+
 type RetryTask struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
-	Func        func() error
+	Func        RetryFunc
 	MaxAttempts int
 }
 
-func NewRetryTask(ctx context.Context, maxAttempts int, f func() error) *RetryTask {
+func NewRetryTask(ctx context.Context, maxAttempts int, f RetryFunc) *RetryTask {
 	if maxAttempts < 1 {
 		maxAttempts = 1
 	}
@@ -60,7 +63,7 @@ func (r *RetryTask) Stop() {
 }
 
 // BackoffRetry runs f up to maxAttempts times, doubling the wait after each failure.
-func BackoffRetry(ctx context.Context, maxAttempts int, f func() error) error {
+func BackoffRetry(ctx context.Context, maxAttempts int, f RetryFunc) error {
 	retryTask := NewRetryTask(ctx, maxAttempts, f)
 	defer retryTask.Stop()
 	return retryTask.Run(ctx)

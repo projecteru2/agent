@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
+	"github.com/projecteru2/core/log"
+
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
-
-	"github.com/projecteru2/core/log"
 )
 
 func (m *Manager) healthCheck(ctx context.Context) {

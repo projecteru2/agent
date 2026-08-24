@@ -4,14 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"runtime/pprof" //nolint:nolintlint
+	_ "net/http/pprof" //nolint
+	"runtime/pprof"    //nolint:nolintlint
 	"time"
 
-	_ "net/http/pprof" //nolint
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	"github.com/projecteru2/core/log"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/projecteru2/agent/manager/workload"
 	"github.com/projecteru2/agent/types"

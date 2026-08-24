@@ -13,13 +13,6 @@ import (
 	"github.com/projecteru2/agent/utils"
 )
 
-func getCacheTTL(ttl int64) time.Duration {
-	n, _ := rand.Int(rand.Reader, big.NewInt(ttl))
-	delta := n.Int64() / 4
-	ttl = ttl - ttl/8 + delta
-	return time.Duration(ttl) * time.Second
-}
-
 func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus, ttl int64) error {
 	workloadStatus := fmt.Sprintf("%+v", status)
 	if ttl == 0 {
@@ -63,4 +56,11 @@ func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadSta
 	}
 
 	return err
+}
+
+func getCacheTTL(ttl int64) time.Duration {
+	n, _ := rand.Int(rand.Reader, big.NewInt(ttl))
+	delta := n.Int64() / 4
+	ttl = ttl - ttl/8 + delta
+	return time.Duration(ttl) * time.Second
 }

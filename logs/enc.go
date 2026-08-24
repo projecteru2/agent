@@ -6,10 +6,10 @@ import (
 	"io"
 	"sync"
 
+	"github.com/coreos/go-systemd/v22/journal"
+
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
-
-	"github.com/coreos/go-systemd/v22/journal"
 )
 
 type Encoder interface {

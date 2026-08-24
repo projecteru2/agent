@@ -8,11 +8,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/urfave/cli/v3"
-	"gopkg.in/yaml.v3"
-
 	"github.com/projecteru2/core/log"
 	coretypes "github.com/projecteru2/core/types"
+	"github.com/urfave/cli/v3"
+	"gopkg.in/yaml.v3"
 )
 
 type DockerConfig struct {

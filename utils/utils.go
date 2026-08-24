@@ -13,6 +13,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	engineapi "github.com/docker/docker/client"
+	"github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
 	yavirtclient "github.com/projecteru2/libyavirt/client"
 	yavirttypes "github.com/projecteru2/libyavirt/types"
@@ -20,9 +22,6 @@ import (
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/version"
-
-	engineapi "github.com/docker/docker/client"
-	"github.com/projecteru2/core/log"
 )
 
 var (

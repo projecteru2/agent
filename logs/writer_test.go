@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNewWriterWithUDP(t *testing.T) {
@@ -23,7 +24,9 @@ func TestNewWriterWithTCP(t *testing.T) {
 	ctx := t.Context()
 
 	tcpL, err := net.Listen("tcp", ":34567")
+	require.NoError(t, err)
 	defer tcpL.Close()
+
 	addr := "tcp://127.0.0.1:34567"
 	w, err := NewWriter(ctx, addr, true)
 	assert.NoError(t, err)

@@ -8,12 +8,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/projecteru2/core/log"
+
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/logs"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
-
-	"github.com/projecteru2/core/log"
 )
 
 func (m *Manager) attach(ctx context.Context, ID string) {
@@ -88,9 +88,7 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 				Datetime:   time.Now().Format(common.DateTimeFormat),
 				Extra:      extra,
 			}
-			if m.logBroadcaster != nil && m.logBroadcaster.logC != nil {
-				m.logBroadcaster.logC <- l
-			}
+			m.logBroadcaster.logC <- l
 			if err := writer.Write(ctx, l); err != nil && (entryPoint != "agent" || !utils.IsDockerized()) {
 				logger.Errorf(ctx, err, "%s workload %s write failed", workloadName, entryPoint)
 			}

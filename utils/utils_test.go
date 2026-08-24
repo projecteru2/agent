@@ -64,7 +64,7 @@ func TestMultiBlocking(t *testing.T) {
 	go block(r)
 	go block(r)
 
-	time.Sleep(time.Millisecond) // Ensure blocking.
+	time.Sleep(time.Millisecond)
 
 	data := []string{"abc", "def", "ghi"}
 	for _, s := range data {
@@ -130,18 +130,16 @@ func TestReplaceNonUtf8(t *testing.T) {
 }
 
 func TestUseLabelAsFilter(t *testing.T) {
-	currentValue := os.Getenv("ERU_AGENT_EXPERIMENTAL_FILTER")
-	defer os.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", currentValue)
-	os.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", "test")
+	t.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", "test")
 	assert.Equal(t, UseLabelAsFilter(), false)
-	os.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", "label")
+	t.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", "label")
 	assert.Equal(t, UseLabelAsFilter(), true)
 }
 
 func TestGetMaxAttemptsByTTL(t *testing.T) {
-	assert.Equal(t, GetMaxAttemptsByTTL(0), 5) // selfmon enabled
+	assert.Equal(t, GetMaxAttemptsByTTL(0), 5)
 	assert.Equal(t, GetMaxAttemptsByTTL(1), 2)
-	assert.Equal(t, GetMaxAttemptsByTTL(8), 4) // 0+1+2+4
+	assert.Equal(t, GetMaxAttemptsByTTL(8), 4)
 }
 
 func TestGetIP(t *testing.T) {

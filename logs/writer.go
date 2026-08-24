@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/projecteru2/core/log"
+
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
-
-	"github.com/projecteru2/core/log"
 )
 
 const Discard = "__discard__"

@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
 	storemocks "github.com/projecteru2/agent/store/mocks"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNodeStatusReport(t *testing.T) {

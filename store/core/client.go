@@ -5,12 +5,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/patrickmn/go-cache"
 	"github.com/projecteru2/core/client"
 	pb "github.com/projecteru2/core/rpc/gen"
 
 	"github.com/projecteru2/agent/types"
-
-	"github.com/patrickmn/go-cache"
 )
 
 var (

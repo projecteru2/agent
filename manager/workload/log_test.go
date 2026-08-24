@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/projecteru2/agent/types"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/projecteru2/agent/types"
 )
 
 func TestLogBroadcaster(t *testing.T) {
@@ -35,6 +35,7 @@ func TestLogBroadcaster(t *testing.T) {
 		}
 	}
 	server := &http.Server{Addr: ":12310"}
+	defer func() { _ = server.Shutdown(context.Background()) }()
 
 	go func() {
 		mux := http.NewServeMux()

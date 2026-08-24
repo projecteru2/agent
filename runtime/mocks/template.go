@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/stretchr/testify/mock"
+
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/runtime"
 	"github.com/projecteru2/agent/types"
-
-	"github.com/stretchr/testify/mock"
 )
 
 type eva struct {

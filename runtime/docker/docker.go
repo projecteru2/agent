@@ -13,23 +13,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projecteru2/core/cluster"
-	coreutils "github.com/projecteru2/core/utils"
-	"github.com/vishvananda/netns"
-
-	"github.com/projecteru2/agent/common"
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
-
 	enginecontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	enginefilters "github.com/docker/docker/api/types/filters"
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-units"
+	"github.com/projecteru2/core/cluster"
 	"github.com/projecteru2/core/log"
+	coreutils "github.com/projecteru2/core/utils"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
+	"github.com/vishvananda/netns"
+
+	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 )
 
 const (

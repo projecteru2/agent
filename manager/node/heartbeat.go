@@ -4,9 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/projecteru2/agent/utils"
-
 	"github.com/projecteru2/core/log"
+
+	"github.com/projecteru2/agent/utils"
 )
 
 func (m *Manager) heartbeat(ctx context.Context) {

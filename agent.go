@@ -8,13 +8,12 @@ import (
 	"sync"
 	"syscall"
 
-	zerolog "github.com/rs/zerolog/log"
-	"github.com/urfave/cli/v3"
-	_ "go.uber.org/automaxprocs"
-
 	"github.com/jinzhu/configor"
 	"github.com/projecteru2/core/log"
 	coretypes "github.com/projecteru2/core/types"
+	zerolog "github.com/rs/zerolog/log"
+	"github.com/urfave/cli/v3"
+	_ "go.uber.org/automaxprocs"
 
 	"github.com/projecteru2/agent/api"
 	"github.com/projecteru2/agent/manager/node"
@@ -41,9 +40,11 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 		zerolog.Fatal().Err(err).Send()
 	}
 
+	logger := log.WithFunc("main")
+
 	config, err := initConfig(ctx, cmd)
 	if err != nil {
-		zerolog.Fatal().Err(err).Send()
+		logger.Fatalf(ctx, err, "load config")
 	}
 	utils.WritePid(ctx, config.PidFile)
 	defer func() { _ = os.Remove(config.PidFile) }()
@@ -55,8 +56,6 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGUSR1)
 	errChan := make(chan error, 2)
 	defer close(errChan)
-
-	logger := log.WithFunc("main")
 
 	var wg sync.WaitGroup
 

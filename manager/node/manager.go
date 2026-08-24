@@ -3,13 +3,13 @@ package node
 import (
 	"context"
 
+	"github.com/projecteru2/core/log"
+
 	"github.com/projecteru2/agent/manager"
 	"github.com/projecteru2/agent/runtime"
 	"github.com/projecteru2/agent/store"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
-
-	"github.com/projecteru2/core/log"
 )
 
 type Manager struct {

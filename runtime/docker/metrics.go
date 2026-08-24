@@ -6,11 +6,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/projecteru2/core/cluster"
-	coreutils "github.com/projecteru2/core/utils"
-
 	statsdlib "github.com/CMGS/statsd"
+	"github.com/projecteru2/core/cluster"
 	"github.com/projecteru2/core/log"
+	coreutils "github.com/projecteru2/core/utils"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

@@ -4,21 +4,24 @@ import (
 	"context"
 	"sync"
 
-	"github.com/projecteru2/agent/types"
-
 	"github.com/projecteru2/core/log"
+
+	"github.com/projecteru2/agent/types"
 )
+
+// EventHandlerFunc reacts to one workload event.
+type EventHandlerFunc func(context.Context, *types.WorkloadEventMessage)
 
 type EventHandler struct {
 	sync.Mutex
-	handlers map[string]func(context.Context, *types.WorkloadEventMessage)
+	handlers map[string]EventHandlerFunc
 }
 
 func NewEventHandler() *EventHandler {
-	return &EventHandler{handlers: make(map[string]func(context.Context, *types.WorkloadEventMessage))}
+	return &EventHandler{handlers: map[string]EventHandlerFunc{}}
 }
 
-func (e *EventHandler) Handle(action string, h func(context.Context, *types.WorkloadEventMessage)) {
+func (e *EventHandler) Handle(action string, h EventHandlerFunc) {
 	e.Lock()
 	defer e.Unlock()
 	e.handlers[action] = h

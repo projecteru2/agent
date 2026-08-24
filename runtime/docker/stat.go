@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projecteru2/agent/utils"
-
 	"github.com/projecteru2/core/log"
 	"github.com/shirou/gopsutil/v4/net"
+
+	"github.com/projecteru2/agent/utils"
 )
 
 func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //nolint

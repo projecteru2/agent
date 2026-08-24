@@ -12,12 +12,16 @@ func TestAttach(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	go func() {
 		for {
-			log := <-manager.logBroadcaster.logC
-			switch log.Type {
-			case "stdout":
-				assert.Equal(t, log.Data, "stdout")
-			case "stderr":
-				assert.Equal(t, log.Data, "stderr")
+			select {
+			case <-ctx.Done():
+				return
+			case log := <-manager.logBroadcaster.logC:
+				switch log.Type {
+				case "stdout":
+					assert.Equal(t, log.Data, "stdout")
+				case "stderr":
+					assert.Equal(t, log.Data, "stderr")
+				}
 			}
 		}
 	}()
