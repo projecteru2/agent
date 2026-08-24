@@ -134,9 +134,9 @@ func main() {
 				Usage:   "store type",
 				Sources: cli.EnvVars("ERU_AGENT_STORE"),
 			},
-			&cli.StringFlag{
+			&cli.StringSliceFlag{
 				Name:    "core-endpoint",
-				Usage:   "core endpoint",
+				Usage:   "core endpoints",
 				Sources: cli.EnvVars("ERU_AGENT_CORE_ENDPOINT"),
 			},
 			&cli.StringFlag{

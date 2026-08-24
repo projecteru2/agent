@@ -84,8 +84,8 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 		config.HostName = hostname
 	}
 
-	if c.String("core-endpoint") != "" {
-		config.Core = c.StringSlice("core-endpoint")
+	if endpoints := c.StringSlice("core-endpoint"); len(endpoints) > 0 {
+		config.Core = endpoints
 	}
 	if c.String("core-username") != "" {
 		config.Auth.Username = c.String("core-username")
