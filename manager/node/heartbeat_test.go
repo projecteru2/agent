@@ -1,7 +1,6 @@
 package node
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -12,8 +11,7 @@ import (
 )
 
 func TestNodeStatusReport(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	manager := newMockNodeManager(t)
 	runtime := manager.runtimeClient.(*runtimemocks.Nerv)
 	store := manager.store.(*storemocks.MockStore)
@@ -32,8 +30,7 @@ func TestNodeStatusReport(t *testing.T) {
 }
 
 func TestHeartbeat(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	manager := newMockNodeManager(t)
 	store := manager.store.(*storemocks.MockStore)
 

@@ -92,7 +92,7 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 			if m.logBroadcaster != nil && m.logBroadcaster.logC != nil {
 				m.logBroadcaster.logC <- l
 			}
-			if err := writer.Write(l); err != nil && !(entryPoint == "agent" && utils.IsDockerized()) {
+			if err := writer.Write(l); err != nil && (entryPoint != "agent" || !utils.IsDockerized()) {
 				logger.Errorf(ctx, err, "%s workload %s write failed", workloadName, entryPoint)
 			}
 		}

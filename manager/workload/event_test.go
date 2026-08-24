@@ -1,7 +1,6 @@
 package workload
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -13,8 +12,7 @@ import (
 )
 
 func TestEvent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	manager := newMockWorkloadManager(t)
 	runtime := manager.runtimeClient.(*runtimemocks.Nerv)

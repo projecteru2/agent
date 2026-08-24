@@ -15,7 +15,7 @@ import (
 func TestRun(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	runtime := manager.runtimeClient.(*mocks.Nerv)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second*30)
 	defer cancel()
 	go func() {
 		runtime.StartEvents()
@@ -45,7 +45,7 @@ func newMockWorkloadManager(t *testing.T) *Manager {
 		GlobalConnectionTimeout: 5 * time.Second,
 	}
 
-	m, err := NewManager(context.Background(), config)
+	m, err := NewManager(t.Context(), config)
 	assert.Nil(t, err)
 	return m
 }

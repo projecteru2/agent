@@ -15,7 +15,7 @@ import (
 func TestLogBroadcaster(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 
-	logCtx, logCancel := context.WithCancel(context.Background())
+	logCtx, logCancel := context.WithCancel(t.Context())
 	defer logCancel()
 
 	handler := func(w http.ResponseWriter, req *http.Request) {
@@ -61,7 +61,7 @@ func TestLogBroadcaster(t *testing.T) {
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 7*time.Second)
 	defer cancel()
 	go manager.logBroadcaster.run(ctx)
 
@@ -78,7 +78,7 @@ func TestLogBroadcaster(t *testing.T) {
 	defer resp.Body.Close()
 
 	reader := bufio.NewReader(resp.Body)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		line, err := reader.ReadBytes('\n')
 		assert.Nil(t, err)
 		t.Log(string(line))

@@ -117,8 +117,6 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 	wg := &sync.WaitGroup{}
 	wg.Add(len(subscribers))
 	for ID, sub := range subscribers {
-		ID := ID
-		sub := sub
 		_ = utils.Pool.Submit(func() {
 			defer wg.Done()
 			if sub.isDone() {
@@ -130,7 +128,7 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 				sub.errChan <- err
 				return
 			}
-			sub.buf.Flush()
+			_ = sub.buf.Flush()
 		})
 	}
 	wg.Wait()

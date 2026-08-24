@@ -36,6 +36,8 @@ const (
 	fieldPodName         = "ERU_POD"
 	fieldNodeName        = "ERU_NODE_NAME"
 	fieldStoreIdentifier = "eru.coreid"
+
+	defaultNIC = "eth0"
 )
 
 type Docker struct {
@@ -66,7 +68,9 @@ func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, err
 	}
 
 	if utils.IsDockerized() {
-		os.Setenv("HOST_PROC", "/hostProc")
+		if err = os.Setenv("HOST_PROC", "/hostProc"); err != nil {
+			return nil, err
+		}
 	}
 
 	cpus, err := cpu.Info()
@@ -82,7 +86,7 @@ func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, err
 	logger.Infof(ctx, "Host has %d memory", memory.Total)
 
 	d.cpuCore = float64(len(cpus))
-	d.memory = int64(memory.Total)
+	d.memory = int64(min(memory.Total, math.MaxInt64))
 	return d, nil
 }
 
@@ -127,10 +131,10 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 	_ = utils.Pool.Submit(func() {
 		defer func() {
 			resp.Close()
-			outw.Close()
-			errw.Close()
-			outr.Close()
-			errr.Close()
+			_ = outw.Close()
+			_ = errw.Close()
+			_ = outr.Close()
+			_ = errr.Close()
 			logger.Debug(ctx, "buf pipes closed")
 		}()
 
@@ -284,34 +288,6 @@ func (d *Docker) checkHostname(env []string) bool {
 	return false
 }
 
-func getAddrsFromNS(cid string, ifname string) ([]net.Addr, error) {
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	origns, _ := netns.Get()
-	defer origns.Close()
-	defer netns.Set(origns) //nolint:errcheck
-
-	containerNS, err := netns.GetFromDocker(cid)
-	if err != nil {
-		return nil, err
-	}
-	defer containerNS.Close()
-
-	if err := netns.Set(containerNS); err != nil {
-		return nil, err
-	}
-	eth0, err := net.InterfaceByName(ifname)
-	if err != nil {
-		return nil, err
-	}
-	addrs, err := eth0.Addrs()
-	if err != nil {
-		return nil, err
-	}
-	return addrs, nil
-}
-
 func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, error) {
 	var c enginecontainer.InspectResponse
 	var err error
@@ -353,18 +329,9 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 				networks[name] = endpoint.IPAddress
 			}
 			if networks[name] == "" {
-				addrs, err := getAddrsFromNS(c.ID, "eth0")
-				if err != nil {
-					log.Error(ctx, err, "failed to get eth0 addrs")
-				}
-				if len(addrs) > 0 {
-					ip, _, err := net.ParseCIDR(addrs[0].String())
-					if err == nil {
-						container.LocalIP = ip.String()
-						networks[name] = ip.String()
-					} else {
-						log.Error(ctx, err, "failed to parse cidr %s", addrs[0].String())
-					}
+				if ip := addrFromNS(ctx, c.ID, defaultNIC); ip != "" {
+					container.LocalIP = ip
+					networks[name] = ip
 				}
 			}
 			break
@@ -397,4 +364,47 @@ func (d *Docker) getBlkioStats(ctx context.Context, ID string) (*enginecontainer
 		return nil, err
 	}
 	return &fullStat.BlkioStats, nil
+}
+
+func addrFromNS(ctx context.Context, cid, ifname string) string {
+	logger := log.WithFunc("addrFromNS").WithField("ID", cid)
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	origns, _ := netns.Get()
+	defer func() {
+		_ = netns.Set(origns)
+		_ = origns.Close()
+	}()
+
+	containerNS, err := netns.GetFromDocker(cid)
+	if err != nil {
+		logger.Error(ctx, err, "failed to get the workload netns")
+		return ""
+	}
+	defer func() { _ = containerNS.Close() }()
+
+	if err = netns.Set(containerNS); err != nil {
+		logger.Error(ctx, err, "failed to enter the workload netns")
+		return ""
+	}
+	nic, err := net.InterfaceByName(ifname)
+	if err != nil {
+		logger.Error(ctx, err, "failed to find %s", ifname)
+		return ""
+	}
+	addrs, err := nic.Addrs()
+	if err != nil {
+		logger.Error(ctx, err, "failed to get %s addrs", ifname)
+		return ""
+	}
+	if len(addrs) == 0 {
+		return ""
+	}
+	ip, _, err := net.ParseCIDR(addrs[0].String())
+	if err != nil {
+		logger.Error(ctx, err, "failed to parse cidr %s", addrs[0].String())
+		return ""
+	}
+	return ip.String()
 }

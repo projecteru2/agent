@@ -32,7 +32,7 @@ func CheckTCP(ctx context.Context, ID string, backends []string, timeout time.Du
 			logger.Debug(ctx, "Check health failed via tcp")
 			return false
 		}
-		conn.Close()
+		_ = conn.Close()
 	}
 	return true
 }
@@ -69,7 +69,7 @@ func checkOneURL(ctx context.Context, url string, expectedCode int, timeout time
 		logger.Error(ctx, err, "Error when checking")
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if expectedCode == 0 {
 		return resp.StatusCode < 500 && resp.StatusCode >= 200
 	}

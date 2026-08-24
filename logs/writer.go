@@ -194,7 +194,7 @@ func (w *Writer) checkError(err error) {
 		log.WithFunc("checkError").Error(nil, err, "Sending log failed") //nolint
 		w.withLock(func() {
 			if w.enc != nil {
-				w.enc.Close()
+				_ = w.enc.Close()
 				w.enc = nil
 				w.needReconnect = true
 			}

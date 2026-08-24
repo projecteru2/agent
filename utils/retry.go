@@ -37,7 +37,7 @@ func (r *RetryTask) Run(ctx context.Context) error {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	for i := 0; i < r.MaxAttempts; i++ {
+	for range r.MaxAttempts {
 		select {
 		case <-r.ctx.Done():
 			logger.Debug(ctx, "abort")

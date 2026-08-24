@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	coretypes "github.com/projecteru2/core/types"
-	coreutils "github.com/projecteru2/core/utils"
 
 	"github.com/projecteru2/agent/utils"
 
@@ -33,16 +32,16 @@ func generateContainerMeta(ctx context.Context, c enginecontainer.InspectRespons
 	}
 
 	container := &Container{
-		StatusMeta:  coretypes.StatusMeta{ID: c.ID},
+		ID:          c.ID,
 		Name:        name,
 		EntryPoint:  entrypoint,
 		Ident:       ident,
 		Labels:      labels,
 		Env:         normalizeEnv(c.Config.Env),
 		HealthCheck: meta.HealthCheck,
-		CPUQuota:    c.HostConfig.Resources.CPUQuota,
-		CPUPeriod:   c.HostConfig.Resources.CPUPeriod,
-		Memory:      coreutils.Max(c.HostConfig.Memory, c.HostConfig.MemoryReservation),
+		CPUQuota:    c.HostConfig.CPUQuota,
+		CPUPeriod:   c.HostConfig.CPUPeriod,
+		Memory:      max(c.HostConfig.Memory, c.HostConfig.MemoryReservation),
 	}
 
 	if !c.State.Running || c.State.Pid == 0 {
@@ -52,7 +51,7 @@ func generateContainerMeta(ctx context.Context, c enginecontainer.InspectRespons
 		container.Pid = c.State.Pid
 		container.Running = c.State.Running
 		// a running workload without a declared health check is always healthy
-		container.Healthy = !(meta.HealthCheck != nil)
+		container.Healthy = meta.HealthCheck == nil
 	}
 
 	log.WithFunc("generateContainerMeta").Debugf(ctx, "Generate container meta %v %v", container.Name, container.EntryPoint)

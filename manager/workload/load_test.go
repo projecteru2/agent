@@ -1,7 +1,6 @@
 package workload
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -14,7 +13,7 @@ import (
 func TestLoad(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	store := manager.store.(*mocks.MockStore)
-	ctx := context.Background()
+	ctx := t.Context()
 	err := manager.initWorkloadStatus(ctx)
 	time.Sleep(2 * time.Second)
 	assert.Nil(t, err)

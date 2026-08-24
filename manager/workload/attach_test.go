@@ -1,7 +1,6 @@
 package workload
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -9,8 +8,7 @@ import (
 )
 
 func TestAttach(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	manager := newMockWorkloadManager(t)
 	go func() {
 		for {

@@ -1,7 +1,6 @@
 package logs
 
 import (
-	"context"
 	"net"
 	"testing"
 	"time"
@@ -13,8 +12,7 @@ import (
 )
 
 func TestNewWriterWithUDP(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	addr := "udp://127.0.0.1:23456"
 	w, err := NewWriter(ctx, addr, true)
 	assert.NoError(t, err)
@@ -22,8 +20,7 @@ func TestNewWriterWithUDP(t *testing.T) {
 }
 
 func TestNewWriterWithTCP(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	tcpL, err := net.Listen("tcp", ":34567")
 	defer tcpL.Close()
@@ -34,8 +31,7 @@ func TestNewWriterWithTCP(t *testing.T) {
 }
 
 func TestNewWriterWithJournal(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	addr := "journal://system"
 	enc, err := CreateJournalEncoder()
 	if err == common.ErrJournalDisable {
@@ -72,8 +68,7 @@ func TestNewWriters(t *testing.T) {
 	assert.NoError(t, err)
 	defer tcpL.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for addr, expectedErr := range cases {
 		go func(addr string, expectedErr error) {
@@ -91,8 +86,7 @@ func TestNewWriters(t *testing.T) {
 }
 
 func TestReconnect(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	addr := "tcp://127.0.0.1:34567"
 	writer, err := NewWriter(ctx, addr, false)

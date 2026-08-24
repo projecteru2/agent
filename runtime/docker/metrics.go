@@ -14,6 +14,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const (
+	labelNIC = "nic"
+	labelDev = "dev"
+)
+
 var clients *haxmap.Map[string, *MetricsClient]
 
 type MetricsClient struct {
@@ -134,82 +139,82 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		Name:        "bytes_send",
 		Help:        "bytes send.",
 		ConstLabels: labels,
-	}, []string{"nic"})
+	}, []string{labelNIC})
 	bytesRecv := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "bytes_recv",
 		Help:        "bytes recv.",
 		ConstLabels: labels,
-	}, []string{"nic"})
+	}, []string{labelNIC})
 	packetsSent := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "packets_send",
 		Help:        "packets send.",
 		ConstLabels: labels,
-	}, []string{"nic"})
+	}, []string{labelNIC})
 	packetsRecv := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "packets_recv",
 		Help:        "packets recv.",
 		ConstLabels: labels,
-	}, []string{"nic"})
+	}, []string{labelNIC})
 	errIn := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "err_in",
 		Help:        "err in.",
 		ConstLabels: labels,
-	}, []string{"nic"})
+	}, []string{labelNIC})
 	errOut := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "err_out",
 		Help:        "err out.",
 		ConstLabels: labels,
-	}, []string{"nic"})
+	}, []string{labelNIC})
 	dropIn := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "drop_in",
 		Help:        "drop in.",
 		ConstLabels: labels,
-	}, []string{"nic"})
+	}, []string{labelNIC})
 	dropOut := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "drop_out",
 		Help:        "drop out.",
 		ConstLabels: labels,
-	}, []string{"nic"})
+	}, []string{labelNIC})
 	ioServiceBytesRead := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "io_service_bytes_read",
 		Help:        "number of bytes read to the disk by the group.",
 		ConstLabels: labels,
-	}, []string{"dev"})
+	}, []string{labelDev})
 	ioServiceBytesWrite := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "io_service_bytes_write",
 		Help:        "number of bytes write to the disk by the group.",
 		ConstLabels: labels,
-	}, []string{"dev"})
+	}, []string{labelDev})
 	ioServicedRead := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "io_serviced_read",
 		Help:        "number of read IOs to the disk by the group.",
 		ConstLabels: labels,
-	}, []string{"dev"})
+	}, []string{labelDev})
 	ioServicedWrite := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "io_serviced_write",
 		Help:        "number of write IOs to the disk by the group.",
 		ConstLabels: labels,
-	}, []string{"dev"})
+	}, []string{labelDev})
 	ioServiceBytesReadPerSecond := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "io_service_bytes_read_per_second",
 		Help:        "number of bytes read per second to the disk by the group.",
 		ConstLabels: labels,
-	}, []string{"dev"})
+	}, []string{labelDev})
 	ioServiceBytesWritePerSecond := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "io_service_bytes_write_per_second",
 		Help:        "number of bytes write per second to the disk by the group.",
 		ConstLabels: labels,
-	}, []string{"dev"})
+	}, []string{labelDev})
 	ioServicedReadPerSecond := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "io_serviced_read_per_second",
 		Help:        "number of read IOs per second to the disk by the group.",
 		ConstLabels: labels,
-	}, []string{"dev"})
+	}, []string{labelDev})
 	ioServicedWritePerSecond := prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "io_serviced_write_per_second",
 		Help:        "number of write IOs per second to the disk by the group.",
 		ConstLabels: labels,
-	}, []string{"dev"})
+	}, []string{labelDev})
 	tag := fmt.Sprintf("%s.%s", hostname, coreutils.ShortID(container.ID))
 	endpoint := fmt.Sprintf("%s.%s", container.Name, container.EntryPoint)
 	prefix := fmt.Sprintf("%s.%s.%s", cluster.ERUMark, endpoint, tag)

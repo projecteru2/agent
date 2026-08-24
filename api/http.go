@@ -17,7 +17,7 @@ import (
 	"github.com/projecteru2/agent/version"
 )
 
-type JSON map[string]interface{}
+type JSON map[string]any
 
 type Handler struct {
 	config           *types.Config
@@ -87,7 +87,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 			logger.Error(req.Context(), err, "connect failed")
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		h.workloadsManager.PullLog(req.Context(), app, buf)
 	}
 }

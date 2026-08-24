@@ -16,7 +16,7 @@ func TestRun(t *testing.T) {
 	manager := newMockNodeManager(t)
 	store := manager.store.(*storemocks.MockStore)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(manager.config.HeartbeatInterval*3)*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Duration(manager.config.HeartbeatInterval*3)*time.Second)
 	defer cancel()
 
 	status, err := store.GetNodeStatus(ctx, "fake")
@@ -55,7 +55,7 @@ func newMockNodeManager(t *testing.T) *Manager {
 		GlobalConnectionTimeout: 5 * time.Second,
 	}
 
-	m, err := NewManager(context.Background(), config)
+	m, err := NewManager(t.Context(), config)
 	assert.Nil(t, err)
 	return m
 }
