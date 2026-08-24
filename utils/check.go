@@ -37,34 +37,17 @@ func CheckTCP(ctx context.Context, ID string, backends []string, timeout time.Du
 	return true
 }
 
-func get(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
-	if client == nil {
-		client = http.DefaultClient
-	}
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := client.Do(req.WithContext(ctx))
-	if err != nil {
-		select {
-		case <-ctx.Done():
-			err = ctx.Err()
-		default:
-		}
-	}
-	return resp, err
-}
-
 func checkOneURL(ctx context.Context, url string, expectedCode int, timeout time.Duration) bool {
 	logger := log.WithFunc("checkOneURL").WithField("url", url)
-	var resp *http.Response
-	var err error
-	WithTimeout(ctx, timeout, func(ctx context.Context) {
-		resp, err = get(ctx, nil, url) //nolint
-	})
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		logger.Error(ctx, err, "Error when building request")
+		return false
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		logger.Error(ctx, err, "Error when checking")
 		return false

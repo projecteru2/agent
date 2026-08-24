@@ -31,7 +31,7 @@ func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[strin
 func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 	logger := log.WithFunc("initWorkloadStatus")
 	logger.Info(ctx, "load workloads")
-	workloadIDs, err := m.listWorkloadIDsWithRetry(ctx, m.getBaseFilter())
+	workloadIDs, err := m.listWorkloadIDsWithRetry(ctx, m.baseFilter)
 	if err != nil {
 		logger.Error(ctx, err, "failed to load workloads")
 		return err

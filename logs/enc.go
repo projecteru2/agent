@@ -71,6 +71,6 @@ func (c *JournalEncoder) Encode(logline *types.Log) error {
 	return journal.Send(p, journal.PriInfo, vars)
 }
 
-func (c *JournalEncoder) Close() (err error) {
-	return err
+func (c *JournalEncoder) Close() error {
+	return nil
 }

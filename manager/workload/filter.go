@@ -1,32 +1,20 @@
 package workload
 
 import (
-	"sync"
-
 	"github.com/projecteru2/core/cluster"
 
 	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 )
 
-var (
-	filter map[string]string
-	once   sync.Once
-)
-
-func (m *Manager) getBaseFilter() map[string]string {
-	once.Do(func() {
-		filter = map[string]string{
-			cluster.ERUMark: "1",
+func newBaseFilter(config *types.Config, storeIdentifier string) map[string]string {
+	filter := map[string]string{cluster.ERUMark: "1"}
+	if config.CheckOnlyMine && utils.UseLabelAsFilter() {
+		filter[common.ERUNodeName] = config.HostName
+		if storeIdentifier != "" {
+			filter[common.ERUCoreID] = storeIdentifier
 		}
-
-		if m.config.CheckOnlyMine && utils.UseLabelAsFilter() {
-			filter[common.ERUNodeName] = m.config.HostName
-			if m.storeIdentifier != "" {
-				filter[common.ERUCoreID] = m.storeIdentifier
-			}
-		}
-	})
-
+	}
 	return filter
 }

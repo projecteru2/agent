@@ -28,7 +28,7 @@ func (m *Manager) healthCheck(ctx context.Context) {
 func (m *Manager) checkAllWorkloads(ctx context.Context) {
 	logger := log.WithFunc("checkAllWorkloads")
 	logger.Debug(ctx, "health check begin")
-	workloadIDs, err := m.runtimeClient.ListWorkloadIDs(ctx, m.getBaseFilter())
+	workloadIDs, err := m.runtimeClient.ListWorkloadIDs(ctx, m.baseFilter)
 	if err != nil {
 		logger.Error(ctx, err, "error when list all workloads with label \"ERU=1\"")
 		return

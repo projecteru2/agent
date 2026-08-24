@@ -17,7 +17,7 @@ func (m *Manager) initMonitor(ctx context.Context) (<-chan *types.WorkloadEventM
 	eventHandler.Handle(common.StatusStart, m.handleWorkloadStart)
 	eventHandler.Handle(common.StatusDie, m.handleWorkloadDie)
 
-	eventChan, errChan := m.runtimeClient.Events(ctx, m.getBaseFilter())
+	eventChan, errChan := m.runtimeClient.Events(ctx, m.baseFilter)
 	return eventChan, errChan
 }
 
@@ -50,7 +50,7 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 	defer m.checkWorkloadMutex.Unlock()
 
 	if retryTask, ok := m.startingWorkloads[ID]; ok {
-		retryTask.Stop(ctx)
+		retryTask.Stop()
 	}
 
 	retryTask := utils.NewRetryTask(ctx, utils.GetMaxAttemptsByTTL(m.config.GetHealthCheckStatusTTL()), func() error {

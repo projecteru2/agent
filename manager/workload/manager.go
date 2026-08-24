@@ -20,8 +20,9 @@ type Manager struct {
 	store         store.Store
 	runtimeClient runtime.Runtime
 
-	nodeIP   string
-	forwards *utils.HashBackends
+	nodeIP     string
+	forwards   *utils.HashBackends
+	baseFilter map[string]string
 
 	checkWorkloadMutex sync.Mutex
 	startingWorkloads  map[string]*utils.RetryTask
@@ -49,6 +50,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		startingWorkloads: map[string]*utils.RetryTask{},
 	}
 	m.storeIdentifier = m.store.GetIdentifier(ctx)
+	m.baseFilter = newBaseFilter(config, m.storeIdentifier)
 	return m, nil
 }
 
