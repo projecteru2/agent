@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/projecteru2/agent/utils"
 	coretypes "github.com/projecteru2/core/types"
+
+	"github.com/projecteru2/agent/utils"
 )
 
 // Container docker container

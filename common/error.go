@@ -1,6 +1,6 @@
 package common
 
-import "github.com/pkg/errors"
+import "errors"
 
 // ErrNotImplemented .
 var (

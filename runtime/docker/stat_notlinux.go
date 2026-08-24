@@ -6,9 +6,9 @@ package docker
 import (
 	"context"
 
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/docker"
-	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/docker"
+	"github.com/shirou/gopsutil/v4/net"
 )
 
 func getStats(ctx context.Context, _ string, _ int, _ string) (*docker.CgroupCPUStat, cpu.TimesStat, []net.IOCountersStat, error) {

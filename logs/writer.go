@@ -33,8 +33,7 @@ type Writer struct {
 	needReconnect bool
 }
 
-type discard struct {
-}
+type discard struct{}
 
 // Write writer
 func (d discard) Write([]byte) (n int, err error) {

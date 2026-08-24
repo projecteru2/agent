@@ -3,8 +3,9 @@ package core
 import (
 	"context"
 
-	"github.com/projecteru2/agent/utils"
 	pb "github.com/projecteru2/core/rpc/gen"
+
+	"github.com/projecteru2/agent/utils"
 )
 
 // GetIdentifier returns the identifier of core

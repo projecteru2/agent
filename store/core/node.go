@@ -5,10 +5,11 @@ import (
 	"errors"
 	"io"
 
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/core/log"
 	pb "github.com/projecteru2/core/rpc/gen"
+
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 )
 
 // GetNode return a node by core

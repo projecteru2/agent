@@ -3,6 +3,6 @@
 
 package utils
 
-func GetDevicePath(uint64, uint64) (devPath string, err error) {
+func GetDevicePath(_, _ uint64) (string, error) {
 	return "/dev/random", nil
 }

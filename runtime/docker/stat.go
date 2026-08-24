@@ -8,7 +8,7 @@ import (
 	"github.com/projecteru2/agent/utils"
 
 	"github.com/projecteru2/core/log"
-	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/v4/net"
 )
 
 // CollectWorkloadMetrics .
@@ -94,7 +94,6 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		cpuHostUserUsage := 0.0
 		if deltaSystemCPUUserUsage > 0 {
 			cpuHostUserUsage = deltaContainerCPUUserUsage / deltaSystemCPUUserUsage
-
 		}
 		mClient.CPUHostUsage(cpuHostUsage)
 		mClient.CPUHostSysUsage(cpuHostSysUsage)

@@ -8,10 +8,11 @@ import (
 	"sync"
 
 	"github.com/alphadose/haxmap"
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
 	corelog "github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
+
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 )
 
 type subscriber struct {
@@ -81,7 +82,7 @@ func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.R
 	}
 }
 
-func (l *logBroadcaster) unsubscribe(app string, ID string) {
+func (l *logBroadcaster) unsubscribe(app, ID string) {
 	l.Lock()
 	defer l.Unlock()
 

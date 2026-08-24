@@ -10,7 +10,7 @@ import (
 )
 
 func TestBackoffRetry(t *testing.T) {
-	var errNotSuccess = errors.New("not success")
+	errNotSuccess := errors.New("not success")
 	i := 0
 	f := func() error {
 		i++
@@ -31,7 +31,7 @@ func TestBackoffRetryWithCancel(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	var errNotSuccess = errors.New("not success")
+	errNotSuccess := errors.New("not success")
 	i := 0
 	f := func() error {
 		i++

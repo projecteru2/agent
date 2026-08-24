@@ -7,24 +7,20 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/docker"
-	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/docker"
+	"github.com/shirou/gopsutil/v4/net"
 )
 
 func getStats(ctx context.Context, ID string, pid int, proc string) (*docker.CgroupCPUStat, cpu.TimesStat, []net.IOCountersStat, error) {
 	// get container cpu stats
-	containerCPUStatsWithoutUsage, err := docker.CgroupCPUDockerWithContext(ctx, ID)
+	containerCPUStats, err := docker.CgroupCPUDockerWithContext(ctx, ID)
 	if err != nil {
 		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
 	}
-	containerCPUStatsUsage, err := docker.CgroupCPUDockerUsageWithContext(ctx, ID)
+	containerCPUStats.Usage, err = docker.CgroupCPUDockerUsageWithContext(ctx, ID)
 	if err != nil {
 		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
-	}
-	containerCPUStats := &docker.CgroupCPUStat{
-		TimesStat: *containerCPUStatsWithoutUsage,
-		Usage:     containerCPUStatsUsage,
 	}
 	// get system cpu stats
 	systemCPUsStats, err := cpu.TimesWithContext(ctx, false)

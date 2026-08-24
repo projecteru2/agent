@@ -4,40 +4,44 @@
 package utils
 
 import (
-	"io/ioutil" //nolint
 	"os"
 	"path"
 	"syscall"
 
-	"github.com/projecteru2/agent/common"
 	"golang.org/x/sys/unix"
+
+	"github.com/projecteru2/agent/common"
 )
 
 const (
 	blkDevDir = "/dev/"
 )
 
-func GetDevicePath(major, minor uint64) (devPath string, err error) {
-	files, err := ioutil.ReadDir(blkDevDir)
+func GetDevicePath(major, minor uint64) (string, error) {
+	entries, err := os.ReadDir(blkDevDir)
 	if err != nil {
-		return
+		return "", err
 	}
 	dev := getDev(major, minor)
-	for _, fi := range files {
-		if (fi.Mode() & os.ModeDevice) == os.ModeDevice {
-			stat, ok := fi.Sys().(*syscall.Stat_t)
-			if !ok {
-				err = common.ErrSyscallFailed
-				return
-			}
-			if stat.Rdev == dev {
-				return path.Join(blkDevDir, fi.Name()), nil
-			}
+	for _, entry := range entries {
+		fi, err := entry.Info()
+		if err != nil {
+			return "", err
+		}
+		if (fi.Mode() & os.ModeDevice) != os.ModeDevice {
+			continue
+		}
+		stat, ok := fi.Sys().(*syscall.Stat_t)
+		if !ok {
+			return "", common.ErrSyscallFailed
+		}
+		if stat.Rdev == dev {
+			return path.Join(blkDevDir, fi.Name()), nil
 		}
 	}
 	return "", common.ErrDevNotFound
 }
 
-func getDev(major, minor uint64) (dev uint64) {
+func getDev(major, minor uint64) uint64 {
 	return unix.Mkdev(uint32(major), uint32(minor))
 }

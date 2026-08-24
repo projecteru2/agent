@@ -5,8 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/core/log"
+
+	"github.com/projecteru2/agent/utils"
 )
 
 func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[string]string) ([]string, error) {

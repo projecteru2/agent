@@ -5,9 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/core/client"
 	pb "github.com/projecteru2/core/rpc/gen"
+
+	"github.com/projecteru2/agent/types"
 
 	"github.com/patrickmn/go-cache"
 	"github.com/projecteru2/core/log"
@@ -20,8 +21,10 @@ type Store struct {
 	cache      *cache.Cache
 }
 
-var coreStore *Store
-var once sync.Once
+var (
+	coreStore *Store
+	once      sync.Once
+)
 
 // New new a Store
 func New(ctx context.Context, config *types.Config) (*Store, error) {

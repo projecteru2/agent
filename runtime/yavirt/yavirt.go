@@ -9,12 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/projecteru2/agent/common"
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/core/cluster"
 	"github.com/projecteru2/libyavirt/client"
 	yavirttypes "github.com/projecteru2/libyavirt/types"
+
+	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 
 	"github.com/projecteru2/core/log"
 )

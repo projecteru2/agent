@@ -3,15 +3,16 @@ package types
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"time"
 
-	coretypes "github.com/projecteru2/core/types"
+	"github.com/urfave/cli/v3"
+	"gopkg.in/yaml.v3"
 
 	"github.com/projecteru2/core/log"
-	cli "github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v2"
+	coretypes "github.com/projecteru2/core/types"
 )
 
 // DockerConfig contain docker endpoint
@@ -79,14 +80,14 @@ func (config *Config) GetHealthCheckStatusTTL() int64 {
 	return 0
 }
 
-// Prepare 从 cli 覆写并做准备
-func (config *Config) Prepare(c *cli.Context) {
+// Prepare overrides the loaded config with the command line flags.
+func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	if c.String("hostname") != "" {
 		config.HostName = c.String("hostname")
 	} else {
 		hostname, err := os.Hostname()
 		if err != nil {
-			log.WithFunc("Prepare").Fatalf(c.Context, err, "Get hostname failed %v", err)
+			log.WithFunc("Prepare").Fatalf(ctx, err, "Get hostname failed")
 		}
 		config.HostName = hostname
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 
-	"github.com/coreos/go-systemd/journal"
+	"github.com/coreos/go-systemd/v22/journal"
 )
 
 // Encoder .
@@ -81,5 +81,5 @@ func (c *JournalEncoder) Encode(logline *types.Log) error {
 
 // Close .
 func (c *JournalEncoder) Close() (err error) {
-	return
+	return err
 }

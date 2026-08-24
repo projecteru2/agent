@@ -9,12 +9,12 @@ import (
 	// enable profile
 	_ "net/http/pprof" //nolint
 
+	"github.com/projecteru2/core/log"
+
 	"github.com/projecteru2/agent/manager/workload"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/version"
-	"github.com/projecteru2/core/log"
 
-	"github.com/bmizerany/pat"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -83,27 +83,18 @@ func (h *Handler) Serve() {
 	}
 	logger := log.WithFunc("serve")
 
-	restfulAPIServer := pat.New()
-	handlers := map[string]map[string]func(http.ResponseWriter, *http.Request){
-		"GET": {
-			"/profile/": h.profile,
-			"/version/": h.version,
-			"/log/":     h.log,
-		},
-	}
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /profile/{$}", h.profile)
+	mux.HandleFunc("GET /version/{$}", h.version)
+	mux.HandleFunc("GET /log/{$}", h.log)
+	mux.Handle("GET /metrics", promhttp.Handler())
+	mux.Handle("/debug/pprof/", http.DefaultServeMux)
 
-	for method, routes := range handlers {
-		for route, handler := range routes {
-			restfulAPIServer.Add(method, route, http.HandlerFunc(handler))
-		}
-	}
-
-	http.Handle("/", restfulAPIServer)
-	http.Handle("/metrics", promhttp.Handler())
 	logger.Infof(nil, "http api started %s", h.config.API.Addr) //nolint
 
 	server := &http.Server{
 		Addr:              h.config.API.Addr,
+		Handler:           mux,
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 	if err := server.ListenAndServe(); err != nil {

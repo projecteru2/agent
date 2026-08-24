@@ -13,37 +13,40 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/projecteru2/agent/common"
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/version"
 	coreutils "github.com/projecteru2/core/utils"
 	yavirtclient "github.com/projecteru2/libyavirt/client"
 	yavirttypes "github.com/projecteru2/libyavirt/types"
+
+	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/version"
 
 	engineapi "github.com/docker/docker/client"
 	"github.com/projecteru2/core/log"
 )
 
-var dockerized bool
-var once sync.Once
+var (
+	dockerized bool
+	once       sync.Once
+)
 
 // MakeDockerClient make a docker client
 func MakeDockerClient(config *types.Config) (*engineapi.Client, error) {
-	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("eru-agent-%s", version.VERSION)}
-	return engineapi.NewClient(config.Docker.Endpoint, common.DockerCliVersion, nil, defaultHeaders)
+	return engineapi.NewClientWithOpts(
+		engineapi.WithHost(config.Docker.Endpoint),
+		engineapi.WithVersion(common.DockerCliVersion),
+		engineapi.WithHTTPHeaders(map[string]string{"User-Agent": "eru-agent-" + version.VERSION}),
+	)
 }
 
 // MakeYavirtClient make a yavirt client
 func MakeYavirtClient(config *types.Config) (yavirtclient.Client, error) {
-	yCfg := &yavirttypes.Config{
-		URI: config.Yavirt.Endpoint,
-	}
-	return yavirtclient.New(yCfg)
+	return yavirtclient.New(&yavirttypes.Config{URI: config.Yavirt.Endpoint})
 }
 
 // WritePid write pid
 func WritePid(path string) {
-	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
+	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
 		log.Fatalf(nil, err, "Save pid file failed %s", err) //nolint
 	}
 }

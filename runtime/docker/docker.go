@@ -13,14 +13,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projecteru2/agent/common"
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/core/cluster"
 	coreutils "github.com/projecteru2/core/utils"
 	"github.com/vishvananda/netns"
 
-	enginetypes "github.com/docker/docker/api/types"
+	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
+
 	enginecontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	enginefilters "github.com/docker/docker/api/types/filters"
@@ -28,8 +28,8 @@ import (
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/docker/go-units"
 	"github.com/projecteru2/core/log"
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/mem"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 // Docker .
@@ -101,9 +101,9 @@ func (d *Docker) getFilterArgs(filters map[string]string) enginefilters.Args {
 // ListWorkloadIDs lists workload IDs filtered by given condition
 func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string) ([]string, error) {
 	f := d.getFilterArgs(filters)
-	opts := enginetypes.ContainerListOptions{Filters: f, All: true}
+	opts := enginecontainer.ListOptions{Filters: f, All: true}
 
-	var containers []enginetypes.Container
+	var containers []enginecontainer.Summary
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
 		containers, err = d.client.ContainerList(ctx, opts)
@@ -123,7 +123,7 @@ func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 // AttachWorkload .
 func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.Reader, error) {
 	logger := log.WithFunc("AttachWorkload").WithField("ID", ID)
-	resp, err := d.client.ContainerAttach(ctx, ID, enginetypes.ContainerAttachOptions{
+	resp, err := d.client.ContainerAttach(ctx, ID, enginecontainer.AttachOptions{
 		Stream: true,
 		Stdin:  false,
 		Stdout: true,
@@ -205,7 +205,7 @@ func getAddrsFromNS(cid string, ifname string) ([]net.Addr, error) {
 // detectWorkload detect a container by ID
 func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, error) {
 	// 标准化为 inspect 的数据
-	var c enginetypes.ContainerJSON
+	var c enginecontainer.InspectResponse
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
 		c, err = d.client.ContainerInspect(ctx, ID)
@@ -282,16 +282,16 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 		defer close(errChan)
 
 		f := d.getFilterArgs(filters)
-		f.Add("type", events.ContainerEventType)
-		options := enginetypes.EventsOptions{Filters: f}
+		f.Add("type", string(events.ContainerEventType))
+		options := events.ListOptions{Filters: f}
 		m, e := d.client.Events(ctx, options)
 		for {
 			select {
 			case message := <-m:
 				eventChan <- &types.WorkloadEventMessage{
-					ID:       message.ID,
-					Type:     message.Type,
-					Action:   message.Action,
+					ID:       message.Actor.ID,
+					Type:     string(message.Type),
+					Action:   string(message.Action),
 					TimeNano: message.TimeNano,
 				}
 			case err := <-e:
@@ -347,7 +347,7 @@ func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*t
 
 // GetWorkloadName returns the name of workload
 func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error) {
-	var containerJSON enginetypes.ContainerJSON
+	var containerJSON enginecontainer.InspectResponse
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
 		containerJSON, err = d.client.ContainerInspect(ctx, ID)
@@ -379,7 +379,7 @@ func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]stri
 	return extra, nil
 }
 
-func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginetypes.StatsJSON, error) {
+func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginecontainer.StatsResponse, error) {
 	logger := log.WithFunc("getContainerStats").WithField("ID", ID)
 	rawStat, err := d.client.ContainerStatsOneShot(ctx, ID)
 	if err != nil {
@@ -391,11 +391,11 @@ func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginetypes
 		logger.Error(ctx, err, "failed to read container stats")
 		return nil, err
 	}
-	stats := &enginetypes.StatsJSON{}
+	stats := &enginecontainer.StatsResponse{}
 	return stats, json.Unmarshal(b, stats)
 }
 
-func (d *Docker) getBlkioStats(ctx context.Context, ID string) (*enginetypes.BlkioStats, error) {
+func (d *Docker) getBlkioStats(ctx context.Context, ID string) (*enginecontainer.BlkioStats, error) {
 	fullStat, err := d.getContainerStats(ctx, ID)
 	if err != nil {
 		return nil, err

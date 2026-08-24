@@ -4,11 +4,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/projecteru2/agent/utils"
 	coretypes "github.com/projecteru2/core/types"
 	coreutils "github.com/projecteru2/core/utils"
 
-	enginetypes "github.com/docker/docker/api/types"
+	"github.com/projecteru2/agent/utils"
+
+	enginecontainer "github.com/docker/docker/api/types/container"
 	"github.com/projecteru2/core/log"
 )
 
@@ -26,7 +27,7 @@ func normalizeEnv(env []string) map[string]string {
 }
 
 // generateContainerMeta make meta obj
-func generateContainerMeta(ctx context.Context, c enginetypes.ContainerJSON, meta *coretypes.LabelMeta, labels map[string]string) (*Container, error) {
+func generateContainerMeta(ctx context.Context, c enginecontainer.InspectResponse, meta *coretypes.LabelMeta, labels map[string]string) (*Container, error) {
 	name, entrypoint, ident, err := utils.GetAppInfo(c.Name)
 	if err != nil {
 		return nil, err
@@ -62,7 +63,7 @@ func generateContainerMeta(ctx context.Context, c enginetypes.ContainerJSON, met
 }
 
 // calcuateCPUNum calculate how many cpu container used
-func calcuateCPUNum(container *Container, containerJSON enginetypes.ContainerJSON, hostCPUNum float64) *Container {
+func calcuateCPUNum(container *Container, containerJSON enginecontainer.InspectResponse, hostCPUNum float64) *Container {
 	cpuNum := hostCPUNum
 	if containerJSON.HostConfig.CPUPeriod != 0 && containerJSON.HostConfig.CPUQuota != 0 {
 		cpuNum = float64(containerJSON.HostConfig.CPUQuota) / float64(containerJSON.HostConfig.CPUPeriod)

@@ -7,9 +7,10 @@ import (
 	"math/big"
 	"time"
 
+	pb "github.com/projecteru2/core/rpc/gen"
+
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
-	pb "github.com/projecteru2/core/rpc/gen"
 )
 
 func getCacheTTL(ttl int64) time.Duration {

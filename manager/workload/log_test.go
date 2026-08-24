@@ -9,7 +9,6 @@ import (
 
 	"github.com/projecteru2/agent/types"
 
-	"github.com/bmizerany/pat"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,9 +38,9 @@ func TestLogBroadcaster(t *testing.T) {
 	server := &http.Server{Addr: ":12310"}
 
 	go func() {
-		restfulAPIServer := pat.New()
-		restfulAPIServer.Add("GET", "/log/", http.HandlerFunc(handler))
-		server.Handler = restfulAPIServer
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /log/{$}", handler)
+		server.Handler = mux
 		assert.Equal(t, server.ListenAndServe(), http.ErrServerClosed)
 	}()
 
