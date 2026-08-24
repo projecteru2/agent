@@ -149,7 +149,7 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 }
 
 func (config *Config) Print(ctx context.Context) {
-	bs, err := yaml.Marshal(config)
+	bs, err := yaml.Marshal(config.redacted())
 	if err != nil {
 		log.WithFunc("Print").Fatalf(ctx, err, "print config")
 	}
@@ -160,4 +160,12 @@ func (config *Config) Print(ctx context.Context) {
 		fmt.Println(scanner.Text())
 	}
 	fmt.Println("------------------------")
+}
+
+func (config *Config) redacted() *Config {
+	safe := *config
+	if safe.Auth.Password != "" {
+		safe.Auth.Password = "[redacted]"
+	}
+	return &safe
 }

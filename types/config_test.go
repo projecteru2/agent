@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/jinzhu/configor"
+	coretypes "github.com/projecteru2/core/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
+	"gopkg.in/yaml.v3"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -65,6 +67,19 @@ func TestPrepareCoreEndpoints(t *testing.T) {
 			require.Equal(t, tt.want, config.Core)
 		})
 	}
+}
+
+func TestPrintRedactsThePassword(t *testing.T) {
+	config := &Config{Auth: coretypes.AuthConfig{Username: "eru", Password: "secret"}}
+
+	safe := config.redacted()
+	require.Equal(t, "eru", safe.Auth.Username)
+	require.Equal(t, "[redacted]", safe.Auth.Password)
+	require.Equal(t, "secret", config.Auth.Password)
+
+	bs, err := yaml.Marshal(safe)
+	require.NoError(t, err)
+	require.NotContains(t, string(bs), "secret")
 }
 
 func runPrepare(ctx context.Context, config *Config, args []string) error {
