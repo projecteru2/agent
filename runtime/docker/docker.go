@@ -128,7 +128,7 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 	outr, outw := utils.NewBufPipe(capacity)
 	errr, errw := utils.NewBufPipe(capacity)
 
-	_ = utils.Pool.Submit(func() {
+	go func() {
 		defer func() {
 			resp.Close()
 			_ = outw.Close()
@@ -142,7 +142,7 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 			logger.Error(ctx, err, "attach get stream failed")
 		}
 		logger.Info(ctx, "attach workload finished")
-	})
+	}()
 
 	return outr, errr, nil
 }
@@ -151,7 +151,7 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 	eventChan := make(chan *types.WorkloadEventMessage)
 	errChan := make(chan error)
 
-	_ = utils.Pool.Submit(func() {
+	go func() {
 		defer close(eventChan)
 		defer close(errChan)
 
@@ -175,7 +175,7 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 				return
 			}
 		}
-	})
+	}()
 
 	return eventChan, errChan
 }

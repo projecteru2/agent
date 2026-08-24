@@ -55,16 +55,15 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 	}
 	logger.Infof(ctx, "attach %s workload success", workloadName)
 
-	_ = utils.Pool.Submit(func() { m.runtimeClient.CollectWorkloadMetrics(ctx, ID) })
+	go m.runtimeClient.CollectWorkloadMetrics(ctx, ID)
 
 	extra, err := m.runtimeClient.LogFieldsExtra(ctx, ID)
 	if err != nil {
 		logger.Error(ctx, err, "failed to get log fields extra")
 	}
 
-	wg := &sync.WaitGroup{}
+	var wg sync.WaitGroup
 	pump := func(typ string, source io.Reader) {
-		defer wg.Done()
 		logger.Debugf(ctx, "attach pump %s %s start", workloadName, typ)
 		defer logger.Debugf(ctx, "attach pump %s %s finished", workloadName, typ)
 
@@ -97,8 +96,7 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 			}
 		}
 	}
-	wg.Add(2)
 	defer wg.Wait()
-	_ = utils.Pool.Submit(func() { pump("stdout", outr) })
-	_ = utils.Pool.Submit(func() { pump("stderr", errr) })
+	wg.Go(func() { pump("stdout", outr) })
+	wg.Go(func() { pump("stderr", errr) })
 }

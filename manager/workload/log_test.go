@@ -94,10 +94,7 @@ func TestLogBroadcaster(t *testing.T) {
 		EntryPoint: "eva0",
 		Data:       "data1",
 	}
-	count := 0
-	manager.logBroadcaster.subscribersMap.ForEach(func(_ string, _ map[string]*subscriber) bool {
-		count++
-		return true
-	})
-	assert.Equal(t, count, 0)
+	manager.logBroadcaster.RLock()
+	defer manager.logBroadcaster.RUnlock()
+	assert.Empty(t, manager.logBroadcaster.subscribersMap)
 }

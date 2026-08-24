@@ -6,8 +6,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/alphadose/haxmap"
-
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/runtime"
 	"github.com/projecteru2/agent/runtime/docker"
@@ -30,8 +28,8 @@ type Manager struct {
 	nodeIP   string
 	forwards *utils.HashBackends
 
-	checkWorkloadMutex *sync.Mutex
-	startingWorkloads  *haxmap.Map[string, *utils.RetryTask]
+	checkWorkloadMutex sync.Mutex
+	startingWorkloads  map[string]*utils.RetryTask
 
 	logBroadcaster *logBroadcaster
 
@@ -90,22 +88,21 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 	m.forwards = utils.NewHashBackends(config.Log.Forwards)
 	m.storeIdentifier = m.store.GetIdentifier(ctx)
 	m.nodeIP = nodeIP
-	m.checkWorkloadMutex = &sync.Mutex{}
-	m.startingWorkloads = haxmap.New[string, *utils.RetryTask]()
+	m.startingWorkloads = map[string]*utils.RetryTask{}
 
 	return m, nil
 }
 
 func (m *Manager) Run(ctx context.Context) error {
-	_ = utils.Pool.Submit(func() { m.logBroadcaster.run(ctx) })
+	go m.logBroadcaster.run(ctx)
 
 	if err := m.initWorkloadStatus(ctx); err != nil {
 		return err
 	}
 
-	_ = utils.Pool.Submit(func() { m.monitor(ctx) })
+	go m.monitor(ctx)
 
-	_ = utils.Pool.Submit(func() { m.healthCheck(ctx) })
+	go m.healthCheck(ctx)
 
 	<-ctx.Done()
 	log.WithFunc("Run").Info(ctx, "exiting")

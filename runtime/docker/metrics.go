@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 
-	"github.com/alphadose/haxmap"
 	"github.com/projecteru2/core/cluster"
 	coreutils "github.com/projecteru2/core/utils"
 
@@ -19,7 +19,10 @@ const (
 	labelDev = "dev"
 )
 
-var clients *haxmap.Map[string, *MetricsClient]
+var (
+	clientsMutex sync.Mutex
+	clients      = map[string]*MetricsClient{}
+)
 
 type MetricsClient struct {
 	statsd       string
@@ -61,7 +64,9 @@ type MetricsClient struct {
 }
 
 func NewMetricsClient(statsd, hostname string, container *Container) *MetricsClient {
-	if metricsClient, ok := clients.Get(container.ID); ok {
+	clientsMutex.Lock()
+	defer clientsMutex.Unlock()
+	if metricsClient, ok := clients[container.ID]; ok {
 		return metricsClient
 	}
 
@@ -265,7 +270,7 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		ioServicedReadPerSecond:      ioServicedReadPerSecond,
 		ioServicedWritePerSecond:     ioServicedWritePerSecond,
 	}
-	clients.Set(container.ID, metricsClient)
+	clients[container.ID] = metricsClient
 	return metricsClient
 }
 
@@ -468,8 +473,4 @@ func (m *MetricsClient) checkConn(ctx context.Context) error {
 		return err
 	}
 	return nil
-}
-
-func init() { //nolint:gochecknoinits
-	clients = haxmap.New[string, *MetricsClient]()
 }

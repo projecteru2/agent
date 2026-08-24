@@ -13,7 +13,7 @@ func (m *Manager) heartbeat(ctx context.Context) {
 	if m.config.HeartbeatInterval <= 0 {
 		return
 	}
-	_ = utils.Pool.Submit(func() { m.nodeStatusReport(ctx) })
+	go m.nodeStatusReport(ctx)
 
 	tick := time.NewTicker(time.Duration(m.config.HeartbeatInterval) * time.Second)
 	defer tick.Stop()
@@ -21,7 +21,7 @@ func (m *Manager) heartbeat(ctx context.Context) {
 	for {
 		select {
 		case <-tick.C:
-			_ = utils.Pool.Submit(func() { m.nodeStatusReport(ctx) })
+			go m.nodeStatusReport(ctx)
 		case <-ctx.Done():
 			return
 		}

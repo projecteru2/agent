@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alphadose/haxmap"
-
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/runtime"
 	"github.com/projecteru2/agent/types"
@@ -28,7 +26,7 @@ type eva struct {
 type Nerv struct {
 	Runtime
 	sync.Mutex
-	workloads     *haxmap.Map[string, *eva]
+	workloads     map[string]*eva
 	msgChan       chan *types.WorkloadEventMessage
 	errChan       chan error
 	daemonRunning bool
@@ -42,7 +40,7 @@ func (n *Nerv) StartEvents() {
 	}
 
 	n.withLock(func() {
-		asuka, _ := n.workloads.Get("Asuka")
+		asuka := n.workloads["Asuka"]
 		asuka.Running = true
 		asuka.Healthy = true
 	})
@@ -54,7 +52,7 @@ func (n *Nerv) StartEvents() {
 	time.Sleep(time.Second)
 
 	n.withLock(func() {
-		asuka, _ := n.workloads.Get("Asuka")
+		asuka := n.workloads["Asuka"]
 		asuka.Running = false
 		asuka.Healthy = false
 	})
@@ -66,7 +64,7 @@ func (n *Nerv) StartEvents() {
 	time.Sleep(time.Second)
 
 	n.withLock(func() {
-		rei, _ := n.workloads.Get("Rei")
+		rei := n.workloads["Rei"]
 		rei.Running = false
 		rei.Healthy = false
 	})
@@ -82,35 +80,36 @@ func (n *Nerv) StartCustomEvent(event *types.WorkloadEventMessage) {
 }
 
 func (n *Nerv) SetDaemonRunning(status bool) {
-	n.daemonRunning = status
+	n.withLock(func() { n.daemonRunning = status })
 }
 
 func (n *Nerv) init() {
-	n.workloads = haxmap.New[string, *eva]()
-	n.workloads.Set("Rei", &eva{
-		ID:         "Rei",
-		Name:       "nerv_eva0_boiled",
-		EntryPoint: "eva0",
-		Pid:        12306,
-		Running:    true,
-		Healthy:    false,
-	})
-	n.workloads.Set("Shinji", &eva{
-		ID:         "Shinji",
-		Name:       "nerv_eva1_related",
-		EntryPoint: "eva1",
-		Pid:        12307,
-		Running:    true,
-		Healthy:    true,
-	})
-	n.workloads.Set("Asuka", &eva{
-		ID:         "Asuka",
-		Name:       "nerv_eva2_genius",
-		EntryPoint: "eva2",
-		Pid:        12308,
-		Running:    false, // not yet
-		Healthy:    false,
-	})
+	n.workloads = map[string]*eva{
+		"Rei": {
+			ID:         "Rei",
+			Name:       "nerv_eva0_boiled",
+			EntryPoint: "eva0",
+			Pid:        12306,
+			Running:    true,
+			Healthy:    false,
+		},
+		"Shinji": {
+			ID:         "Shinji",
+			Name:       "nerv_eva1_related",
+			EntryPoint: "eva1",
+			Pid:        12307,
+			Running:    true,
+			Healthy:    true,
+		},
+		"Asuka": {
+			ID:         "Asuka",
+			Name:       "nerv_eva2_genius",
+			EntryPoint: "eva2",
+			Pid:        12308,
+			Running:    false,
+			Healthy:    false,
+		},
+	}
 
 	n.msgChan = make(chan *types.WorkloadEventMessage)
 	n.errChan = make(chan error)
@@ -139,10 +138,9 @@ func FromTemplate() runtime.Runtime {
 	n.On("ListWorkloadIDs", mock.Anything, mock.Anything).Return(func(ctx context.Context, filters map[string]string) []string {
 		var IDs []string
 		n.withLock(func() {
-			n.workloads.ForEach(func(ID string, workload *eva) bool {
+			for ID := range n.workloads {
 				IDs = append(IDs, ID)
-				return true
-			})
+			}
 		})
 		return IDs
 	}, nil)
@@ -154,7 +152,7 @@ func FromTemplate() runtime.Runtime {
 	n.On("GetStatus", mock.Anything, mock.Anything, mock.Anything).Return(func(ctx context.Context, ID string, checkHealth bool) *types.WorkloadStatus {
 		var status *types.WorkloadStatus
 		n.withLock(func() {
-			workload, ok := n.workloads.Get(ID)
+			workload, ok := n.workloads[ID]
 			if !ok {
 				status = &types.WorkloadStatus{ID: ID}
 				return
@@ -168,15 +166,19 @@ func FromTemplate() runtime.Runtime {
 		return status
 	}, nil)
 	n.On("GetWorkloadName", mock.Anything, mock.Anything).Return(func(ctx context.Context, ID string) string {
-		workload, ok := n.workloads.Get(ID)
-		if !ok {
-			return ""
-		}
-		return workload.Name
+		var name string
+		n.withLock(func() {
+			if workload, ok := n.workloads[ID]; ok {
+				name = workload.Name
+			}
+		})
+		return name
 	}, nil)
 	n.On("LogFieldsExtra", mock.Anything, mock.Anything).Return(map[string]string{}, nil)
 	n.On("IsDaemonRunning", mock.Anything).Return(func(ctx context.Context) bool {
-		return n.daemonRunning
+		var running bool
+		n.withLock(func() { running = n.daemonRunning })
+		return running
 	})
 	n.On("Name").Return("NERV")
 

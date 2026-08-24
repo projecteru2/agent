@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/projecteru2/core/log"
-
-	"github.com/projecteru2/agent/utils"
 )
 
 func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[string]string) ([]string, error) {
@@ -39,13 +37,10 @@ func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 		return err
 	}
 
-	wg := &sync.WaitGroup{}
-	for _, workloadID := range workloadIDs {
-		logger.Debugf(ctx, "detect workload %s", workloadID)
-		wg.Add(1)
-		ID := workloadID
-		_ = utils.Pool.Submit(func() {
-			defer wg.Done()
+	var wg sync.WaitGroup
+	for _, ID := range workloadIDs {
+		logger.Debugf(ctx, "detect workload %s", ID)
+		wg.Go(func() {
 			workloadStatus, err := m.runtimeClient.GetStatus(ctx, ID, true)
 			if err != nil {
 				logger.Errorf(ctx, err, "get workload %v status failed", ID)
@@ -54,7 +49,7 @@ func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 
 			if workloadStatus.Running {
 				logger.Debugf(ctx, "workload %s is running", workloadStatus.ID)
-				_ = utils.Pool.Submit(func() { m.attach(ctx, ID) })
+				go m.attach(ctx, ID)
 			}
 
 			if err := m.setWorkloadStatus(ctx, workloadStatus); err != nil {

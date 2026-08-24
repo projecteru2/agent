@@ -9,7 +9,6 @@ import (
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
 
 	"github.com/projecteru2/core/log"
 )
@@ -60,7 +59,7 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 		logger.Infof(ctx, "create writer for %s success", addr)
 	}
 
-	_ = utils.Pool.Submit(func() { writer.keepalive(ctx) })
+	go writer.keepalive(ctx)
 	return writer, nil
 }
 

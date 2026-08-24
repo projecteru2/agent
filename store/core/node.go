@@ -76,7 +76,7 @@ func (c *Store) NodeStatusStream(ctx context.Context) (<-chan *types.NodeStatus,
 	msgChan := make(chan *types.NodeStatus)
 	errChan := make(chan error)
 
-	_ = utils.Pool.Submit(func() {
+	go func() {
 		defer close(msgChan)
 		defer close(errChan)
 
@@ -103,7 +103,7 @@ func (c *Store) NodeStatusStream(ctx context.Context) (<-chan *types.NodeStatus,
 			}
 			msgChan <- nodeStatus
 		}
-	})
+	}()
 
 	return msgChan, errChan
 }
@@ -140,7 +140,7 @@ func (c *Store) listPodeNodes(ctx context.Context, opt *pb.ListNodesOptions) (ch
 			return
 		}
 
-		_ = utils.Pool.Submit(func() {
+		go func() {
 			defer close(ch)
 			for {
 				node, err := stream.Recv()
@@ -152,7 +152,7 @@ func (c *Store) listPodeNodes(ctx context.Context, opt *pb.ListNodesOptions) (ch
 				}
 				ch <- node
 			}
-		})
+		}()
 	})
 
 	return ch, nil

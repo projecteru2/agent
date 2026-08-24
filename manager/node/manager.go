@@ -74,7 +74,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 func (m *Manager) Run(ctx context.Context) error {
 	logger := log.WithFunc("Run")
 	logger.Info(ctx, "start node status heartbeat")
-	_ = utils.Pool.Submit(func() { m.heartbeat(ctx) })
+	go m.heartbeat(ctx)
 
 	<-ctx.Done()
 	logger.Info(ctx, "exiting")

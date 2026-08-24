@@ -58,15 +58,13 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 
 	logger := log.WithFunc("main")
 
-	wg := &sync.WaitGroup{}
-	wg.Add(2)
+	var wg sync.WaitGroup
 
 	workloadsManager, err := workload.NewManager(ctx, config)
 	if err != nil {
 		return err
 	}
-	_ = utils.Pool.Submit(func() {
-		defer wg.Done()
+	wg.Go(func() {
 		if runErr := workloadsManager.Run(ctx); runErr != nil {
 			logger.Error(ctx, runErr, "[agent] workload manager failed")
 			errChan <- runErr
@@ -77,8 +75,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	_ = utils.Pool.Submit(func() {
-		defer wg.Done()
+	wg.Go(func() {
 		if runErr := nodeManager.Run(ctx); runErr != nil {
 			logger.Error(ctx, runErr, "[agent] node manager failed")
 			errChan <- runErr
@@ -86,9 +83,9 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	})
 
 	apiHandler := api.NewHandler(config, workloadsManager)
-	_ = utils.Pool.Submit(apiHandler.Serve)
+	go apiHandler.Serve()
 
-	_ = utils.Pool.Submit(func() {
+	go func() {
 		select {
 		case <-ctx.Done():
 			logger.Info(ctx, "[agent] Agent exiting")
@@ -104,7 +101,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 			}
 			cancel()
 		}
-	})
+	}()
 
 	wg.Wait()
 	return nil

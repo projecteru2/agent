@@ -17,7 +17,7 @@ func (m *Manager) healthCheck(ctx context.Context) {
 	for {
 		select {
 		case <-tick.C:
-			_ = utils.Pool.Submit(func() { m.checkAllWorkloads(ctx) })
+			go m.checkAllWorkloads(ctx)
 		case <-ctx.Done():
 			return
 		}
@@ -34,9 +34,8 @@ func (m *Manager) checkAllWorkloads(ctx context.Context) {
 		return
 	}
 
-	for _, workloadID := range workloadIDs {
-		ID := workloadID
-		_ = utils.Pool.Submit(func() { m.checkOneWorkload(ctx, ID) })
+	for _, ID := range workloadIDs {
+		go m.checkOneWorkload(ctx, ID)
 	}
 }
 
