@@ -21,6 +21,7 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
 		logger.Error(ctx, err, "failed to detect container")
+		return
 	}
 
 	containerCPUStats, systemCPUStats, containerNetStats, err := getStats(ctx, container.ID, container.Pid, proc)
