@@ -1,20 +1,17 @@
-FROM golang:alpine AS BUILD
+FROM golang:1.27-alpine AS build
 
-MAINTAINER CMGS <ilskdw@gmail.com>
-
-# make binary
-RUN apk add --no-cache git curl make gcc libc-dev
-COPY . /go/src/github.com/projecteru2/agent
-WORKDIR /go/src/github.com/projecteru2/agent
+RUN apk add --no-cache git make
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
 ARG KEEP_SYMBOL
 RUN make build && ./eru-agent --version
 
-FROM alpine:latest
+FROM alpine:3.22
 
-MAINTAINER CMGS <ilskdw@gmail.com>
-
-RUN mkdir /etc/eru/
 LABEL ERU=1 agent=1
 ENV AGENT_IN_DOCKER=1
-COPY --from=BUILD /go/src/github.com/projecteru2/agent/eru-agent /usr/bin/eru-agent
-COPY --from=BUILD /go/src/github.com/projecteru2/agent/agent.yaml.sample /etc/eru/agent.yaml.sample
+RUN mkdir -p /etc/eru
+COPY --from=build /src/eru-agent /usr/bin/eru-agent
+COPY --from=build /src/agent.yaml.sample /etc/eru/agent.yaml.sample

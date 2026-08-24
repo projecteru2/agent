@@ -1,8 +1,7 @@
-# This is an example goreleaser.yaml file with some sane defaults.
-# Make sure to check the documentation at http://goreleaser.com
+version: 2
+
 before:
   hooks:
-    # You may remove this if you don't use go modules.
     - go mod download
 
 builds:
@@ -14,46 +13,59 @@ builds:
       - -X github.com/projecteru2/agent/version.REVISION={{.Commit}}
       - -X github.com/projecteru2/agent/version.VERSION={{.Env.VERSION}}
       - -X github.com/projecteru2/agent/version.BUILTAT={{.Date}}
-    hooks:
-      post:
-        - cp {{.Path}} ./eru-agent-{{.Os}}.dbg
-    goos:
-      - darwin
-      - linux
-    goarch:
-      - amd64
-
-  # the best practice is using prebuilt builder
-  # however it's a Pro feature
-  - id: eru-agent-linux
-    binary: eru-agent
-    hooks:
-      post:
-        - cp ./eru-agent-{{.Os}}.dbg {{.Path}}
-        - strip {{.Path}}
     goos:
       - linux
     goarch:
       - amd64
+      - arm64
+    main: .
 
-  - id: eru-agent-darwin
+  - id: eru-agent-release
     binary: eru-agent
     env:
       - CGO_ENABLED=0
     ldflags:
-      - -w -s
+      - -s
       - -X github.com/projecteru2/agent/version.REVISION={{.Commit}}
       - -X github.com/projecteru2/agent/version.VERSION={{.Env.VERSION}}
       - -X github.com/projecteru2/agent/version.BUILTAT={{.Date}}
     goos:
+      - linux
       - darwin
     goarch:
       - amd64
+      - arm64
+    main: .
 
 archives:
-  - id: agent
+  - id: release
+    ids:
+      - eru-agent-release
     name_template: >-
       {{- .ProjectName }}_{{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end -}}
+
+  - id: debug
+    ids:
+      - eru-agent-debug
+    name_template: >-
+      {{- .ProjectName }}_{{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}_debug
+      {{- if .Arm }}v{{ .Arm }}{{ end -}}
+
+  # Unversioned alias so releases/latest/download/eru-agent_Linux_x86_64.tar.gz resolves.
+  - id: release-latest
+    ids:
+      - eru-agent-release
+    name_template: >-
+      {{- .ProjectName }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
@@ -63,9 +75,6 @@ archives:
 checksum:
   name_template: 'checksums.txt'
 
-snapshot:
-  name_template: "{{ .Tag }}-next"
-
 release:
   prerelease: auto
 
@@ -73,5 +82,5 @@ changelog:
   sort: asc
   filters:
     exclude:
-    - '^docs:'
-    - '^test:'
+      - '^docs:'
+      - '^test:'

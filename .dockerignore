@@ -1,0 +1,6 @@
+.git
+bin
+dist
+eru-agent
+*.test
+coverage.out

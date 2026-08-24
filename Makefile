@@ -1,41 +1,129 @@
-.PHONY: deps build test binary
+.PHONY: all build test lint vet fmt fmt-check deps clean coverage cloc mock help
 
 REPO_PATH := github.com/projecteru2/agent
-REVISION := $(shell git rev-parse HEAD || unknown)
+
+## Target OSes for vet / lint
+GOOSES ?= linux darwin
+REVISION := $(shell git rev-parse HEAD || echo unknown)
 BUILTAT := $(shell date +%Y-%m-%dT%H:%M:%S)
-VERSION := $(shell git describe --tags $(shell git rev-list --tags --max-count=1))
+VERSION := $(shell git describe --tags $(shell git rev-list --tags --max-count=1) 2>/dev/null || echo dev)
 GO_LDFLAGS ?= -X $(REPO_PATH)/version.REVISION=$(REVISION) \
-			  -X $(REPO_PATH)/version.BUILTAT=$(BUILTAT) \
-			  -X $(REPO_PATH)/version.VERSION=$(VERSION)
+              -X $(REPO_PATH)/version.BUILTAT=$(BUILTAT) \
+              -X $(REPO_PATH)/version.VERSION=$(VERSION)
+
 ifneq ($(KEEP_SYMBOL), 1)
 	GO_LDFLAGS += -s
 endif
 
-all: build
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
 
-deps:
-	env GO111MODULE=on go mod download
-	env GO111MODULE=on go mod vendor
+## Tool versions
+GOLANGCILINT_VERSION ?= v2.13.1
+GOLANGCILINT_ROOT := $(LOCALBIN)/golangci-lint-$(GOLANGCILINT_VERSION)
+GOLANGCILINT := $(GOLANGCILINT_ROOT)/golangci-lint
 
-binary:
-	go build -ldflags "$(GO_LDFLAGS)" -o eru-agent
+GOFUMPT_VERSION ?= v0.11.0
+GOIMPORTS_VERSION ?= v0.49.0
+GOFMT := $(LOCALBIN)/gofumpt-$(GOFUMPT_VERSION)
+GOIMPORTS := $(LOCALBIN)/goimports-$(GOIMPORTS_VERSION)
 
-unit-test:
-	go vet `go list ./... | grep -v '/vendor/'`
-	go test -race -count=1 -timeout 240s -cover ./logs/... \
-	./manager/node/... \
-	./manager/workload/... \
-	./types/... \
-	./utils/...
+MOCKERY_VERSION ?= v3.7.4
+MOCKERY := $(LOCALBIN)/mockery-$(MOCKERY_VERSION)
 
-build: deps binary
+## Tool download targets
+.PHONY: golangci-lint
+golangci-lint: $(GOLANGCILINT)
+$(GOLANGCILINT):
+	GOBIN=$(GOLANGCILINT_ROOT) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCILINT_VERSION)
 
-test: deps unit-test
+.PHONY: gofumpt
+gofumpt: $(GOFMT)
+$(GOFMT): | $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install mvdan.cc/gofumpt@$(GOFUMPT_VERSION)
+	mv $(LOCALBIN)/gofumpt $(GOFMT)
 
-lint:
-	golangci-lint run
+.PHONY: goimports
+goimports: $(GOIMPORTS)
+$(GOIMPORTS): | $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION)
+	mv $(LOCALBIN)/goimports $(GOIMPORTS)
 
-.PHONY: mock
-mock:
-	mockery --dir store --output store/mocks --name Store
-	mockery --dir runtime --output runtime/mocks --name Runtime
+.PHONY: mockery
+mockery: $(MOCKERY)
+$(MOCKERY): | $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/vektra/mockery/v3@$(MOCKERY_VERSION)
+	mv $(LOCALBIN)/mockery $(MOCKERY)
+
+# --- Primary targets ---
+
+all: deps fmt lint test build ## Full pipeline: deps, fmt, lint, test, build
+
+# --- Dependencies ---
+
+deps: ## Tidy Go modules
+	go mod tidy
+
+# --- Build ---
+
+build: ## Build eru-agent binary
+	CGO_ENABLED=0 go build -ldflags "$(GO_LDFLAGS)" -o eru-agent .
+
+# --- Code generation ---
+
+mock: mockery ## Regenerate testify mocks from .mockery.yml
+	$(MOCKERY)
+
+# --- Testing ---
+
+test: vet ## Run tests with race detection and coverage
+	go test -race -timeout 600s -count=1 -cover -coverprofile=coverage.out ./...
+
+coverage: test ## Generate and display coverage report
+	go tool cover -func=coverage.out
+	@echo ""
+	@echo "To view HTML coverage report: go tool cover -html=coverage.out"
+
+# --- Code quality ---
+
+vet: ## Run go vet on every target OS
+	@for goos in $(GOOSES); do \
+		echo "==> go vet GOOS=$$goos"; \
+		GOOS=$$goos go vet ./... || exit 1; \
+	done
+
+lint: golangci-lint ## Run golangci-lint on every target OS
+	@for goos in $(GOOSES); do \
+		echo "==> golangci-lint GOOS=$$goos"; \
+		GOOS=$$goos $(GOLANGCILINT) run ./... || exit 1; \
+	done
+
+fmt: gofumpt goimports ## Format code with gofumpt and goimports
+	$(GOFMT) -extra -l -w .
+	$(GOIMPORTS) -l -w --local 'github.com/projecteru2/agent' .
+
+fmt-check: gofumpt goimports ## Check formatting (fails if files need formatting)
+	@test -z "$$($(GOFMT) -extra -l .)" || { echo "Files need formatting (gofumpt):"; $(GOFMT) -extra -l .; exit 1; }
+	@test -z "$$($(GOIMPORTS) -l .)" || { echo "Files need formatting (goimports):"; $(GOIMPORTS) -l .; exit 1; }
+
+# --- Maintenance ---
+
+clean: ## Remove build artifacts, coverage files, and test cache
+	rm -f eru-agent eru-agent-linux-* eru-agent-darwin-*
+	rm -rf bin/ dist/
+	rm -f coverage.out coverage.html coverage.txt
+	go clean -testcache
+
+cloc: ## Count lines of code excluding tests, mocks and generated code (requires cloc)
+	cloc --exclude-dir=vendor,dist,mocks --not-match-f='_test\.go$$' .
+
+# --- Help ---
+
+help: ## Show this help message
+	@echo "eru-agent Makefile targets:"
+	@echo ""
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+	@echo ""
