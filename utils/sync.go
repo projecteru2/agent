@@ -1,26 +1,19 @@
 package utils
 
-import "github.com/alphadose/haxmap"
+import "sync"
 
 // GroupCAS is a set of compare-and-swap locks keyed by string.
 type GroupCAS struct {
-	*haxmap.Map[string, struct{}]
+	keys sync.Map
 }
 
 func NewGroupCAS() *GroupCAS {
-	return &GroupCAS{
-		Map: haxmap.New[string, struct{}](),
-	}
+	return &GroupCAS{}
 }
 
 func (g *GroupCAS) Acquire(key string) (free func(), acquired bool) {
-	if _, loaded := g.GetOrSet(key, struct{}{}); loaded {
+	if _, loaded := g.keys.LoadOrStore(key, struct{}{}); loaded {
 		return nil, false
 	}
-
-	free = func() {
-		g.Del(key)
-	}
-
-	return free, true
+	return func() { g.keys.Delete(key) }, true
 }
