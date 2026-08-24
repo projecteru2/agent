@@ -11,12 +11,12 @@ import (
 	"github.com/projecteru2/agent/types"
 
 	"github.com/patrickmn/go-cache"
-	"github.com/projecteru2/core/log"
 )
 
 var (
-	coreStore *Store
 	once      sync.Once
+	coreStore *Store
+	storeErr  error
 )
 
 type Store struct {
@@ -43,17 +43,8 @@ func (c *Store) GetClient() pb.CoreRPCClient {
 	return c.clientPool.GetClient()
 }
 
-func Init(ctx context.Context, config *types.Config) {
-	once.Do(func() {
-		var err error
-		coreStore, err = New(ctx, config)
-		if err != nil {
-			log.WithFunc("core.client").Error(ctx, err, "failed to create core store")
-			return
-		}
-	})
-}
-
-func Get() *Store {
-	return coreStore
+// Get returns the process-wide core store, creating it on first call.
+func Get(ctx context.Context, config *types.Config) (*Store, error) {
+	once.Do(func() { coreStore, storeErr = New(ctx, config) })
+	return coreStore, storeErr
 }

@@ -6,14 +6,9 @@ import (
 	"io"
 	"sync"
 
-	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/manager"
 	"github.com/projecteru2/agent/runtime"
-	"github.com/projecteru2/agent/runtime/docker"
-	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
-	"github.com/projecteru2/agent/runtime/yavirt"
 	"github.com/projecteru2/agent/store"
-	corestore "github.com/projecteru2/agent/store/core"
-	storemocks "github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 
@@ -38,58 +33,22 @@ type Manager struct {
 }
 
 func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
-	m := &Manager{config: config}
-
-	switch config.Store {
-	case common.GRPCStore:
-		corestore.Init(ctx, config)
-		store := corestore.Get()
-		if store == nil {
-			return nil, common.ErrGetStoreFailed
-		}
-		m.store = store
-	case common.MocksStore:
-		m.store = storemocks.NewFakeStore()
-	default:
-		return nil, common.ErrInvalidStoreType
-	}
-
-	node, err := m.store.GetNode(ctx, config.HostName)
+	clients, err := manager.NewClients(ctx, config)
 	if err != nil {
-		log.WithFunc("NewManager").Errorf(ctx, err, "failed to get node %s", config.HostName)
+		log.WithFunc("NewManager").Errorf(ctx, err, "failed to create clients for node %s", config.HostName)
 		return nil, err
 	}
 
-	nodeIP := utils.GetIP(node.Endpoint)
-	if nodeIP == "" {
-		nodeIP = common.LocalIP
+	m := &Manager{
+		config:            config,
+		store:             clients.Store,
+		runtimeClient:     clients.Runtime,
+		nodeIP:            clients.NodeIP,
+		forwards:          utils.NewHashBackends(config.Log.Forwards),
+		logBroadcaster:    newLogBroadcaster(),
+		startingWorkloads: map[string]*utils.RetryTask{},
 	}
-
-	switch config.Runtime {
-	case common.DockerRuntime:
-		docker.InitClient(config, nodeIP)
-		m.runtimeClient = docker.GetClient()
-		if m.runtimeClient == nil {
-			return nil, common.ErrGetRuntimeFailed
-		}
-	case common.YavirtRuntime:
-		yavirt.InitClient(config)
-		m.runtimeClient = yavirt.GetClient()
-		if m.runtimeClient == nil {
-			return nil, common.ErrGetRuntimeFailed
-		}
-	case common.MocksRuntime:
-		m.runtimeClient = runtimemocks.FromTemplate()
-	default:
-		return nil, common.ErrInvalidRuntimeType
-	}
-
-	m.logBroadcaster = newLogBroadcaster()
-	m.forwards = utils.NewHashBackends(config.Log.Forwards)
 	m.storeIdentifier = m.store.GetIdentifier(ctx)
-	m.nodeIP = nodeIP
-	m.startingWorkloads = map[string]*utils.RetryTask{}
-
 	return m, nil
 }
 

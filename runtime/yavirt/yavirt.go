@@ -27,7 +27,7 @@ type Yavirt struct {
 	cas        *utils.GroupCAS
 }
 
-func New(config *types.Config) (*Yavirt, error) {
+func New(ctx context.Context, config *types.Config) (*Yavirt, error) {
 	y := &Yavirt{
 		config: config,
 		cas:    utils.NewGroupCAS(),
@@ -41,7 +41,7 @@ func New(config *types.Config) (*Yavirt, error) {
 	for _, expr := range y.config.Yavirt.SkipGuestReportRegexps {
 		reg, err := regexp.Compile(expr)
 		if err != nil {
-			log.WithFunc("runtime.yavirt.New").Errorf(nil, err, "failed to compile regexp %v", expr) //nolint
+			log.WithFunc("runtime.yavirt.New").Errorf(ctx, err, "failed to compile regexp %v", expr)
 			return nil, err
 		}
 		y.skipRegexp = append(y.skipRegexp, reg)
