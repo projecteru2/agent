@@ -111,7 +111,10 @@ func (l *logBroadcaster) broadcast(ctx context.Context, log *types.Log) {
 			if _, err := sub.buf.Write([]byte(line)); err != nil {
 				corelog.Debugf(ctx, "[broadcast] failed to write into %v, err: %v", ID, err)
 				sub.cancel()
-				sub.errChan <- err
+				select {
+				case sub.errChan <- err:
+				default:
+				}
 				return
 			}
 			_ = sub.buf.Flush()
