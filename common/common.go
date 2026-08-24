@@ -19,9 +19,6 @@ const (
 	GRPCStore  = "grpc"
 	MocksStore = "mocks"
 
-	ETCDKV  = "etcd"
-	MocksKV = "mocks"
-
 	ERUNodeName = "eru.nodename"
 	ERUCoreID   = "eru.coreid"
 )

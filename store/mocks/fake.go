@@ -7,7 +7,6 @@ import (
 	"github.com/projecteru2/core/log"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/store"
 	"github.com/projecteru2/agent/types"
 )
@@ -18,9 +17,6 @@ type MockStore struct {
 	workloadStatus map[string]*types.WorkloadStatus
 	nodeStatus     map[string]*types.NodeStatus
 	nodeInfo       map[string]*types.Node
-
-	msgChan chan *types.NodeStatus
-	errChan chan error
 }
 
 func (m *MockStore) GetMockWorkloadStatus(ID string) *types.WorkloadStatus {
@@ -29,28 +25,9 @@ func (m *MockStore) GetMockWorkloadStatus(ID string) *types.WorkloadStatus {
 	return m.workloadStatus[ID]
 }
 
-// StartNodeStatusStream "faker" up, "fake" down.
-func (m *MockStore) StartNodeStatusStream() {
-	m.msgChan <- &types.NodeStatus{
-		Nodename: "faker",
-		Alive:    true,
-	}
-	m.msgChan <- &types.NodeStatus{
-		Nodename: "fake",
-		Alive:    false,
-	}
-}
-
-// StopNodeStatusStream send an err to errChan.
-func (m *MockStore) StopNodeStatusStream() {
-	m.errChan <- common.ErrClosedSteam
-}
-
 func (m *MockStore) init() {
 	m.workloadStatus = map[string]*types.WorkloadStatus{}
 	m.nodeStatus = map[string]*types.NodeStatus{}
-	m.msgChan = make(chan *types.NodeStatus)
-	m.errChan = make(chan error)
 	m.nodeInfo = map[string]*types.Node{
 		"fake": {
 			Name:     "fake",
@@ -116,19 +93,6 @@ func NewFakeStore() store.Store {
 		return nil
 	})
 	m.On("GetIdentifier", mock.Anything).Return("fake-identifier")
-	m.On("NodeStatusStream", mock.Anything).Return(func(ctx context.Context) <-chan *types.NodeStatus {
-		return m.msgChan
-	}, func(ctx context.Context) <-chan error {
-		return m.errChan
-	})
-	m.On("ListPodNodes", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*types.Node{
-		{
-			Name: "fake",
-		},
-		{
-			Name: "faker",
-		},
-	}, nil)
 
 	return m
 }

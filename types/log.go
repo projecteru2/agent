@@ -1,10 +1,5 @@
 package types
 
-import (
-	"bufio"
-	"net"
-)
-
 type Log struct {
 	ID         string            `json:"id"`
 	Name       string            `json:"name"`
@@ -14,11 +9,4 @@ type Log struct {
 	Data       string            `json:"data"`
 	Datetime   string            `json:"datetime"`
 	Extra      map[string]string `json:"extra"`
-}
-
-type LogConsumer struct {
-	ID   string
-	App  string
-	Conn net.Conn
-	Buf  *bufio.ReadWriter
 }

@@ -9,7 +9,6 @@ var (
 	ErrInvalidRuntimeType = errors.New("unknown runtime type")
 	ErrInvalidStoreType   = errors.New("unknown store type")
 	ErrWorkloadUnhealthy  = errors.New("not healthy")
-	ErrClosedSteam        = errors.New("closed")
 	ErrSyscallFailed      = errors.New("syscall fail, Not a syscall.Stat_t")
 	ErrDevNotFound        = errors.New("device not found")
 	ErrJournalDisable     = errors.New("journal disabled")
