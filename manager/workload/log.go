@@ -52,11 +52,11 @@ func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.R
 		l.subscribersMap[app] = subscribers
 	}
 	ID := coreutils.RandomString(8)
-	ctx, cancel := context.WithCancel(ctx)
+	subCtx, cancel := context.WithCancel(ctx)
 	errChan := make(chan error)
 
 	subscribers[ID] = &subscriber{
-		ctx:     ctx,
+		ctx:     subCtx,
 		cancel:  cancel,
 		buf:     buf,
 		errChan: errChan,
@@ -65,11 +65,11 @@ func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.R
 	corelog.Infof(ctx, "%s %s log subscribed", app, ID)
 	return ID, errChan, func() {
 		cancel()
-		go l.unsubscribe(app, ID)
+		go l.unsubscribe(ctx, app, ID)
 	}
 }
 
-func (l *logBroadcaster) unsubscribe(app, ID string) {
+func (l *logBroadcaster) unsubscribe(ctx context.Context, app, ID string) {
 	l.Lock()
 	defer l.Unlock()
 
@@ -79,14 +79,14 @@ func (l *logBroadcaster) unsubscribe(app, ID string) {
 	}
 	delete(subscribers, ID)
 
-	corelog.Infof(nil, "%s %s detached", app, ID) //nolint
+	corelog.Infof(ctx, "%s %s detached", app, ID)
 
 	if len(subscribers) == 0 {
 		delete(l.subscribersMap, app)
 	}
 }
 
-func (l *logBroadcaster) broadcast(log *types.Log) {
+func (l *logBroadcaster) broadcast(ctx context.Context, log *types.Log) {
 	l.RLock()
 	defer l.RUnlock()
 
@@ -96,7 +96,7 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 	}
 	data, err := json.Marshal(log)
 	if err != nil {
-		corelog.Error(nil, err) //nolint
+		corelog.Error(ctx, err)
 		return
 	}
 	line := fmt.Sprintf("%X\r\n%s\r\n\r\n", len(data)+2, string(data))
@@ -109,7 +109,7 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 				return
 			}
 			if _, err := sub.buf.Write([]byte(line)); err != nil {
-				corelog.Debugf(nil, "[broadcast] failed to write into %v, err: %v", ID, err) //nolint
+				corelog.Debugf(ctx, "[broadcast] failed to write into %v, err: %v", ID, err)
 				sub.cancel()
 				sub.errChan <- err
 				return
@@ -127,7 +127,7 @@ func (l *logBroadcaster) run(ctx context.Context) {
 			corelog.Info(ctx, "[logBroadcaster] stops")
 			return
 		case log := <-l.logC:
-			l.broadcast(log)
+			l.broadcast(ctx, log)
 		}
 	}
 }

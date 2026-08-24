@@ -55,7 +55,7 @@ func (g *Guest) CheckHealth(ctx context.Context, timeout time.Duration) bool {
 			hcm := &healthCheckMeta{}
 			err := json.Unmarshal([]byte(meta), hcm)
 			if err != nil {
-				log.WithFunc("CheckHealth").Error(ctx, err, "invalid json format, guest %v, meta %v", g.ID, meta)
+				log.WithFunc("CheckHealth").Errorf(ctx, err, "invalid json format, guest %v, meta %v", g.ID, meta)
 				return
 			}
 			g.HealthCheck = hcm.HealthCheck

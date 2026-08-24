@@ -16,7 +16,7 @@ func TestNewWriterWithUDP(t *testing.T) {
 	addr := "udp://127.0.0.1:23456"
 	w, err := NewWriter(ctx, addr, true)
 	assert.NoError(t, err)
-	assert.NoError(t, w.Write(&types.Log{}))
+	assert.NoError(t, w.Write(ctx, &types.Log{}))
 }
 
 func TestNewWriterWithTCP(t *testing.T) {
@@ -27,7 +27,7 @@ func TestNewWriterWithTCP(t *testing.T) {
 	addr := "tcp://127.0.0.1:34567"
 	w, err := NewWriter(ctx, addr, true)
 	assert.NoError(t, err)
-	assert.NoError(t, w.Write(&types.Log{}))
+	assert.NoError(t, w.Write(ctx, &types.Log{}))
 }
 
 func TestNewWriterWithJournal(t *testing.T) {
@@ -78,7 +78,7 @@ func TestNewWriters(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
-			err = writer.Write(&types.Log{})
+			err = writer.Write(ctx, &types.Log{})
 			assert.NoError(t, err)
 		}(addr, expectedErr)
 	}
@@ -98,6 +98,6 @@ func TestReconnect(t *testing.T) {
 	assert.NoError(t, err)
 	defer tcpL.Close()
 
-	writer.reconnect()
-	assert.NoError(t, writer.Write(&types.Log{}))
+	writer.reconnect(ctx)
+	assert.NoError(t, writer.Write(ctx, &types.Log{}))
 }

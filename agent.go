@@ -32,7 +32,7 @@ func initConfig(ctx context.Context, cmd *cli.Command) (*types.Config, error) {
 	}
 
 	config.Prepare(ctx, cmd)
-	config.Print()
+	config.Print(ctx)
 	return config, nil
 }
 
@@ -45,7 +45,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		zerolog.Fatal().Err(err).Send()
 	}
-	utils.WritePid(config.PidFile)
+	utils.WritePid(ctx, config.PidFile)
 	defer func() { _ = os.Remove(config.PidFile) }()
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -83,7 +83,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	})
 
 	apiHandler := api.NewHandler(config, workloadsManager)
-	go apiHandler.Serve()
+	go apiHandler.Serve(ctx)
 
 	go func() {
 		select {
@@ -95,7 +95,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 		case sig := <-signalChan:
 			logger.Infof(ctx, "[agent] Agent caught system signal %v", sig)
 			if sig != syscall.SIGUSR1 {
-				if exitErr := nodeManager.Exit(); exitErr != nil {
+				if exitErr := nodeManager.Exit(ctx); exitErr != nil {
 					logger.Error(ctx, exitErr, "[agent] node manager exits with err")
 				}
 			}

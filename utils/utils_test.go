@@ -17,7 +17,7 @@ import (
 func TestWritePid(t *testing.T) {
 	pidPath := filepath.Join(t.TempDir(), "agent.pid")
 
-	WritePid(pidPath)
+	WritePid(t.Context(), pidPath)
 
 	content, err := os.ReadFile(pidPath)
 	assert.NoError(t, err)

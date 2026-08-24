@@ -29,5 +29,5 @@ func TestLoadConfig(t *testing.T) {
 
 	assert.Equal(config.GlobalConnectionTimeout, time.Second*15)
 
-	config.Print()
+	config.Print(t.Context())
 }

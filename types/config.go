@@ -149,10 +149,10 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	}
 }
 
-func (config *Config) Print() {
+func (config *Config) Print(ctx context.Context) {
 	bs, err := yaml.Marshal(config)
 	if err != nil {
-		log.WithFunc("Print").Fatalf(nil, err, "print config failed %v", err) //nolint
+		log.WithFunc("Print").Fatalf(ctx, err, "print config")
 	}
 
 	fmt.Println("---- current config ----")

@@ -42,9 +42,9 @@ func MakeYavirtClient(config *types.Config) (yavirtclient.Client, error) {
 	return yavirtclient.New(&yavirttypes.Config{URI: config.Yavirt.Endpoint})
 }
 
-func WritePid(path string) {
+func WritePid(ctx context.Context, path string) {
 	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
-		log.Fatalf(nil, err, "Save pid file failed %s", err) //nolint
+		log.Fatalf(ctx, err, "save pid file %s", path)
 	}
 }
 

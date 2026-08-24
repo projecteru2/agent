@@ -37,8 +37,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) Exit() error {
-	ctx := context.TODO()
+func (m *Manager) Exit(ctx context.Context) error {
 	logger := log.WithFunc("Exit").WithField("hostname", m.config.HostName)
 	logger.Info(ctx, "remove node status")
 

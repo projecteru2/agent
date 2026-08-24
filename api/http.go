@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"runtime/pprof" //nolint:nolintlint
@@ -31,7 +32,7 @@ func NewHandler(config *types.Config, workloadsManager *workload.Manager) *Handl
 	}
 }
 
-func (h *Handler) Serve() {
+func (h *Handler) Serve(ctx context.Context) {
 	if h.config.API.Addr == "" {
 		return
 	}
@@ -44,7 +45,7 @@ func (h *Handler) Serve() {
 	mux.Handle("GET /metrics", promhttp.Handler())
 	mux.Handle("/debug/pprof/", http.DefaultServeMux)
 
-	logger.Infof(nil, "http api started %s", h.config.API.Addr) //nolint
+	logger.Infof(ctx, "http api started %s", h.config.API.Addr)
 
 	server := &http.Server{
 		Addr:              h.config.API.Addr,
@@ -52,7 +53,7 @@ func (h *Handler) Serve() {
 		ReadHeaderTimeout: 3 * time.Second,
 	}
 	if err := server.ListenAndServe(); err != nil {
-		logger.Error(nil, err, "http api start failed") //nolint
+		logger.Error(ctx, err, "http api start failed")
 	}
 }
 
