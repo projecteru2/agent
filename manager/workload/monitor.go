@@ -65,7 +65,16 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 		if err := retryTask.Run(ctx); err != nil {
 			logger.Debug(ctx, "workload still not healthy")
 		}
+		m.forgetRetryTask(ID, retryTask)
 	}()
+}
+
+func (m *Manager) forgetRetryTask(ID string, retryTask *utils.RetryTask) {
+	m.checkWorkloadMutex.Lock()
+	defer m.checkWorkloadMutex.Unlock()
+	if m.startingWorkloads[ID] == retryTask {
+		delete(m.startingWorkloads, ID)
+	}
 }
 
 func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.WorkloadEventMessage) {
