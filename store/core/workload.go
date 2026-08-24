@@ -20,7 +20,6 @@ func getCacheTTL(ttl int64) time.Duration {
 	return time.Duration(ttl) * time.Second
 }
 
-// SetWorkloadStatus deploy containers
 func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus, ttl int64) error {
 	workloadStatus := fmt.Sprintf("%+v", status)
 	if ttl == 0 {

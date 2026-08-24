@@ -15,7 +15,6 @@ import (
 func TestNewWriterWithUDP(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// udp writer
 	addr := "udp://127.0.0.1:23456"
 	w, err := NewWriter(ctx, addr, true)
 	assert.NoError(t, err)
@@ -25,7 +24,6 @@ func TestNewWriterWithUDP(t *testing.T) {
 func TestNewWriterWithTCP(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	// tcp writer
 
 	tcpL, err := net.Listen("tcp", ":34567")
 	defer tcpL.Close()
@@ -68,9 +66,7 @@ func TestNewWriters(t *testing.T) {
 		Discard:                 nil,
 		"udp://127.0.0.1:23456": nil,
 		"tcp://127.0.0.1:34567": nil,
-		// journal if enabled totally depends upon the system settings,
-		// "journal://system":      errJournalDisabled,
-		"invalid://hhh": nil,
+		"invalid://hhh":         nil,
 	}
 	tcpL, err := net.Listen("tcp", ":34567")
 	assert.NoError(t, err)
@@ -91,7 +87,6 @@ func TestNewWriters(t *testing.T) {
 			assert.NoError(t, err)
 		}(addr, expectedErr)
 	}
-	// wait for closing all writers
 	time.Sleep(CloseWaitInterval + 2*time.Second)
 }
 

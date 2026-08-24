@@ -17,14 +17,12 @@ import (
 	"github.com/projecteru2/core/log"
 )
 
-// Manager manages node status
 type Manager struct {
 	config        *types.Config
 	store         store.Store
 	runtimeClient runtime.Runtime
 }
 
-// NewManager .
 func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 	m := &Manager{config: config}
 
@@ -73,7 +71,6 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 	return m, nil
 }
 
-// Run runs a node manager
 func (m *Manager) Run(ctx context.Context) error {
 	logger := log.WithFunc("Run")
 	logger.Info(ctx, "start node status heartbeat")
@@ -84,16 +81,14 @@ func (m *Manager) Run(ctx context.Context) error {
 	return nil
 }
 
-// Exit .
 func (m *Manager) Exit() error {
 	ctx := context.TODO()
 	logger := log.WithFunc("Exit").WithField("hostname", m.config.HostName)
 	logger.Info(ctx, "remove node status")
 
-	// ctx is now canceled. use a new context.
 	var err error
 	utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		// remove node status
+		// a negative ttl removes the node status
 		err = m.store.SetNodeStatus(ctx, -1)
 	})
 	if err != nil {

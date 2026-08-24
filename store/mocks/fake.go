@@ -13,19 +13,17 @@ import (
 	"github.com/projecteru2/agent/types"
 )
 
-// MockStore .
 type MockStore struct {
 	Store
 	sync.Mutex
-	workloadStatus *haxmap.Map[string, *types.WorkloadStatus] // map[string]*types.WorkloadStatus
-	nodeStatus     *haxmap.Map[string, *types.NodeStatus]     // map[string]*types.NodeStatus
-	nodeInfo       *haxmap.Map[string, *types.Node]           // map[string]*types.Node
+	workloadStatus *haxmap.Map[string, *types.WorkloadStatus]
+	nodeStatus     *haxmap.Map[string, *types.NodeStatus]
+	nodeInfo       *haxmap.Map[string, *types.Node]
 
 	msgChan chan *types.NodeStatus
 	errChan chan error
 }
 
-// GetMockWorkloadStatus returns the mock workload status by ID
 func (m *MockStore) GetMockWorkloadStatus(ID string) *types.WorkloadStatus {
 	status, ok := m.workloadStatus.Get(ID)
 	if !ok {
@@ -68,7 +66,6 @@ func (m *MockStore) init() {
 	})
 }
 
-// NewFakeStore returns a mock store instance created from mock
 func NewFakeStore() store.Store {
 	logger := log.WithFunc("fakestore")
 	m := &MockStore{}

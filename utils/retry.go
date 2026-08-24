@@ -7,7 +7,6 @@ import (
 	"github.com/projecteru2/core/log"
 )
 
-// RetryTask .
 type RetryTask struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
@@ -15,9 +14,7 @@ type RetryTask struct {
 	MaxAttempts int
 }
 
-// NewRetryTask .
 func NewRetryTask(ctx context.Context, maxAttempts int, f func() error) *RetryTask {
-	// make sure to execute at least once
 	if maxAttempts < 1 {
 		maxAttempts = 1
 	}
@@ -30,7 +27,6 @@ func NewRetryTask(ctx context.Context, maxAttempts int, f func() error) *RetryTa
 	}
 }
 
-// Run start running retry task
 func (r *RetryTask) Run(ctx context.Context) error {
 	logger := log.WithFunc("Run")
 	logger.Debug(ctx, "start")
@@ -59,12 +55,11 @@ func (r *RetryTask) Run(ctx context.Context) error {
 	return err
 }
 
-// Stop stops running task
 func (r *RetryTask) Stop(context.Context) {
 	r.cancel()
 }
 
-// BackoffRetry retries up to `maxAttempts` times, and the interval will grow exponentially
+// BackoffRetry runs f up to maxAttempts times, doubling the wait after each failure.
 func BackoffRetry(ctx context.Context, maxAttempts int, f func() error) error {
 	retryTask := NewRetryTask(ctx, maxAttempts, f)
 	defer retryTask.Stop(ctx)

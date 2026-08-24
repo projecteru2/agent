@@ -8,7 +8,6 @@ import (
 	"github.com/projecteru2/agent/utils"
 )
 
-// GetIdentifier returns the identifier of core
 func (c *Store) GetIdentifier(ctx context.Context) string {
 	var resp *pb.CoreInfo
 	var err error

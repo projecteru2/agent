@@ -38,19 +38,17 @@ const (
 	fieldStoreIdentifier = "eru.coreid"
 )
 
-// Docker .
 type Docker struct {
 	client *engineapi.Client
 	config *types.Config
 
 	nodeIP    string
-	cpuCore   float64 // 因为到时候要乘以 float64 所以就直接转换成 float64 吧
+	cpuCore   float64
 	memory    int64
 	cas       *utils.GroupCAS
 	transfers *utils.HashBackends
 }
 
-// New returns a wrapper of docker client
 func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, error) {
 	d := &Docker{
 		config:    config,
@@ -88,7 +86,6 @@ func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, err
 	return d, nil
 }
 
-// ListWorkloadIDs lists workload IDs filtered by given condition
 func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string) ([]string, error) {
 	f := d.getFilterArgs(filters)
 	opts := enginecontainer.ListOptions{Filters: f, All: true}
@@ -110,7 +107,6 @@ func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 	return workloads, nil
 }
 
-// AttachWorkload .
 func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.Reader, error) {
 	logger := log.WithFunc("AttachWorkload").WithField("ID", ID)
 	resp, err := d.client.ContainerAttach(ctx, ID, enginecontainer.AttachOptions{
@@ -147,7 +143,6 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 	return outr, errr, nil
 }
 
-// Events returns the events of workloads' changes
 func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan *types.WorkloadEventMessage, <-chan error) {
 	eventChan := make(chan *types.WorkloadEventMessage)
 	errChan := make(chan error)
@@ -181,7 +176,6 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 	return eventChan, errChan
 }
 
-// GetStatus checks workload's status first, then returns workload status
 func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error) {
 	logger := log.WithFunc("GetStatus").WithField("ID", ID)
 	container, err := d.detectWorkload(ctx, ID)
@@ -207,7 +201,6 @@ func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*t
 		Healthy:    container.Running && container.HealthCheck == nil,
 	}
 
-	// only check the running containers
 	if checkHealth && container.Running {
 		free, acquired := d.cas.Acquire(container.ID)
 		if !acquired {
@@ -220,7 +213,6 @@ func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*t
 	return status, nil
 }
 
-// GetWorkloadName returns the name of workload
 func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error) {
 	var containerJSON enginecontainer.InspectResponse
 	var err error
@@ -235,7 +227,6 @@ func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error)
 	return containerJSON.Name, nil
 }
 
-// LogFieldsExtra .
 func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]string, error) {
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
@@ -254,7 +245,6 @@ func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]stri
 	return extra, nil
 }
 
-// IsDaemonRunning returns if the runtime daemon is running.
 func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
@@ -267,7 +257,6 @@ func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
 	return true
 }
 
-// Name returns the name of runtime
 func (d *Docker) Name() string {
 	return "docker"
 }
@@ -282,8 +271,6 @@ func (d *Docker) getFilterArgs(filters map[string]string) enginefilters.Args {
 	return f
 }
 
-// checkHostname check if ERU_NODE_NAME env in container is the hostname of this agent
-// TODO should be removed in the future, should always use label to filter
 func (d *Docker) checkHostname(env []string) bool {
 	for _, e := range env {
 		ps := strings.SplitN(e, "=", 2)
@@ -298,11 +285,9 @@ func (d *Docker) checkHostname(env []string) bool {
 }
 
 func getAddrsFromNS(cid string, ifname string) ([]net.Addr, error) {
-	// Lock the OS Thread so we don't accidentally switch namespaces
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	// Save the current network namespace
 	origns, _ := netns.Get()
 	defer origns.Close()
 	defer netns.Set(origns) //nolint:errcheck
@@ -327,9 +312,7 @@ func getAddrsFromNS(cid string, ifname string) ([]net.Addr, error) {
 	return addrs, nil
 }
 
-// detectWorkload detect a container by ID
 func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, error) {
-	// 标准化为 inspect 的数据
 	var c enginecontainer.InspectResponse
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
@@ -344,25 +327,20 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 		return nil, common.ErrInvaildContainer
 	}
 
-	// TODO should be removed in the future
 	if d.config.CheckOnlyMine && !utils.UseLabelAsFilter() && !d.checkHostname(c.Config.Env) {
 		return nil, common.ErrInvaildContainer
 	}
 
-	// 生成基准 meta
 	meta := coreutils.DecodeMetaInLabel(ctx, label)
 
-	// 是否符合 eru pattern，如果一个容器又有 ERUMark 又是三段式的 name，那它就是个 ERU 容器
 	container, err := generateContainerMeta(ctx, c, meta, label)
 	if err != nil {
 		return nil, err
 	}
-	// 计算容器用了多少 CPU
 	container = calcuateCPUNum(container, c, d.cpuCore)
 	if container.Memory == 0 || container.Memory == math.MaxInt64 {
 		container.Memory = d.memory
 	}
-	// 活着才有发布必要
 	if c.NetworkSettings != nil && container.Running { //nolint:nestif
 		networks := map[string]string{}
 		for name, endpoint := range c.NetworkSettings.Networks {

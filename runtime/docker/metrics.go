@@ -16,7 +16,6 @@ import (
 
 var clients *haxmap.Map[string, *MetricsClient]
 
-// MetricsClient combine statsd and prometheus
 type MetricsClient struct {
 	statsd       string
 	statsdClient *statsdlib.Client
@@ -46,19 +45,16 @@ type MetricsClient struct {
 	dropIn      *prometheus.GaugeVec
 	dropOut     *prometheus.GaugeVec
 
-	// diskio stats
-	ioServiceBytesRead  *prometheus.GaugeVec
-	ioServiceBytesWrite *prometheus.GaugeVec
-	ioServicedRead      *prometheus.GaugeVec
-	ioServicedWrite     *prometheus.GaugeVec
-	// io/byte per second
+	ioServiceBytesRead           *prometheus.GaugeVec
+	ioServiceBytesWrite          *prometheus.GaugeVec
+	ioServicedRead               *prometheus.GaugeVec
+	ioServicedWrite              *prometheus.GaugeVec
 	ioServiceBytesReadPerSecond  *prometheus.GaugeVec
 	ioServiceBytesWritePerSecond *prometheus.GaugeVec
 	ioServicedReadPerSecond      *prometheus.GaugeVec
 	ioServicedWritePerSecond     *prometheus.GaugeVec
 }
 
-// NewMetricsClient new a metrics client
 func NewMetricsClient(statsd, hostname string, container *Container) *MetricsClient {
 	if metricsClient, ok := clients.Get(container.ID); ok {
 		return metricsClient
@@ -214,7 +210,6 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		Help:        "number of write IOs per second to the disk by the group.",
 		ConstLabels: labels,
 	}, []string{"dev"})
-	// TODO 这里已经没有了版本了
 	tag := fmt.Sprintf("%s.%s", hostname, coreutils.ShortID(container.ID))
 	endpoint := fmt.Sprintf("%s.%s", container.Name, container.EntryPoint)
 	prefix := fmt.Sprintf("%s.%s.%s", cluster.ERUMark, endpoint, tag)
@@ -269,7 +264,6 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 	return metricsClient
 }
 
-// Unregister unlink all prometheus things
 func (m *MetricsClient) Unregister() {
 	prometheus.Unregister(m.cpuHostSysUsage)
 	prometheus.Unregister(m.cpuHostUsage)
@@ -305,169 +299,141 @@ func (m *MetricsClient) Unregister() {
 	prometheus.Unregister(m.ioServicedWritePerSecond)
 }
 
-// CPUHostUsage set cpu usage in host view
 func (m *MetricsClient) CPUHostUsage(i float64) {
 	m.data["cpu_host_usage"] = i
 	m.cpuHostUsage.Set(i)
 }
 
-// CPUHostSysUsage set cpu sys usage in host view
 func (m *MetricsClient) CPUHostSysUsage(i float64) {
 	m.data["cpu_host_sys_usage"] = i
 	m.cpuHostSysUsage.Set(i)
 }
 
-// CPUHostUserUsage set cpu user usage in host view
 func (m *MetricsClient) CPUHostUserUsage(i float64) {
 	m.data["cpu_host_user_usage"] = i
 	m.cpuHostUserUsage.Set(i)
 }
 
-// CPUContainerUsage set cpu usage in container view
 func (m *MetricsClient) CPUContainerUsage(i float64) {
 	m.data["cpu_container_usage"] = i
 	m.cpuContainerUsage.Set(i)
 }
 
-// CPUContainerSysUsage set cpu sys usage in container view
 func (m *MetricsClient) CPUContainerSysUsage(i float64) {
 	m.data["cpu_container_sys_usage"] = i
 	m.cpuContainerSysUsage.Set(i)
 }
 
-// CPUContainerUserUsage set cpu user usage in container view
 func (m *MetricsClient) CPUContainerUserUsage(i float64) {
 	m.data["cpu_container_user_usage"] = i
 	m.cpuContainerUserUsage.Set(i)
 }
 
-// MemUsage set memory usage
 func (m *MetricsClient) MemUsage(i float64) {
 	m.data["mem_usage"] = i
 	m.memUsage.Set(i)
 }
 
-// MemMaxUsage set memory max usage
 func (m *MetricsClient) MemMaxUsage(i float64) {
 	m.data["mem_max_usage"] = i
 	m.memMaxUsage.Set(i)
 }
 
-// MemRss set memory rss
 func (m *MetricsClient) MemRss(i float64) {
 	m.data["mem_rss"] = i
 	m.memRss.Set(i)
 }
 
-// MemPercent set memory percent
 func (m *MetricsClient) MemPercent(i float64) {
 	m.data["mem_percent"] = i
 	m.memPercent.Set(i)
 }
 
-// MemRSSPercent set memory percent
 func (m *MetricsClient) MemRSSPercent(i float64) {
 	m.data["mem_rss_percent"] = i
 	m.memRSSPercent.Set(i)
 }
 
-// BytesSent set bytes send
 func (m *MetricsClient) BytesSent(nic string, i float64) {
 	m.data[nic+".bytes.sent"] = i
 	m.bytesSent.WithLabelValues(nic).Set(i)
 }
 
-// BytesRecv set bytes recv
 func (m *MetricsClient) BytesRecv(nic string, i float64) {
 	m.data[nic+".bytes.recv"] = i
 	m.bytesRecv.WithLabelValues(nic).Set(i)
 }
 
-// PacketsSent set packets send
 func (m *MetricsClient) PacketsSent(nic string, i float64) {
 	m.data[nic+".packets.sent"] = i
 	m.packetsSent.WithLabelValues(nic).Set(i)
 }
 
-// PacketsRecv set packets recv
 func (m *MetricsClient) PacketsRecv(nic string, i float64) {
 	m.data[nic+".packets.recv"] = i
 	m.packetsRecv.WithLabelValues(nic).Set(i)
 }
 
-// ErrIn set inbound err count
 func (m *MetricsClient) ErrIn(nic string, i float64) {
 	m.data[nic+".err.in"] = i
 	m.errIn.WithLabelValues(nic).Set(i)
 }
 
-// ErrOut set outbound err count
 func (m *MetricsClient) ErrOut(nic string, i float64) {
 	m.data[nic+".err.out"] = i
 	m.errOut.WithLabelValues(nic).Set(i)
 }
 
-// DropIn set inbound drop count
 func (m *MetricsClient) DropIn(nic string, i float64) {
 	m.data[nic+".drop.in"] = i
 	m.dropIn.WithLabelValues(nic).Set(i)
 }
 
-// DropOut set outbound drop count
 func (m *MetricsClient) DropOut(nic string, i float64) {
 	m.data[nic+".drop.out"] = i
 	m.dropOut.WithLabelValues(nic).Set(i)
 }
 
-// IOServiceBytesRead .
 func (m *MetricsClient) IOServiceBytesRead(dev string, i float64) {
 	m.data[dev+".io_service_bytes_read"] = i
 	m.ioServiceBytesRead.WithLabelValues(dev).Set(i)
 }
 
-// IOServiceBytesWrite .
 func (m *MetricsClient) IOServiceBytesWrite(dev string, i float64) {
 	m.data[dev+".io_service_bytes_write"] = i
 	m.ioServiceBytesWrite.WithLabelValues(dev).Set(i)
 }
 
-// IOServicedRead .
 func (m *MetricsClient) IOServicedRead(dev string, i float64) {
 	m.data[dev+".io_serviced_read"] = i
 	m.ioServicedRead.WithLabelValues(dev).Set(i)
 }
 
-// IOServicedWrite .
 func (m *MetricsClient) IOServicedWrite(dev string, i float64) {
 	m.data[dev+".io_serviced_write"] = i
 	m.ioServicedWrite.WithLabelValues(dev).Set(i)
 }
 
-// IOServiceBytesReadPerSecond .
 func (m *MetricsClient) IOServiceBytesReadPerSecond(dev string, i float64) {
 	m.data[dev+".io_service_bytes_read_per_second"] = i
 	m.ioServiceBytesReadPerSecond.WithLabelValues(dev).Set(i)
 }
 
-// IOServiceBytesWritePerSecond .
 func (m *MetricsClient) IOServiceBytesWritePerSecond(dev string, i float64) {
 	m.data[dev+".io_service_bytes_write_per_second"] = i
 	m.ioServiceBytesWritePerSecond.WithLabelValues(dev).Set(i)
 }
 
-// IOServicedReadPerSecond .
 func (m *MetricsClient) IOServicedReadPerSecond(dev string, i float64) {
 	m.data[dev+".io_serviced_read_per_second"] = i
 	m.ioServicedReadPerSecond.WithLabelValues(dev).Set(i)
 }
 
-// IOServicedWritePerSecond .
 func (m *MetricsClient) IOServicedWritePerSecond(dev string, i float64) {
 	m.data[dev+".io_serviced_write_per_second"] = i
 	m.ioServicedWritePerSecond.WithLabelValues(dev).Set(i)
 }
 
-// Send to statsd
 func (m *MetricsClient) Send(ctx context.Context) error {
 	if m.statsd == "" {
 		return nil
@@ -483,14 +449,12 @@ func (m *MetricsClient) Send(ctx context.Context) error {
 	return nil
 }
 
-// Lazy connecting
 func (m *MetricsClient) checkConn(ctx context.Context) error {
 	if m.statsdClient != nil {
 		return nil
 	}
 	logger := log.WithFunc("checkConn")
-	// We needn't try to renew/reconnect because of only supporting UDP protocol now
-	// We should add an `errorCount` to reconnect when implementing TCP protocol
+	// statsd speaks UDP only, so a client never has to be renewed
 	var err error
 	if m.statsdClient, err = statsdlib.New(m.statsd, statsdlib.WithErrorHandler(func(err error) {
 		logger.Error(ctx, err, "[statsd] Sending statsd failed")

@@ -20,7 +20,6 @@ import (
 	"github.com/projecteru2/core/log"
 )
 
-// Yavirt .
 type Yavirt struct {
 	client     client.Client
 	config     *types.Config
@@ -28,7 +27,6 @@ type Yavirt struct {
 	cas        *utils.GroupCAS
 }
 
-// New returns a wrapper of yavirt client
 func New(config *types.Config) (*Yavirt, error) {
 	y := &Yavirt{
 		config: config,
@@ -52,15 +50,12 @@ func New(config *types.Config) (*Yavirt, error) {
 	return y, nil
 }
 
-// AttachWorkload not implemented yet
 func (y *Yavirt) AttachWorkload(context.Context, string) (io.Reader, io.Reader, error) {
 	return nil, nil, common.ErrNotImplemented
 }
 
-// CollectWorkloadMetrics no need yet
 func (y *Yavirt) CollectWorkloadMetrics(context.Context, string) {}
 
-// ListWorkloadIDs lists workload IDs filtered by given condition
 func (y *Yavirt) ListWorkloadIDs(ctx context.Context, filters map[string]string) (ids []string, err error) {
 	utils.WithTimeout(ctx, y.config.GlobalConnectionTimeout, func(ctx context.Context) {
 		ids, err = y.client.GetGuestIDList(ctx, yavirttypes.GetGuestIDListReq{Filters: filters})
@@ -72,7 +67,6 @@ func (y *Yavirt) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 	return ids, nil
 }
 
-// Events returns the events of workloads' changes
 func (y *Yavirt) Events(ctx context.Context, filters map[string]string) (<-chan *types.WorkloadEventMessage, <-chan error) {
 	eventChan := make(chan *types.WorkloadEventMessage)
 	errChan := make(chan error)
@@ -103,7 +97,6 @@ func (y *Yavirt) Events(ctx context.Context, filters map[string]string) (<-chan 
 	return eventChan, errChan
 }
 
-// GetStatus checks workload's status first, then returns workload status
 func (y *Yavirt) GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error) {
 	logger := log.WithFunc("GetStatus").WithField("ID", ID)
 	guest, err := y.detectWorkload(ctx, ID)
@@ -139,17 +132,14 @@ func (y *Yavirt) GetStatus(ctx context.Context, ID string, checkHealth bool) (*t
 	return status, nil
 }
 
-// GetWorkloadName not implemented yet
 func (y *Yavirt) GetWorkloadName(context.Context, string) (string, error) {
 	return "", common.ErrNotImplemented
 }
 
-// LogFieldsExtra .
 func (y *Yavirt) LogFieldsExtra(context.Context, string) (map[string]string, error) {
 	return map[string]string{}, nil
 }
 
-// IsDaemonRunning returns if the runtime daemon is running.
 func (y *Yavirt) IsDaemonRunning(ctx context.Context) bool {
 	var err error
 	utils.WithTimeout(ctx, y.config.GlobalConnectionTimeout, func(ctx context.Context) {
@@ -162,12 +152,10 @@ func (y *Yavirt) IsDaemonRunning(ctx context.Context) bool {
 	return true
 }
 
-// Name returns the name of runtime
 func (y *Yavirt) Name() string {
 	return "yavirt"
 }
 
-// needSkip checks if a workload should be skipped
 func (y *Yavirt) needSkip(ID string) bool {
 	for _, reg := range y.skipRegexp {
 		if reg.MatchString(ID) {
@@ -177,7 +165,6 @@ func (y *Yavirt) needSkip(ID string) bool {
 	return false
 }
 
-// detectWorkload detects a workload by ID
 func (y *Yavirt) detectWorkload(ctx context.Context, ID string) (*Guest, error) {
 	if y.needSkip(ID) {
 		return nil, common.ErrInvaildVM

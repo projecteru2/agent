@@ -6,7 +6,6 @@ import (
 	"runtime/pprof" //nolint:nolintlint
 	"time"
 
-	// enable profile
 	_ "net/http/pprof" //nolint
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -18,16 +17,13 @@ import (
 	"github.com/projecteru2/agent/version"
 )
 
-// JSON define a json
 type JSON map[string]interface{}
 
-// Handler define handler
 type Handler struct {
 	config           *types.Config
 	workloadsManager *workload.Manager
 }
 
-// NewHandler new api http handler
 func NewHandler(config *types.Config, workloadsManager *workload.Manager) *Handler {
 	return &Handler{
 		config:           config,
@@ -35,9 +31,6 @@ func NewHandler(config *types.Config, workloadsManager *workload.Manager) *Handl
 	}
 }
 
-// Serve start a api service
-// blocks by http.ListenAndServe
-// run this in a separated goroutine
 func (h *Handler) Serve() {
 	if h.config.API.Addr == "" {
 		return
@@ -63,14 +56,12 @@ func (h *Handler) Serve() {
 	}
 }
 
-// URL /version/
 func (h *Handler) version(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(JSON{"version": version.VERSION})
 }
 
-// URL /profile/
 func (h *Handler) profile(w http.ResponseWriter, _ *http.Request) {
 	r := JSON{}
 	for _, p := range pprof.Profiles() {
@@ -81,7 +72,6 @@ func (h *Handler) profile(w http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(w).Encode(r)
 }
 
-// URL /log/
 func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 	app := req.URL.Query().Get("app")
 	if app == "" {
@@ -89,7 +79,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	logger := log.WithFunc("log").WithField("path", "/log")
-	// fuck httpie
+	// the status line must go out before the hijack, otherwise clients see no response
 	w.WriteHeader(http.StatusOK)
 	if hijack, ok := w.(http.Hijacker); ok {
 		conn, buf, err := hijack.Hijack()

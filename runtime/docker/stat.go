@@ -11,10 +11,7 @@ import (
 	"github.com/shirou/gopsutil/v4/net"
 )
 
-// CollectWorkloadMetrics .
 func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //nolint
-	// TODO
-	// FIXME fuck internal pkg
 	proc := "/proc"
 	if utils.IsDockerized() {
 		proc = "/hostProc"
@@ -26,7 +23,6 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		logger.Error(ctx, err, "failed to detect container")
 	}
 
-	// init stats
 	containerCPUStats, systemCPUStats, containerNetStats, err := getStats(ctx, container.ID, container.Pid, proc)
 	if err != nil {
 		logger.Error(ctx, err, "get stats failed")
@@ -99,7 +95,7 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		mClient.CPUHostSysUsage(cpuHostSysUsage)
 		mClient.CPUHostUserUsage(cpuHostUserUsage)
 
-		cpuContainerUsage := deltaContainerCPUUsage / containerCPUCount // 实际消耗的 CPU 秒 / 允许消耗的 CPU 秒
+		cpuContainerUsage := deltaContainerCPUUsage / containerCPUCount
 		cpuContainerSysUsage := 0.0
 		if deltaContainerCPUUsage > 0 {
 			cpuContainerSysUsage = deltaContainerCPUSysUsage / deltaContainerCPUUsage
@@ -160,7 +156,6 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		for _, entry := range newBlkioStats.IOServicedWriteRecusive {
 			mClient.IOServicedWrite(entry.Dev, float64(entry.Value))
 		}
-		// update diff
 		diffBlkioStats := getBlkIOMetricsDifference(blkioStats, newBlkioStats)
 		for _, entry := range diffBlkioStats.IOServiceBytesReadRecursive {
 			mClient.IOServiceBytesReadPerSecond(entry.Dev, float64(entry.Value)/delta)

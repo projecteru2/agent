@@ -16,12 +16,11 @@ func getStats(ctx context.Context, _ string, _ int, _ string) (*docker.CgroupCPU
 		TimesStat: cpu.TimesStat{},
 		Usage:     0.0,
 	}
-	// get system cpu stats
 	systemCPUsStats, err := cpu.TimesWithContext(ctx, false)
 	if err != nil {
 		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
 	}
-	// 0 means all cpu
+	// index 0 aggregates every cpu
 	systemCPUStats := systemCPUsStats[0]
 	return containerCPUStats, systemCPUStats, []net.IOCountersStat{}, nil
 }

@@ -12,19 +12,16 @@ import (
 	"github.com/coreos/go-systemd/v22/journal"
 )
 
-// Encoder .
 type Encoder interface {
 	Encode(*types.Log) error
 	Close() error
 }
 
-// StreamEncoder .
 type StreamEncoder struct {
 	*json.Encoder
 	wt io.WriteCloser
 }
 
-// NewStreamEncoder .
 func NewStreamEncoder(wt io.WriteCloser) *StreamEncoder {
 	return &StreamEncoder{
 		Encoder: json.NewEncoder(wt),
@@ -32,22 +29,18 @@ func NewStreamEncoder(wt io.WriteCloser) *StreamEncoder {
 	}
 }
 
-// Encode .
 func (e *StreamEncoder) Encode(logline *types.Log) error {
 	return e.Encoder.Encode(logline)
 }
 
-// Close .
 func (e *StreamEncoder) Close() error {
 	return e.wt.Close()
 }
 
-// JournalEncoder .
 type JournalEncoder struct {
 	sync.Mutex
 }
 
-// CreateJournalEncoder .
 func CreateJournalEncoder() (*JournalEncoder, error) {
 	if !journal.Enabled() {
 		return nil, common.ErrJournalDisable
@@ -55,7 +48,6 @@ func CreateJournalEncoder() (*JournalEncoder, error) {
 	return &JournalEncoder{}, nil
 }
 
-// Encode .
 func (c *JournalEncoder) Encode(logline *types.Log) error {
 	extra, err := json.Marshal(logline.Extra)
 	if err != nil {
@@ -79,7 +71,6 @@ func (c *JournalEncoder) Encode(logline *types.Log) error {
 	return journal.Send(p, journal.PriInfo, vars)
 }
 
-// Close .
 func (c *JournalEncoder) Close() (err error) {
 	return err
 }

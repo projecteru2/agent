@@ -10,7 +10,6 @@ import (
 	"github.com/projecteru2/agent/utils"
 )
 
-// Container docker container
 type Container struct {
 	coretypes.StatusMeta
 	Pid         int
@@ -27,7 +26,6 @@ type Container struct {
 	LocalIP     string `json:"-"`
 }
 
-// CheckHealth check container's health status
 func (c *Container) CheckHealth(ctx context.Context, timeout time.Duration) bool {
 	if c.HealthCheck == nil {
 		return true

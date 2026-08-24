@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-// eva a fake workload
 type eva struct {
 	ID         string
 	Name       string
@@ -26,11 +25,10 @@ type eva struct {
 	Healthy    bool
 }
 
-// Nerv a fake runtime
 type Nerv struct {
 	Runtime
 	sync.Mutex
-	workloads     *haxmap.Map[string, *eva] // map[string]*eva
+	workloads     *haxmap.Map[string, *eva]
 	msgChan       chan *types.WorkloadEventMessage
 	errChan       chan error
 	daemonRunning bool
@@ -79,12 +77,10 @@ func (n *Nerv) StartEvents() {
 	}
 }
 
-// StartCustomEvent .
 func (n *Nerv) StartCustomEvent(event *types.WorkloadEventMessage) {
 	n.msgChan <- event
 }
 
-// SetDaemonRunning set `daemonRunning`
 func (n *Nerv) SetDaemonRunning(status bool) {
 	n.daemonRunning = status
 }
@@ -127,7 +123,6 @@ func (n *Nerv) withLock(f func()) {
 	f()
 }
 
-// FromTemplate returns a mock runtime instance created from template
 func FromTemplate() runtime.Runtime {
 	n := &Nerv{}
 	n.init()

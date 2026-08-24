@@ -2,19 +2,17 @@ package utils
 
 import "github.com/alphadose/haxmap"
 
-// GroupCAS indicates cas locks which are grouped by keys.
+// GroupCAS is a set of compare-and-swap locks keyed by string.
 type GroupCAS struct {
 	*haxmap.Map[string, struct{}]
 }
 
-// NewGroupCAS .
 func NewGroupCAS() *GroupCAS {
 	return &GroupCAS{
 		Map: haxmap.New[string, struct{}](),
 	}
 }
 
-// Acquire tries to acquire a cas lock.
 func (g *GroupCAS) Acquire(key string) (free func(), acquired bool) {
 	if _, loaded := g.GetOrSet(key, struct{}{}); loaded {
 		return nil, false

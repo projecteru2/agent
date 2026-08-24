@@ -15,7 +15,6 @@ func TestAttach(t *testing.T) {
 	go func() {
 		for {
 			log := <-manager.logBroadcaster.logC
-			// see: runtime.FromTemplate
 			switch log.Type {
 			case "stdout":
 				assert.Equal(t, log.Data, "stdout")

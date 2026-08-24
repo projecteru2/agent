@@ -19,14 +19,12 @@ var (
 	once      sync.Once
 )
 
-// Store use core to store meta
 type Store struct {
 	clientPool *client.Pool
 	config     *types.Config
 	cache      *cache.Cache
 }
 
-// New new a Store
 func New(ctx context.Context, config *types.Config) (*Store, error) {
 	clientPoolConfig := &client.PoolConfig{
 		EruAddrs:          config.Core,
@@ -41,12 +39,10 @@ func New(ctx context.Context, config *types.Config) (*Store, error) {
 	return &Store{clientPool, config, cache}, nil
 }
 
-// GetClient returns a gRPC client
 func (c *Store) GetClient() pb.CoreRPCClient {
 	return c.clientPool.GetClient()
 }
 
-// Init inits the core store only once
 func Init(ctx context.Context, config *types.Config) {
 	once.Do(func() {
 		var err error
@@ -58,7 +54,6 @@ func Init(ctx context.Context, config *types.Config) {
 	})
 }
 
-// Get returns the core store instance
 func Get() *Store {
 	return coreStore
 }

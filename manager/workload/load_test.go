@@ -16,7 +16,6 @@ func TestLoad(t *testing.T) {
 	store := manager.store.(*mocks.MockStore)
 	ctx := context.Background()
 	err := manager.initWorkloadStatus(ctx)
-	// wait for attaching
 	time.Sleep(2 * time.Second)
 	assert.Nil(t, err)
 	assertInitStatus(t, store)

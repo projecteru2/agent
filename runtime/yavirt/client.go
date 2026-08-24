@@ -13,7 +13,6 @@ var (
 	yavirt *Yavirt
 )
 
-// InitClient init yavirt client
 func InitClient(config *types.Config) {
 	once.Do(func() {
 		var err error
@@ -24,7 +23,6 @@ func InitClient(config *types.Config) {
 	})
 }
 
-// GetClient .
 func GetClient() *Yavirt {
 	return yavirt
 }

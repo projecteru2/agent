@@ -9,8 +9,7 @@ import (
 	"github.com/projecteru2/core/log"
 )
 
-// CheckHTTP 检查一个workload的所有URL
-// CheckHTTP 事实上一般也就一个
+// CheckHTTP reports whether every backend answers with the expected status code.
 func CheckHTTP(ctx context.Context, ID string, backends []string, code int, timeout time.Duration) bool {
 	logger := log.WithFunc("CheckHTTP").WithField("ID", ID).WithField("backends", backends).WithField("code", code)
 	for _, backend := range backends {
@@ -23,8 +22,7 @@ func CheckHTTP(ctx context.Context, ID string, backends []string, code int, time
 	return true
 }
 
-// CheckTCP 检查一个TCP
-// 这里不支持ctx?
+// CheckTCP reports whether every backend accepts a TCP connection.
 func CheckTCP(ctx context.Context, ID string, backends []string, timeout time.Duration) bool {
 	logger := log.WithFunc("CheckTCP").WithField("ID", ID).WithField("backends", backends)
 	for _, backend := range backends {
@@ -39,8 +37,6 @@ func CheckTCP(ctx context.Context, ID string, backends []string, timeout time.Du
 	return true
 }
 
-// 偷来的函数
-// 谁要官方的context没有收录他 ¬ ¬
 func get(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
 	if client == nil {
 		client = http.DefaultClient
@@ -62,7 +58,6 @@ func get(ctx context.Context, client *http.Client, url string) (*http.Response, 
 	return resp, err
 }
 
-// 就先定义 [200, 500) 这个区间的 code 都算是成功吧
 func checkOneURL(ctx context.Context, url string, expectedCode int, timeout time.Duration) bool {
 	logger := log.WithFunc("checkOneURL").WithField("url", url)
 	var resp *http.Response

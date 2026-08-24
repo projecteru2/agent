@@ -49,9 +49,7 @@ func TestCASConccurently(t *testing.T) {
 				return
 			}
 
-			// makes sure that there're only one thread has been acquired.
 			require.True(t, atomic.CompareAndSwapInt32(&sum, 0, 1), atomic.LoadInt32(&sum))
-			// marks there's no thread is acquired in advance.
 			require.True(t, atomic.CompareAndSwapInt32(&sum, 1, 0))
 
 			free()

@@ -11,7 +11,6 @@ const (
 	WriteOp = "Write"
 )
 
-// per device level
 type BlkIOMetrics struct {
 	IOServiceBytesReadRecursive  []*BlkIOEntry
 	IOServiceBytesWriteRecursive []*BlkIOEntry
@@ -53,7 +52,7 @@ func fromEngineBlkioStats(raw *enginecontainer.BlkioStats) (*BlkIOMetrics, error
 	return blkioMetrics, nil
 }
 
-// getBlkIOMetricsDifference calculate differences between old and new metrics (new-old), for missing metrics, will use default 0 as value
+// getBlkIOMetricsDifference returns new-old per device, counting a missing device as 0.
 func getBlkIOMetricsDifference(old, new *BlkIOMetrics) (diff *BlkIOMetrics) {
 	return &BlkIOMetrics{
 		IOServiceBytesReadRecursive:  getGroupDifference(old.IOServiceBytesReadRecursive, new.IOServiceBytesReadRecursive),

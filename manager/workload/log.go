@@ -31,11 +31,10 @@ func (s *subscriber) isDone() bool {
 	}
 }
 
-// logBroadcaster receives log and broadcasts to subscribers
 type logBroadcaster struct {
 	sync.RWMutex
 	logC           chan *types.Log
-	subscribersMap *haxmap.Map[string, map[string]*subscriber] // format: map[app string, map[ID string]*subscriber]
+	subscribersMap *haxmap.Map[string, map[string]*subscriber]
 }
 
 func newLogBroadcaster() *logBroadcaster {
@@ -58,7 +57,6 @@ func (l *logBroadcaster) deleteSubscribers(app string) {
 	l.subscribersMap.Del(app)
 }
 
-// subscribe subscribes logs of the specific app.
 func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.ReadWriter) (string, chan error, func()) {
 	l.Lock()
 	defer l.Unlock()
@@ -95,7 +93,6 @@ func (l *logBroadcaster) unsubscribe(app, ID string) {
 
 	corelog.Infof(nil, "%s %s detached", app, ID) //nolint
 
-	// if no subscribers for this app, remove the key
 	if len(subscribers) == 0 {
 		l.deleteSubscribers(app)
 	}
@@ -116,7 +113,7 @@ func (l *logBroadcaster) broadcast(log *types.Log) {
 	}
 	line := fmt.Sprintf("%X\r\n%s\r\n\r\n", len(data)+2, string(data))
 
-	// use wait group to make sure the logs are ordered
+	// waiting here keeps the log lines ordered across subscribers
 	wg := &sync.WaitGroup{}
 	wg.Add(len(subscribers))
 	for ID, sub := range subscribers {

@@ -6,17 +6,12 @@ import (
 )
 
 var (
-	// NAME .
-	NAME = "Eru-agent"
-	// VERSION .
-	VERSION = "unknown"
-	// REVISION .
+	NAME     = "Eru-agent"
+	VERSION  = "unknown"
 	REVISION = "HEAD"
-	// BUILTAT .
-	BUILTAT = "now"
+	BUILTAT  = "now"
 )
 
-// String .
 func String() string {
 	version := ""
 	version += fmt.Sprintf("Version:        %s\n", VERSION)

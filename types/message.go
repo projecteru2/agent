@@ -1,6 +1,5 @@
 package types
 
-// WorkloadEventMessage .
 type WorkloadEventMessage struct {
 	ID       string
 	Type     string

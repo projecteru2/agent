@@ -7,7 +7,6 @@ import (
 	"github.com/projecteru2/agent/types"
 )
 
-// Runtime provides runtime-related functions
 type Runtime interface {
 	AttachWorkload(ctx context.Context, ID string) (io.Reader, io.Reader, error)
 	CollectWorkloadMetrics(ctx context.Context, ID string)

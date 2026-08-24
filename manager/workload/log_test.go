@@ -14,7 +14,6 @@ import (
 
 func TestLogBroadcaster(t *testing.T) {
 	manager := newMockWorkloadManager(t)
-	//	log.SetupLog("debug")
 
 	logCtx, logCancel := context.WithCancel(context.Background())
 	defer logCancel()
@@ -45,7 +44,6 @@ func TestLogBroadcaster(t *testing.T) {
 	}()
 
 	go func() {
-		// wait for subscribers
 		time.Sleep(3 * time.Second)
 		manager.logBroadcaster.logC <- &types.Log{
 			ID:         "Rei",
@@ -67,7 +65,6 @@ func TestLogBroadcaster(t *testing.T) {
 	defer cancel()
 	go manager.logBroadcaster.run(ctx)
 
-	// wait for http server to start
 	time.Sleep(time.Second)
 
 	reqCtx, reqCancel := context.WithTimeout(ctx, 3*time.Second)
@@ -88,7 +85,6 @@ func TestLogBroadcaster(t *testing.T) {
 	}
 
 	logCancel()
-	// wait log subscriber to be removed
 	time.Sleep(time.Second)
 
 	manager.logBroadcaster.logC <- &types.Log{

@@ -14,18 +14,14 @@ import (
 	"github.com/projecteru2/core/log"
 )
 
-// Discard .
 const Discard = "__discard__"
 
 var (
-	// KeepaliveInterval .
 	KeepaliveInterval = time.Second * 30
 
-	// CloseWaitInterval .
 	CloseWaitInterval = time.Second * 5
 )
 
-// Writer is a writer!
 type Writer struct {
 	sync.RWMutex
 	addr          string
@@ -35,7 +31,6 @@ type Writer struct {
 	needReconnect bool
 }
 
-// NewWriter return writer
 func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, err error) {
 	if addr == Discard {
 		return &Writer{
@@ -69,7 +64,6 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 	return writer, nil
 }
 
-// Write write log to remote
 func (w *Writer) Write(logline *types.Log) error {
 	if w.stdout {
 		log.WithFunc("Write").Info(nil, logline) //nolint
@@ -139,7 +133,6 @@ func (w *Writer) createTCPEncoder() (Encoder, error) {
 	return NewStreamEncoder(conn), nil
 }
 
-// CreateConn create conn
 func (w *Writer) createEncoder() (enc Encoder, err error) {
 	switch w.scheme {
 	case "udp":
@@ -186,7 +179,7 @@ func (w *Writer) keepalive(ctx context.Context) {
 			w.reconnect()
 			timer.Reset(KeepaliveInterval)
 		case <-ctx.Done():
-			// leave some time for the pending writing
+			// give the pending writes a chance to drain before closing
 			time.Sleep(CloseWaitInterval)
 			if err := w.close(); err != nil {
 				log.WithFunc("keepalive").Errorf(nil, err, "failed to close writer %s", w.addr) //nolint
@@ -211,12 +204,10 @@ func (w *Writer) checkError(err error) {
 
 type discard struct{}
 
-// Write writer
 func (d discard) Write([]byte) (n int, err error) {
 	return 0, nil
 }
 
-// Close closer
 func (d discard) Close() error {
 	return nil
 }

@@ -10,25 +10,21 @@ import (
 	"github.com/projecteru2/core/log"
 )
 
-// EventHandler define event handler
 type EventHandler struct {
 	sync.Mutex
 	handlers map[string]func(context.Context, *types.WorkloadEventMessage)
 }
 
-// NewEventHandler new a event handler
 func NewEventHandler() *EventHandler {
 	return &EventHandler{handlers: make(map[string]func(context.Context, *types.WorkloadEventMessage))}
 }
 
-// Handle hand a event
 func (e *EventHandler) Handle(action string, h func(context.Context, *types.WorkloadEventMessage)) {
 	e.Lock()
 	defer e.Unlock()
 	e.handlers[action] = h
 }
 
-// Watch watch change
 func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventMessage) {
 	logger := log.WithFunc("Watch")
 	for {

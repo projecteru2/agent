@@ -32,7 +32,6 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 		return
 	}
 
-	// get app info
 	workloadName, err := m.runtimeClient.GetWorkloadName(ctx, ID)
 	if err != nil {
 		if err != common.ErrNotImplemented {
@@ -49,7 +48,6 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 		return
 	}
 
-	// attach workload
 	outr, errr, err := m.runtimeClient.AttachWorkload(ctx, ID)
 	if err != nil {
 		logger.Errorf(ctx, err, "failed to attach workload %s", workloadName)
@@ -57,7 +55,6 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 	}
 	logger.Infof(ctx, "attach %s workload success", workloadName)
 
-	// attach metrics
 	_ = utils.Pool.Submit(func() { m.runtimeClient.CollectWorkloadMetrics(ctx, ID) })
 
 	extra, err := m.runtimeClient.LogFieldsExtra(ctx, ID)

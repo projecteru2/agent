@@ -6,7 +6,6 @@ import (
 	"github.com/projecteru2/agent/types"
 )
 
-// Store wrapper of remote calls
 type Store interface {
 	GetNode(ctx context.Context, nodename string) (*types.Node, error)
 	SetNodeStatus(ctx context.Context, ttl int64) error

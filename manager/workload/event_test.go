@@ -19,13 +19,11 @@ func TestEvent(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	runtime := manager.runtimeClient.(*runtimemocks.Nerv)
 	store := manager.store.(*storemocks.MockStore)
-	// init workload status
 	assert.Nil(t, manager.initWorkloadStatus(ctx))
 	assertInitStatus(t, store)
 
 	go manager.monitor(ctx)
 
-	// starts the events: Shinji 400%, Asuka starts, Asuka dies, Rei dies
 	go runtime.StartEvents()
 	time.Sleep(5 * time.Second)
 

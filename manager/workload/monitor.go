@@ -26,7 +26,6 @@ func (m *Manager) watchEvent(ctx context.Context, eventChan <-chan *types.Worklo
 	eventHandler.Watch(ctx, eventChan)
 }
 
-// monitor with retry
 func (m *Manager) monitor(ctx context.Context) {
 	logger := log.WithFunc("monitor")
 	for {
@@ -43,7 +42,6 @@ func (m *Manager) monitor(ctx context.Context) {
 	}
 }
 
-// 检查一个workload，允许重试
 func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID string) {
 	logger := log.WithFunc("checkOneWorkloadWithBackoffRetry").WithField("ID", ID)
 	logger.Debug(ctx, "check workload")
@@ -57,7 +55,7 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 
 	retryTask := utils.NewRetryTask(ctx, utils.GetMaxAttemptsByTTL(m.config.GetHealthCheckStatusTTL()), func() error {
 		if !m.checkOneWorkload(ctx, ID) {
-			// 这个err就是用来判断要不要继续的，不用打在日志里
+			// this error only drives the retry loop, it is never surfaced
 			return common.ErrWorkloadUnhealthy
 		}
 		return nil

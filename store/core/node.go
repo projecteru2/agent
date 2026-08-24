@@ -12,7 +12,6 @@ import (
 	"github.com/projecteru2/agent/utils"
 )
 
-// GetNode return a node by core
 func (c *Store) GetNode(ctx context.Context, nodename string) (*types.Node, error) {
 	var resp *pb.Node
 	var err error
@@ -34,9 +33,7 @@ func (c *Store) GetNode(ctx context.Context, nodename string) (*types.Node, erro
 	return node, nil
 }
 
-// SetNodeStatus reports the status of node
-// SetNodeStatus always reports alive status,
-// when not alive, TTL will cause expiration of node
+// SetNodeStatus always reports the node as alive, core expires the status by ttl.
 func (c *Store) SetNodeStatus(ctx context.Context, ttl int64) error {
 	opts := &pb.SetNodeStatusOptions{
 		Nodename: c.config.HostName,
@@ -50,7 +47,6 @@ func (c *Store) SetNodeStatus(ctx context.Context, ttl int64) error {
 	return err
 }
 
-// GetNodeStatus gets the status of node
 func (c *Store) GetNodeStatus(ctx context.Context, nodename string) (*types.NodeStatus, error) {
 	var resp *pb.NodeStatusStreamMessage
 	var err error
@@ -76,7 +72,6 @@ func (c *Store) GetNodeStatus(ctx context.Context, nodename string) (*types.Node
 	return status, nil
 }
 
-// NodeStatusStream watches the changes of node status
 func (c *Store) NodeStatusStream(ctx context.Context) (<-chan *types.NodeStatus, <-chan error) {
 	msgChan := make(chan *types.NodeStatus)
 	errChan := make(chan error)
@@ -113,7 +108,7 @@ func (c *Store) NodeStatusStream(ctx context.Context) (<-chan *types.NodeStatus,
 	return msgChan, errChan
 }
 
-// ListPodNodes list nodes by given conditions, note that not all the fields are filled.
+// ListPodNodes lists nodes by the given conditions, filling only name, endpoint, podname and labels.
 func (c *Store) ListPodNodes(ctx context.Context, all bool, podname string, labels map[string]string) ([]*types.Node, error) {
 	ch, err := c.listPodeNodes(ctx, &pb.ListNodesOptions{
 		Podname: podname,

@@ -14,7 +14,6 @@ var (
 	client *Docker
 )
 
-// InitClient init docker client
 func InitClient(config *types.Config, nodeIP string) {
 	once.Do(func() {
 		var err error
@@ -25,7 +24,6 @@ func InitClient(config *types.Config, nodeIP string) {
 	})
 }
 
-// GetClient .
 func GetClient() *Docker {
 	return client
 }
