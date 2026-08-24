@@ -141,7 +141,7 @@ func (w *Writer) createEncoder(ctx context.Context) (enc Encoder, err error) {
 	case "journal":
 		enc, err = CreateJournalEncoder()
 	default:
-		log.WithFunc("createEncoder").Errorf(ctx, err, "Invalid scheme: %s", w.scheme)
+		log.WithFunc("createEncoder").Warnf(ctx, "invalid scheme %s", w.scheme)
 		err = common.ErrInvalidScheme
 	}
 	return enc, err
