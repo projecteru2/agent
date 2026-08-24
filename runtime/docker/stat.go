@@ -181,7 +181,7 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		case <-tick.C:
 			updateMetrics()
 		case <-ctx.Done():
-			mClient.Unregister()
+			removeMetricsClient(container.ID)
 			return
 		}
 	}

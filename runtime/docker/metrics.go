@@ -474,3 +474,12 @@ func (m *MetricsClient) checkConn(ctx context.Context) error {
 	}
 	return nil
 }
+
+func removeMetricsClient(ID string) {
+	clientsMutex.Lock()
+	defer clientsMutex.Unlock()
+	if metricsClient, ok := clients[ID]; ok {
+		metricsClient.Unregister()
+		delete(clients, ID)
+	}
+}
