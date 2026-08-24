@@ -76,7 +76,8 @@ metrics:
 #   - /profile/, will do pprof for eru-agent process and return the statistics;
 #   - /version/, will return the version of this eru-agent instance;
 #   - /log/?app=$APPNAME, will return the log stream of corresponding app;
-#   - /metrics/, default metrics handler for Prometheus to collect.
+#   - /metrics, default metrics handler for Prometheus to collect;
+#   - /debug/pprof/, the standard net/http/pprof handlers.
 # If you don't need any of the functions above, you can remove this option,
 # then eru-agent will not provide HTTP API service.
 api:
