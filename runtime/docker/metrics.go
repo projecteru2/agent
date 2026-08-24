@@ -58,10 +58,6 @@ type MetricsClient struct {
 	ioServicedWritePerSecond     *prometheus.GaugeVec
 }
 
-func init() { //nolint:gochecknoinits
-	clients = haxmap.New[string, *MetricsClient]()
-}
-
 // NewMetricsClient new a metrics client
 func NewMetricsClient(statsd, hostname string, container *Container) *MetricsClient {
 	if metricsClient, ok := clients.Get(container.ID); ok {
@@ -471,6 +467,22 @@ func (m *MetricsClient) IOServicedWritePerSecond(dev string, i float64) {
 	m.ioServicedWritePerSecond.WithLabelValues(dev).Set(i)
 }
 
+// Send to statsd
+func (m *MetricsClient) Send(ctx context.Context) error {
+	if m.statsd == "" {
+		return nil
+	}
+	if err := m.checkConn(ctx); err != nil {
+		return err
+	}
+	for k, v := range m.data {
+		key := fmt.Sprintf("%s.%s", m.prefix, k)
+		m.statsdClient.Gauge(key, v)
+		delete(m.data, k)
+	}
+	return nil
+}
+
 // Lazy connecting
 func (m *MetricsClient) checkConn(ctx context.Context) error {
 	if m.statsdClient != nil {
@@ -489,18 +501,6 @@ func (m *MetricsClient) checkConn(ctx context.Context) error {
 	return nil
 }
 
-// Send to statsd
-func (m *MetricsClient) Send(ctx context.Context) error {
-	if m.statsd == "" {
-		return nil
-	}
-	if err := m.checkConn(ctx); err != nil {
-		return err
-	}
-	for k, v := range m.data {
-		key := fmt.Sprintf("%s.%s", m.prefix, k)
-		m.statsdClient.Gauge(key, v)
-		delete(m.data, k)
-	}
-	return nil
+func init() { //nolint:gochecknoinits
+	clients = haxmap.New[string, *MetricsClient]()
 }

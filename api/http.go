@@ -9,13 +9,13 @@ import (
 	// enable profile
 	_ "net/http/pprof" //nolint
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/projecteru2/core/log"
 
 	"github.com/projecteru2/agent/manager/workload"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/version"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // JSON define a json
@@ -25,6 +25,42 @@ type JSON map[string]interface{}
 type Handler struct {
 	config           *types.Config
 	workloadsManager *workload.Manager
+}
+
+// NewHandler new api http handler
+func NewHandler(config *types.Config, workloadsManager *workload.Manager) *Handler {
+	return &Handler{
+		config:           config,
+		workloadsManager: workloadsManager,
+	}
+}
+
+// Serve start a api service
+// blocks by http.ListenAndServe
+// run this in a separated goroutine
+func (h *Handler) Serve() {
+	if h.config.API.Addr == "" {
+		return
+	}
+	logger := log.WithFunc("serve")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /profile/{$}", h.profile)
+	mux.HandleFunc("GET /version/{$}", h.version)
+	mux.HandleFunc("GET /log/{$}", h.log)
+	mux.Handle("GET /metrics", promhttp.Handler())
+	mux.Handle("/debug/pprof/", http.DefaultServeMux)
+
+	logger.Infof(nil, "http api started %s", h.config.API.Addr) //nolint
+
+	server := &http.Server{
+		Addr:              h.config.API.Addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
+		logger.Error(nil, err, "http api start failed") //nolint
+	}
 }
 
 // URL /version/
@@ -63,41 +99,5 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 		}
 		defer conn.Close()
 		h.workloadsManager.PullLog(req.Context(), app, buf)
-	}
-}
-
-// NewHandler new api http handler
-func NewHandler(config *types.Config, workloadsManager *workload.Manager) *Handler {
-	return &Handler{
-		config:           config,
-		workloadsManager: workloadsManager,
-	}
-}
-
-// Serve start a api service
-// blocks by http.ListenAndServe
-// run this in a separated goroutine
-func (h *Handler) Serve() {
-	if h.config.API.Addr == "" {
-		return
-	}
-	logger := log.WithFunc("serve")
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /profile/{$}", h.profile)
-	mux.HandleFunc("GET /version/{$}", h.version)
-	mux.HandleFunc("GET /log/{$}", h.log)
-	mux.Handle("GET /metrics", promhttp.Handler())
-	mux.Handle("/debug/pprof/", http.DefaultServeMux)
-
-	logger.Infof(nil, "http api started %s", h.config.API.Addr) //nolint
-
-	server := &http.Server{
-		Addr:              h.config.API.Addr,
-		Handler:           mux,
-		ReadHeaderTimeout: 3 * time.Second,
-	}
-	if err := server.ListenAndServe(); err != nil {
-		logger.Error(nil, err, "http api start failed") //nolint
 	}
 }

@@ -17,11 +17,13 @@ import (
 // Discard .
 const Discard = "__discard__"
 
-// KeepaliveInterval .
-var KeepaliveInterval = time.Second * 30
+var (
+	// KeepaliveInterval .
+	KeepaliveInterval = time.Second * 30
 
-// CloseWaitInterval .
-var CloseWaitInterval = time.Second * 5
+	// CloseWaitInterval .
+	CloseWaitInterval = time.Second * 5
+)
 
 // Writer is a writer!
 type Writer struct {
@@ -31,18 +33,6 @@ type Writer struct {
 	stdout        bool
 	enc           Encoder
 	needReconnect bool
-}
-
-type discard struct{}
-
-// Write writer
-func (d discard) Write([]byte) (n int, err error) {
-	return 0, nil
-}
-
-// Close closer
-func (d discard) Close() error {
-	return nil
 }
 
 // NewWriter return writer
@@ -217,4 +207,16 @@ func (w *Writer) checkError(err error) {
 			}
 		})
 	}
+}
+
+type discard struct{}
+
+// Write writer
+func (d discard) Write([]byte) (n int, err error) {
+	return 0, nil
+}
+
+// Close closer
+func (d discard) Close() error {
+	return nil
 }

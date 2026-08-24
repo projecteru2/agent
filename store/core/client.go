@@ -14,17 +14,17 @@ import (
 	"github.com/projecteru2/core/log"
 )
 
+var (
+	coreStore *Store
+	once      sync.Once
+)
+
 // Store use core to store meta
 type Store struct {
 	clientPool *client.Pool
 	config     *types.Config
 	cache      *cache.Cache
 }
-
-var (
-	coreStore *Store
-	once      sync.Once
-)
 
 // New new a Store
 func New(ctx context.Context, config *types.Config) (*Store, error) {

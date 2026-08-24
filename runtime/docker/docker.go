@@ -32,6 +32,12 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 )
 
+const (
+	fieldPodName         = "ERU_POD"
+	fieldNodeName        = "ERU_NODE_NAME"
+	fieldStoreIdentifier = "eru.coreid"
+)
+
 // Docker .
 type Docker struct {
 	client *engineapi.Client
@@ -43,12 +49,6 @@ type Docker struct {
 	cas       *utils.GroupCAS
 	transfers *utils.HashBackends
 }
-
-const (
-	fieldPodName         = "ERU_POD"
-	fieldNodeName        = "ERU_NODE_NAME"
-	fieldStoreIdentifier = "eru.coreid"
-)
 
 // New returns a wrapper of docker client
 func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, error) {
@@ -86,16 +86,6 @@ func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, err
 	d.cpuCore = float64(len(cpus))
 	d.memory = int64(memory.Total)
 	return d, nil
-}
-
-func (d *Docker) getFilterArgs(filters map[string]string) enginefilters.Args {
-	f := enginefilters.NewArgs()
-
-	for key, value := range filters {
-		f.Add("label", fmt.Sprintf("%s=%s", key, value))
-	}
-
-	return f
 }
 
 // ListWorkloadIDs lists workload IDs filtered by given condition
@@ -155,6 +145,141 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 	})
 
 	return outr, errr, nil
+}
+
+// Events returns the events of workloads' changes
+func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan *types.WorkloadEventMessage, <-chan error) {
+	eventChan := make(chan *types.WorkloadEventMessage)
+	errChan := make(chan error)
+
+	_ = utils.Pool.Submit(func() {
+		defer close(eventChan)
+		defer close(errChan)
+
+		f := d.getFilterArgs(filters)
+		f.Add("type", string(events.ContainerEventType))
+		options := events.ListOptions{Filters: f}
+		m, e := d.client.Events(ctx, options)
+		for {
+			select {
+			case message := <-m:
+				eventChan <- &types.WorkloadEventMessage{
+					ID:       message.Actor.ID,
+					Type:     string(message.Type),
+					Action:   string(message.Action),
+					TimeNano: message.TimeNano,
+				}
+			case err := <-e:
+				errChan <- err
+				return
+			case <-ctx.Done():
+				return
+			}
+		}
+	})
+
+	return eventChan, errChan
+}
+
+// GetStatus checks workload's status first, then returns workload status
+func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error) {
+	logger := log.WithFunc("GetStatus").WithField("ID", ID)
+	container, err := d.detectWorkload(ctx, ID)
+	if err != nil {
+		logger.Error(ctx, err, "failed to detect workload")
+		return nil, err
+	}
+
+	bytes, err := json.Marshal(container.Labels)
+	if err != nil {
+		logger.Error(ctx, err, "failed to marshal labels")
+		return nil, err
+	}
+
+	status := &types.WorkloadStatus{
+		ID:         container.ID,
+		Running:    container.Running,
+		Networks:   container.Networks,
+		Extension:  bytes,
+		Appname:    container.Name,
+		Nodename:   d.config.HostName,
+		Entrypoint: container.Entrypoint,
+		Healthy:    container.Running && container.HealthCheck == nil,
+	}
+
+	// only check the running containers
+	if checkHealth && container.Running {
+		free, acquired := d.cas.Acquire(container.ID)
+		if !acquired {
+			return nil, common.ErrGetLockFailed
+		}
+		defer free()
+		status.Healthy = container.CheckHealth(ctx, time.Duration(d.config.HealthCheck.Timeout)*time.Second)
+	}
+
+	return status, nil
+}
+
+// GetWorkloadName returns the name of workload
+func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error) {
+	var containerJSON enginecontainer.InspectResponse
+	var err error
+	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
+		containerJSON, err = d.client.ContainerInspect(ctx, ID)
+	})
+	if err != nil {
+		log.WithFunc("GetWorkloadName").WithField("ID", ID).Error(ctx, err, "failed to get container by id")
+		return "", err
+	}
+
+	return containerJSON.Name, nil
+}
+
+// LogFieldsExtra .
+func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]string, error) {
+	container, err := d.detectWorkload(ctx, ID)
+	if err != nil {
+		log.WithFunc("LogFieldsExtra").WithField("ID", ID).Error(ctx, err, "failed to detect container")
+		return nil, err
+	}
+
+	extra := map[string]string{
+		"podname":  container.Env[fieldPodName],
+		"nodename": container.Env[fieldNodeName],
+		"coreid":   container.Labels[fieldStoreIdentifier],
+	}
+	for name, addr := range container.Networks {
+		extra[fmt.Sprintf("networks_%s", name)] = addr
+	}
+	return extra, nil
+}
+
+// IsDaemonRunning returns if the runtime daemon is running.
+func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
+	var err error
+	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
+		_, err = d.client.Ping(ctx)
+	})
+	if err != nil {
+		log.WithFunc("IsDaemonRunning").Error(ctx, err, "connect to docker daemon failed")
+		return false
+	}
+	return true
+}
+
+// Name returns the name of runtime
+func (d *Docker) Name() string {
+	return "docker"
+}
+
+func (d *Docker) getFilterArgs(filters map[string]string) enginefilters.Args {
+	f := enginefilters.NewArgs()
+
+	for key, value := range filters {
+		f.Add("label", fmt.Sprintf("%s=%s", key, value))
+	}
+
+	return f
 }
 
 // checkHostname check if ERU_NODE_NAME env in container is the hostname of this agent
@@ -272,113 +397,6 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 	return container, nil
 }
 
-// Events returns the events of workloads' changes
-func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan *types.WorkloadEventMessage, <-chan error) {
-	eventChan := make(chan *types.WorkloadEventMessage)
-	errChan := make(chan error)
-
-	_ = utils.Pool.Submit(func() {
-		defer close(eventChan)
-		defer close(errChan)
-
-		f := d.getFilterArgs(filters)
-		f.Add("type", string(events.ContainerEventType))
-		options := events.ListOptions{Filters: f}
-		m, e := d.client.Events(ctx, options)
-		for {
-			select {
-			case message := <-m:
-				eventChan <- &types.WorkloadEventMessage{
-					ID:       message.Actor.ID,
-					Type:     string(message.Type),
-					Action:   string(message.Action),
-					TimeNano: message.TimeNano,
-				}
-			case err := <-e:
-				errChan <- err
-				return
-			case <-ctx.Done():
-				return
-			}
-		}
-	})
-
-	return eventChan, errChan
-}
-
-// GetStatus checks workload's status first, then returns workload status
-func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error) {
-	logger := log.WithFunc("GetStatus").WithField("ID", ID)
-	container, err := d.detectWorkload(ctx, ID)
-	if err != nil {
-		logger.Error(ctx, err, "failed to detect workload")
-		return nil, err
-	}
-
-	bytes, err := json.Marshal(container.Labels)
-	if err != nil {
-		logger.Error(ctx, err, "failed to marshal labels")
-		return nil, err
-	}
-
-	status := &types.WorkloadStatus{
-		ID:         container.ID,
-		Running:    container.Running,
-		Networks:   container.Networks,
-		Extension:  bytes,
-		Appname:    container.Name,
-		Nodename:   d.config.HostName,
-		Entrypoint: container.Entrypoint,
-		Healthy:    container.Running && container.HealthCheck == nil,
-	}
-
-	// only check the running containers
-	if checkHealth && container.Running {
-		free, acquired := d.cas.Acquire(container.ID)
-		if !acquired {
-			return nil, common.ErrGetLockFailed
-		}
-		defer free()
-		status.Healthy = container.CheckHealth(ctx, time.Duration(d.config.HealthCheck.Timeout)*time.Second)
-	}
-
-	return status, nil
-}
-
-// GetWorkloadName returns the name of workload
-func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error) {
-	var containerJSON enginecontainer.InspectResponse
-	var err error
-	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		containerJSON, err = d.client.ContainerInspect(ctx, ID)
-	})
-	if err != nil {
-		log.WithFunc("GetWorkloadName").WithField("ID", ID).Error(ctx, err, "failed to get container by id")
-		return "", err
-	}
-
-	return containerJSON.Name, nil
-}
-
-// LogFieldsExtra .
-func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]string, error) {
-	container, err := d.detectWorkload(ctx, ID)
-	if err != nil {
-		log.WithFunc("LogFieldsExtra").WithField("ID", ID).Error(ctx, err, "failed to detect container")
-		return nil, err
-	}
-
-	extra := map[string]string{
-		"podname":  container.Env[fieldPodName],
-		"nodename": container.Env[fieldNodeName],
-		"coreid":   container.Labels[fieldStoreIdentifier],
-	}
-	for name, addr := range container.Networks {
-		extra[fmt.Sprintf("networks_%s", name)] = addr
-	}
-	return extra, nil
-}
-
 func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginecontainer.StatsResponse, error) {
 	logger := log.WithFunc("getContainerStats").WithField("ID", ID)
 	rawStat, err := d.client.ContainerStatsOneShot(ctx, ID)
@@ -401,22 +419,4 @@ func (d *Docker) getBlkioStats(ctx context.Context, ID string) (*enginecontainer
 		return nil, err
 	}
 	return &fullStat.BlkioStats, nil
-}
-
-// IsDaemonRunning returns if the runtime daemon is running.
-func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
-	var err error
-	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		_, err = d.client.Ping(ctx)
-	})
-	if err != nil {
-		log.WithFunc("IsDaemonRunning").Error(ctx, err, "connect to docker daemon failed")
-		return false
-	}
-	return true
-}
-
-// Name returns the name of runtime
-func (d *Docker) Name() string {
-	return "docker"
 }

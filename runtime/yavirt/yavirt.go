@@ -52,66 +52,6 @@ func New(config *types.Config) (*Yavirt, error) {
 	return y, nil
 }
 
-// needSkip checks if a workload should be skipped
-func (y *Yavirt) needSkip(ID string) bool {
-	for _, reg := range y.skipRegexp {
-		if reg.MatchString(ID) {
-			return true
-		}
-	}
-	return false
-}
-
-// detectWorkload detects a workload by ID
-func (y *Yavirt) detectWorkload(ctx context.Context, ID string) (*Guest, error) {
-	if y.needSkip(ID) {
-		return nil, common.ErrInvaildVM
-	}
-	logger := log.WithFunc("detectWorkload").WithField("ID", ID)
-
-	var guest yavirttypes.Guest
-	var err error
-
-	utils.WithTimeout(ctx, y.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		guest, err = y.client.GetGuest(ctx, ID)
-	})
-
-	if err != nil {
-		logger.Error(ctx, err, "failed to detect workload")
-		return nil, err
-	}
-
-	if _, ok := guest.Labels[cluster.ERUMark]; !ok {
-		return nil, common.ErrInvaildVM
-	}
-
-	if y.config.CheckOnlyMine && y.config.HostName != guest.Hostname {
-		logger.Debugf(ctx, "guest's hostname is %s instead of %s", guest.Hostname, y.config.HostName)
-		return nil, common.ErrInvaildVM
-	}
-
-	return &Guest{
-		ID:            guest.ID,
-		Status:        guest.Status,
-		TransitStatus: guest.TransitStatus,
-		CreateTime:    guest.CreateTime,
-		TransitTime:   guest.TransitTime,
-		UpdateTime:    guest.UpdateTime,
-		CPU:           guest.CPU,
-		Mem:           guest.Mem,
-		Storage:       guest.Storage,
-		ImageID:       guest.ImageID,
-		ImageName:     guest.ImageName,
-		ImageUser:     guest.ImageUser,
-		Networks:      guest.Networks,
-		Labels:        guest.Labels,
-		IPs:           guest.IPs,
-		Hostname:      guest.Hostname,
-		Running:       guest.Running,
-		once:          sync.Once{},
-	}, nil
-}
-
 // AttachWorkload not implemented yet
 func (y *Yavirt) AttachWorkload(context.Context, string) (io.Reader, io.Reader, error) {
 	return nil, nil, common.ErrNotImplemented
@@ -225,4 +165,64 @@ func (y *Yavirt) IsDaemonRunning(ctx context.Context) bool {
 // Name returns the name of runtime
 func (y *Yavirt) Name() string {
 	return "yavirt"
+}
+
+// needSkip checks if a workload should be skipped
+func (y *Yavirt) needSkip(ID string) bool {
+	for _, reg := range y.skipRegexp {
+		if reg.MatchString(ID) {
+			return true
+		}
+	}
+	return false
+}
+
+// detectWorkload detects a workload by ID
+func (y *Yavirt) detectWorkload(ctx context.Context, ID string) (*Guest, error) {
+	if y.needSkip(ID) {
+		return nil, common.ErrInvaildVM
+	}
+	logger := log.WithFunc("detectWorkload").WithField("ID", ID)
+
+	var guest yavirttypes.Guest
+	var err error
+
+	utils.WithTimeout(ctx, y.config.GlobalConnectionTimeout, func(ctx context.Context) {
+		guest, err = y.client.GetGuest(ctx, ID)
+	})
+
+	if err != nil {
+		logger.Error(ctx, err, "failed to detect workload")
+		return nil, err
+	}
+
+	if _, ok := guest.Labels[cluster.ERUMark]; !ok {
+		return nil, common.ErrInvaildVM
+	}
+
+	if y.config.CheckOnlyMine && y.config.HostName != guest.Hostname {
+		logger.Debugf(ctx, "guest's hostname is %s instead of %s", guest.Hostname, y.config.HostName)
+		return nil, common.ErrInvaildVM
+	}
+
+	return &Guest{
+		ID:            guest.ID,
+		Status:        guest.Status,
+		TransitStatus: guest.TransitStatus,
+		CreateTime:    guest.CreateTime,
+		TransitTime:   guest.TransitTime,
+		UpdateTime:    guest.UpdateTime,
+		CPU:           guest.CPU,
+		Mem:           guest.Mem,
+		Storage:       guest.Storage,
+		ImageID:       guest.ImageID,
+		ImageName:     guest.ImageName,
+		ImageUser:     guest.ImageUser,
+		Networks:      guest.Networks,
+		Labels:        guest.Labels,
+		IPs:           guest.IPs,
+		Hostname:      guest.Hostname,
+		Running:       guest.Running,
+		once:          sync.Once{},
+	}, nil
 }

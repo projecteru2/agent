@@ -12,29 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func newMockNodeManager(t *testing.T) *Manager {
-	config := &types.Config{
-		HostName:          "fake",
-		HeartbeatInterval: 2,
-		CheckOnlyMine:     false,
-		Store:             common.MocksStore,
-		Runtime:           common.MocksRuntime,
-		Log: types.LogConfig{
-			Stdout: true,
-		},
-		HealthCheck: types.HealthCheckConfig{
-			Interval: 10,
-			Timeout:  5,
-			CacheTTL: 300,
-		},
-		GlobalConnectionTimeout: 5 * time.Second,
-	}
-
-	m, err := NewManager(context.Background(), config)
-	assert.Nil(t, err)
-	return m
-}
-
 func TestRun(t *testing.T) {
 	manager := newMockNodeManager(t)
 	store := manager.store.(*storemocks.MockStore)
@@ -58,4 +35,27 @@ func TestRun(t *testing.T) {
 	info, err := store.GetNode(ctx, "fake")
 	assert.Nil(t, err)
 	assert.Equal(t, info.Available, false)
+}
+
+func newMockNodeManager(t *testing.T) *Manager {
+	config := &types.Config{
+		HostName:          "fake",
+		HeartbeatInterval: 2,
+		CheckOnlyMine:     false,
+		Store:             common.MocksStore,
+		Runtime:           common.MocksRuntime,
+		Log: types.LogConfig{
+			Stdout: true,
+		},
+		HealthCheck: types.HealthCheckConfig{
+			Interval: 10,
+			Timeout:  5,
+			CacheTTL: 300,
+		},
+		GlobalConnectionTimeout: 5 * time.Second,
+	}
+
+	m, err := NewManager(context.Background(), config)
+	assert.Nil(t, err)
+	return m
 }

@@ -36,6 +36,59 @@ type Nerv struct {
 	daemonRunning bool
 }
 
+// StartEvents starts the events: Shinji 400%, Asuka starts, Asuka dies, Rei dies
+func (n *Nerv) StartEvents() {
+	n.msgChan <- &types.WorkloadEventMessage{
+		ID:     "Shinji",
+		Action: "400%",
+	}
+
+	n.withLock(func() {
+		asuka, _ := n.workloads.Get("Asuka")
+		asuka.Running = true
+		asuka.Healthy = true
+	})
+
+	n.msgChan <- &types.WorkloadEventMessage{
+		ID:     "Asuka",
+		Action: common.StatusStart,
+	}
+	time.Sleep(time.Second)
+
+	n.withLock(func() {
+		asuka, _ := n.workloads.Get("Asuka")
+		asuka.Running = false
+		asuka.Healthy = false
+	})
+
+	n.msgChan <- &types.WorkloadEventMessage{
+		ID:     "Asuka",
+		Action: common.StatusDie,
+	}
+	time.Sleep(time.Second)
+
+	n.withLock(func() {
+		rei, _ := n.workloads.Get("Rei")
+		rei.Running = false
+		rei.Healthy = false
+	})
+
+	n.msgChan <- &types.WorkloadEventMessage{
+		ID:     "Rei",
+		Action: common.StatusDie,
+	}
+}
+
+// StartCustomEvent .
+func (n *Nerv) StartCustomEvent(event *types.WorkloadEventMessage) {
+	n.msgChan <- event
+}
+
+// SetDaemonRunning set `daemonRunning`
+func (n *Nerv) SetDaemonRunning(status bool) {
+	n.daemonRunning = status
+}
+
 func (n *Nerv) init() {
 	n.workloads = haxmap.New[string, *eva]()
 	n.workloads.Set("Rei", &eva{
@@ -133,57 +186,4 @@ func FromTemplate() runtime.Runtime {
 	n.On("Name").Return("NERV")
 
 	return n
-}
-
-// StartEvents starts the events: Shinji 400%, Asuka starts, Asuka dies, Rei dies
-func (n *Nerv) StartEvents() {
-	n.msgChan <- &types.WorkloadEventMessage{
-		ID:     "Shinji",
-		Action: "400%",
-	}
-
-	n.withLock(func() {
-		asuka, _ := n.workloads.Get("Asuka")
-		asuka.Running = true
-		asuka.Healthy = true
-	})
-
-	n.msgChan <- &types.WorkloadEventMessage{
-		ID:     "Asuka",
-		Action: common.StatusStart,
-	}
-	time.Sleep(time.Second)
-
-	n.withLock(func() {
-		asuka, _ := n.workloads.Get("Asuka")
-		asuka.Running = false
-		asuka.Healthy = false
-	})
-
-	n.msgChan <- &types.WorkloadEventMessage{
-		ID:     "Asuka",
-		Action: common.StatusDie,
-	}
-	time.Sleep(time.Second)
-
-	n.withLock(func() {
-		rei, _ := n.workloads.Get("Rei")
-		rei.Running = false
-		rei.Healthy = false
-	})
-
-	n.msgChan <- &types.WorkloadEventMessage{
-		ID:     "Rei",
-		Action: common.StatusDie,
-	}
-}
-
-// StartCustomEvent .
-func (n *Nerv) StartCustomEvent(event *types.WorkloadEventMessage) {
-	n.msgChan <- event
-}
-
-// SetDaemonRunning set `daemonRunning`
-func (n *Nerv) SetDaemonRunning(status bool) {
-	n.daemonRunning = status
 }

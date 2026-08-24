@@ -25,6 +25,32 @@ type MockStore struct {
 	errChan chan error
 }
 
+// GetMockWorkloadStatus returns the mock workload status by ID
+func (m *MockStore) GetMockWorkloadStatus(ID string) *types.WorkloadStatus {
+	status, ok := m.workloadStatus.Get(ID)
+	if !ok {
+		return nil
+	}
+	return status
+}
+
+// StartNodeStatusStream "faker" up, "fake" down.
+func (m *MockStore) StartNodeStatusStream() {
+	m.msgChan <- &types.NodeStatus{
+		Nodename: "faker",
+		Alive:    true,
+	}
+	m.msgChan <- &types.NodeStatus{
+		Nodename: "fake",
+		Alive:    false,
+	}
+}
+
+// StopNodeStatusStream send an err to errChan.
+func (m *MockStore) StopNodeStatusStream() {
+	m.errChan <- common.ErrClosedSteam
+}
+
 func (m *MockStore) init() {
 	m.workloadStatus = haxmap.New[string, *types.WorkloadStatus]()
 	m.nodeStatus = haxmap.New[string, *types.NodeStatus]()
@@ -109,30 +135,4 @@ func NewFakeStore() store.Store {
 	}, nil)
 
 	return m
-}
-
-// GetMockWorkloadStatus returns the mock workload status by ID
-func (m *MockStore) GetMockWorkloadStatus(ID string) *types.WorkloadStatus {
-	status, ok := m.workloadStatus.Get(ID)
-	if !ok {
-		return nil
-	}
-	return status
-}
-
-// StartNodeStatusStream "faker" up, "fake" down.
-func (m *MockStore) StartNodeStatusStream() {
-	m.msgChan <- &types.NodeStatus{
-		Nodename: "faker",
-		Alive:    true,
-	}
-	m.msgChan <- &types.NodeStatus{
-		Nodename: "fake",
-		Alive:    false,
-	}
-}
-
-// StopNodeStatusStream send an err to errChan.
-func (m *MockStore) StopNodeStatusStream() {
-	m.errChan <- common.ErrClosedSteam
 }

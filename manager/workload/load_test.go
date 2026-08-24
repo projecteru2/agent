@@ -11,6 +11,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestLoad(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	store := manager.store.(*mocks.MockStore)
+	ctx := context.Background()
+	err := manager.initWorkloadStatus(ctx)
+	// wait for attaching
+	time.Sleep(2 * time.Second)
+	assert.Nil(t, err)
+	assertInitStatus(t, store)
+}
+
 func assertInitStatus(t *testing.T, store *mocks.MockStore) {
 	assert.Equal(t, store.GetMockWorkloadStatus("Asuka"), &types.WorkloadStatus{
 		ID:      "Asuka",
@@ -29,15 +40,4 @@ func assertInitStatus(t *testing.T, store *mocks.MockStore) {
 		Running: true,
 		Healthy: true,
 	})
-}
-
-func TestLoad(t *testing.T) {
-	manager := newMockWorkloadManager(t)
-	store := manager.store.(*mocks.MockStore)
-	ctx := context.Background()
-	err := manager.initWorkloadStatus(ctx)
-	// wait for attaching
-	time.Sleep(2 * time.Second)
-	assert.Nil(t, err)
-	assertInitStatus(t, store)
 }

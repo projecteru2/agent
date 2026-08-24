@@ -19,28 +19,6 @@ type PipeReader struct {
 	*pipe
 }
 
-// A PipeWriter is the write half of a pipe.
-type PipeWriter struct {
-	*pipe
-}
-
-// NewBufPipe creates a synchronous pipe with capacity
-func NewBufPipe(bufCap int64) (*PipeReader, *PipeWriter) {
-	p := &pipe{
-		buf:    bytes.NewBuffer(nil),
-		cond:   sync.NewCond(new(sync.Mutex)),
-		cap:    bufCap,
-		length: 0,
-		rerr:   nil,
-		werr:   nil,
-	}
-	return &PipeReader{
-			pipe: p,
-		}, &PipeWriter{
-			pipe: p,
-		}
-}
-
 // Read implements the standard Read interface
 func (r *PipeReader) Read(data []byte) (int, error) {
 	r.cond.L.Lock()
@@ -81,6 +59,11 @@ func (r *PipeReader) CloseWithError(err error) error {
 	return nil
 }
 
+// A PipeWriter is the write half of a pipe.
+type PipeWriter struct {
+	*pipe
+}
+
 // Write implements the standard Write interface: discard if current length exceeds capacity
 func (w *PipeWriter) Write(data []byte) (int, error) {
 	w.cond.L.Lock()
@@ -119,4 +102,17 @@ func (w *PipeWriter) CloseWithError(err error) error {
 	w.rerr = err
 	w.cond.Signal()
 	return nil
+}
+
+// NewBufPipe creates a synchronous pipe with capacity
+func NewBufPipe(bufCap int64) (*PipeReader, *PipeWriter) {
+	p := &pipe{
+		buf:    bytes.NewBuffer(nil),
+		cond:   sync.NewCond(new(sync.Mutex)),
+		cap:    bufCap,
+		length: 0,
+		rerr:   nil,
+		werr:   nil,
+	}
+	return &PipeReader{pipe: p}, &PipeWriter{pipe: p}
 }

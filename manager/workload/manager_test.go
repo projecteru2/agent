@@ -12,6 +12,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestRun(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	runtime := manager.runtimeClient.(*mocks.Nerv)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	go func() {
+		runtime.StartEvents()
+		runtime.StartCustomEvent(&types.WorkloadEventMessage{
+			ID:     "Kaworu",
+			Action: "start",
+		})
+	}()
+	assert.Nil(t, manager.Run(ctx))
+}
+
 func newMockWorkloadManager(t *testing.T) *Manager {
 	config := &types.Config{
 		HostName:          "fake",
@@ -33,19 +48,4 @@ func newMockWorkloadManager(t *testing.T) *Manager {
 	m, err := NewManager(context.Background(), config)
 	assert.Nil(t, err)
 	return m
-}
-
-func TestRun(t *testing.T) {
-	manager := newMockWorkloadManager(t)
-	runtime := manager.runtimeClient.(*mocks.Nerv)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-	go func() {
-		runtime.StartEvents()
-		runtime.StartCustomEvent(&types.WorkloadEventMessage{
-			ID:     "Kaworu",
-			Action: "start",
-		})
-	}()
-	assert.Nil(t, manager.Run(ctx))
 }
