@@ -35,7 +35,11 @@ func (m *Manager) monitor(ctx context.Context) {
 		case <-ctx.Done():
 			logger.Info(ctx, "context canceled, stop monitoring")
 			return
-		case err := <-errChan:
+		case err, ok := <-errChan:
+			if !ok {
+				logger.Info(ctx, "event stream closed, stop monitoring")
+				return
+			}
 			logger.Error(ctx, err, "received an err, will retry")
 			time.Sleep(m.config.GlobalConnectionTimeout)
 		}

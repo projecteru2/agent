@@ -2,6 +2,7 @@ package mocks
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/projecteru2/core/log"
@@ -55,7 +56,14 @@ func NewFakeStore() store.Store {
 			Name:      node.Name,
 			Available: node.Available,
 		}
-	}, nil)
+	}, func(ctx context.Context, nodename string) error {
+		m.Lock()
+		defer m.Unlock()
+		if _, ok := m.nodeInfo[nodename]; !ok {
+			return fmt.Errorf("node %s not found", nodename)
+		}
+		return nil
+	})
 	m.On("SetNodeStatus", mock.Anything, mock.Anything).Return(func(ctx context.Context, ttl int64) error {
 		logger.Info(ctx, "set node status")
 		nodename := "fake"

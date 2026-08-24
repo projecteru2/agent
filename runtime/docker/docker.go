@@ -7,7 +7,6 @@ import (
 	"io"
 	"math"
 	"net"
-	"net/http/httputil"
 	"os"
 	"runtime"
 	"strings"
@@ -118,7 +117,7 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 		Stdout: true,
 		Stderr: true,
 	})
-	if err != nil && err != httputil.ErrPersistEOF { //nolint
+	if err != nil {
 		logger.Error(ctx, err, "failed to attach workload")
 		return nil, nil, err
 	}
