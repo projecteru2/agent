@@ -75,10 +75,10 @@ func startWatch(t *testing.T, dir string, kind Kind) <-chan watched {
 	require.NoError(t, err)
 
 	events := make(chan watched, 16)
+	reporter := source.NewReporter()
+	reporter.Attach(func(ID, action string) { events <- watched{ID, action} })
 	go func() {
-		_ = d.Watch(t.Context(), source.NewReporter(), func(ID, action string) {
-			events <- watched{ID, action}
-		})
+		_ = d.Watch(t.Context(), reporter)
 	}()
 	awaitWatchArmed(t, dir, kind, events)
 	return events

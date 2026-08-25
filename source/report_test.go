@@ -14,16 +14,15 @@ const (
 )
 
 func TestReportOnlyEmitsAnActionThatMoved(t *testing.T) {
-	r := NewReporter()
-	emit, emitted := recorder()
+	r, emitted := attached()
 
 	for range 5 {
-		r.Report(emit, oneWorkload, common.StatusStart)
+		r.Report(oneWorkload, common.StatusStart)
 	}
 	for range 5 {
-		r.Report(emit, oneWorkload, common.StatusDie)
+		r.Report(oneWorkload, common.StatusDie)
 	}
-	r.Report(emit, oneWorkload, common.StatusStart)
+	r.Report(oneWorkload, common.StatusStart)
 
 	assert.Equal(t, []string{common.StatusStart, common.StatusDie, common.StatusStart}, *emitted)
 }
@@ -31,24 +30,55 @@ func TestReportOnlyEmitsAnActionThatMoved(t *testing.T) {
 func TestReportTracksEachWorkloadOnItsOwn(t *testing.T) {
 	r := NewReporter()
 	var ids []string
-	emit := EmitFunc(func(ID, _ string) { ids = append(ids, ID) })
+	r.Attach(func(ID, _ string) { ids = append(ids, ID) })
 
-	r.Report(emit, oneWorkload, common.StatusStart)
-	r.Report(emit, anotherWorkload, common.StatusStart)
-	r.Report(emit, oneWorkload, common.StatusStart)
+	r.Report(oneWorkload, common.StatusStart)
+	r.Report(anotherWorkload, common.StatusStart)
+	r.Report(oneWorkload, common.StatusStart)
 
 	assert.Equal(t, []string{oneWorkload, anotherWorkload}, ids)
 }
 
-func TestNoteKeepsAListedStateFromBeingNews(t *testing.T) {
-	r := NewReporter()
-	emit, emitted := recorder()
+func TestNoteSeedsAWorkloadItHasNotSeen(t *testing.T) {
+	r, emitted := attached()
 
 	r.Note(oneWorkload, common.StatusStart)
-	r.Report(emit, oneWorkload, common.StatusStart)
-	r.Report(emit, oneWorkload, common.StatusDie)
+	assert.Empty(t, *emitted)
 
+	r.Report(oneWorkload, common.StatusStart)
+	assert.Empty(t, *emitted)
+
+	r.Report(oneWorkload, common.StatusDie)
 	assert.Equal(t, []string{common.StatusDie}, *emitted)
+}
+
+func TestNoteEmitsATransitionOfAWorkloadItAlreadyTracks(t *testing.T) {
+	r, emitted := attached()
+
+	r.Report(oneWorkload, common.StatusStart)
+	r.Note(oneWorkload, common.StatusDie)
+	r.Note(oneWorkload, common.StatusDie)
+
+	assert.Equal(t, []string{common.StatusStart, common.StatusDie}, *emitted)
+}
+
+func TestReportWithoutASubscriptionOnlyRemembers(t *testing.T) {
+	r := NewReporter()
+
+	r.Report(oneWorkload, common.StatusStart)
+	assert.True(t, r.Known(oneWorkload))
+}
+
+func TestForgetLetsAWorkloadBeReportedAgain(t *testing.T) {
+	r, emitted := attached()
+
+	r.Report(oneWorkload, common.StatusStart)
+	r.Report(oneWorkload, common.StatusStart)
+	r.Forget(oneWorkload)
+	assert.False(t, r.Known(oneWorkload))
+
+	r.Report(oneWorkload, common.StatusStart)
+	assert.Equal(t, []string{common.StatusStart, common.StatusStart}, *emitted)
 }
 
 func TestActionOf(t *testing.T) {
@@ -56,19 +86,9 @@ func TestActionOf(t *testing.T) {
 	assert.Equal(t, common.StatusDie, ActionOf(false))
 }
 
-func TestForgetLetsAWorkloadBeReportedAgain(t *testing.T) {
+func attached() (*Reporter, *[]string) {
 	r := NewReporter()
-	emit, emitted := recorder()
-
-	r.Report(emit, oneWorkload, common.StatusStart)
-	r.Report(emit, oneWorkload, common.StatusStart)
-	r.Forget(oneWorkload)
-	r.Report(emit, oneWorkload, common.StatusStart)
-
-	assert.Equal(t, []string{common.StatusStart, common.StatusStart}, *emitted)
-}
-
-func recorder() (EmitFunc, *[]string) {
 	actions := &[]string{}
-	return func(_, action string) { *actions = append(*actions, action) }, actions
+	r.Attach(func(_, action string) { *actions = append(*actions, action) })
+	return r, actions
 }

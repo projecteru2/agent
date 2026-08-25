@@ -12,6 +12,7 @@ type EmitFunc func(ID, action string)
 // Reporter drops the state changes that repeat what a source last said about a workload.
 type Reporter struct {
 	mutex sync.Mutex
+	emit  EmitFunc
 	last  map[string]string
 }
 
@@ -19,16 +20,36 @@ func NewReporter() *Reporter {
 	return &Reporter{last: map[string]string{}}
 }
 
+func (r *Reporter) Attach(emit EmitFunc) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	r.emit = emit
+}
+
 // Report emits action unless it is what this workload was last reported as.
-func (r *Reporter) Report(emit EmitFunc, ID, action string) {
-	if r.moved(ID, action) {
+func (r *Reporter) Report(ID, action string) {
+	r.mutex.Lock()
+	emit, moved := r.emit, r.last[ID] != action
+	r.last[ID] = action
+	r.mutex.Unlock()
+
+	if moved && emit != nil {
 		emit(ID, action)
 	}
 }
 
-// Note records what a listing already told core, so the event stream does not repeat it as news.
+// Note records what a listing found: news about a workload already tracked, and a starting point for one that is not.
 func (r *Reporter) Note(ID, action string) {
-	r.moved(ID, action)
+	r.mutex.Lock()
+	last, known := r.last[ID]
+	emit := r.emit
+	r.last[ID] = action
+	r.mutex.Unlock()
+
+	if known && last != action && emit != nil {
+		emit(ID, action)
+	}
 }
 
 func (r *Reporter) Known(ID string) bool {
@@ -45,17 +66,6 @@ func (r *Reporter) Forget(ID string) {
 	defer r.mutex.Unlock()
 
 	delete(r.last, ID)
-}
-
-func (r *Reporter) moved(ID, action string) bool {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	if r.last[ID] == action {
-		return false
-	}
-	r.last[ID] = action
-	return true
 }
 
 // ActionOf turns a runtime's liveness answer into the event action the manager handles.

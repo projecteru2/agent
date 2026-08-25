@@ -59,7 +59,7 @@ func (d *Dir) Read(ID string) (*File, error) {
 }
 
 // Watch reports a meta file appearing as a start and its removal as a die, until ctx is done.
-func (d *Dir) Watch(ctx context.Context, reporter *source.Reporter, emit source.EmitFunc) error {
+func (d *Dir) Watch(ctx context.Context, reporter *source.Reporter) error {
 	watcher, err := utils.NewDirWatcher(d.path)
 	if err != nil {
 		return err
@@ -77,12 +77,12 @@ func (d *Dir) Watch(ctx context.Context, reporter *source.Reporter, emit source.
 			case readErr != nil:
 				logger.Warnf(ctx, "skipping the meta file of %s: %v", ID, readErr)
 			default:
-				reporter.Report(emit, ID, common.StatusStart)
+				reporter.Report(ID, common.StatusStart)
 			}
 			return
 		}
 		if reporter.Known(ID) {
-			reporter.Report(emit, ID, common.StatusDie)
+			reporter.Report(ID, common.StatusDie)
 			reporter.Forget(ID)
 		}
 	})

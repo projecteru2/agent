@@ -82,7 +82,7 @@ func (c *Cocoon) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage
 	errChan := make(chan error, 1)
 
 	ctx, cancel := context.WithCancel(ctx)
-	emit := source.EmitFunc(func(ID, action string) {
+	c.reporter.Attach(func(ID, action string) {
 		select {
 		case eventChan <- &types.WorkloadEventMessage{ID: ID, Type: eventType, Action: action, TimeNano: time.Now().UnixNano()}:
 		case <-ctx.Done():
@@ -95,9 +95,9 @@ func (c *Cocoon) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage
 		defer close(errChan)
 
 		var wg sync.WaitGroup
-		wg.Go(func() { c.watchDaemon(ctx, emit) })
+		wg.Go(func() { c.watchDaemon(ctx) })
 		wg.Go(func() {
-			if err := c.dir.Watch(ctx, c.reporter, emit); err != nil {
+			if err := c.dir.Watch(ctx, c.reporter); err != nil {
 				cancel()
 				select {
 				case errChan <- err:
@@ -125,7 +125,7 @@ func (c *Cocoon) Alive(ctx context.Context) bool {
 }
 
 // watchDaemon keeps reconnecting: the daemon is optional and restarts on its own, and its stream loses events.
-func (c *Cocoon) watchDaemon(ctx context.Context, emit source.EmitFunc) {
+func (c *Cocoon) watchDaemon(ctx context.Context) {
 	logger := log.WithFunc("cocoon.watchDaemon")
 	for {
 		err := c.daemon.events(ctx, func(ID string, running, gone bool) {
@@ -134,10 +134,10 @@ func (c *Cocoon) watchDaemon(ctx context.Context, emit source.EmitFunc) {
 				return
 			}
 			if gone {
-				c.forget(emit, ID)
+				c.forget(ID)
 				return
 			}
-			c.reporter.Report(emit, ID, source.ActionOf(running))
+			c.reporter.Report(ID, source.ActionOf(running))
 		})
 		if ctx.Err() != nil {
 			return
@@ -152,9 +152,9 @@ func (c *Cocoon) watchDaemon(ctx context.Context, emit source.EmitFunc) {
 	}
 }
 
-func (c *Cocoon) forget(emit source.EmitFunc, ID string) {
+func (c *Cocoon) forget(ID string) {
 	if c.reporter.Known(ID) {
-		c.reporter.Report(emit, ID, common.StatusDie)
+		c.reporter.Report(ID, common.StatusDie)
 	}
 	c.reporter.Forget(ID)
 }

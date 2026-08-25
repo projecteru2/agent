@@ -94,7 +94,7 @@ func (s *Systemd) Events(ctx context.Context) (<-chan *types.WorkloadEventMessag
 	errChan := make(chan error, 1)
 
 	ctx, cancel := context.WithCancel(ctx)
-	emit := source.EmitFunc(func(ID, action string) {
+	s.reporter.Attach(func(ID, action string) {
 		select {
 		case eventChan <- &types.WorkloadEventMessage{ID: ID, Type: eventType, Action: action, TimeNano: time.Now().UnixNano()}:
 		case <-ctx.Done():
@@ -115,12 +115,12 @@ func (s *Systemd) Events(ctx context.Context) (<-chan *types.WorkloadEventMessag
 
 		var wg sync.WaitGroup
 		wg.Go(func() {
-			if err := s.dir.Watch(ctx, s.reporter, emit); err != nil {
+			if err := s.dir.Watch(ctx, s.reporter); err != nil {
 				fail(err)
 			}
 		})
 		wg.Go(func() {
-			if err := s.watchUnits(ctx, emit); err != nil {
+			if err := s.watchUnits(ctx); err != nil {
 				fail(err)
 			}
 		})
@@ -138,7 +138,7 @@ func (s *Systemd) Alive(ctx context.Context) bool {
 	return true
 }
 
-func (s *Systemd) watchUnits(ctx context.Context, emit source.EmitFunc) error {
+func (s *Systemd) watchUnits(ctx context.Context) error {
 	logger := log.WithFunc("systemd.watchUnits")
 	// a previous Events left its subscription on this shared connection, still feeding dead channels
 	_ = s.conn.Unsubscribe()
@@ -165,12 +165,12 @@ func (s *Systemd) watchUnits(ctx context.Context, emit source.EmitFunc) error {
 				continue
 			}
 			if action, ok := actionFor(changed.Value()); ok {
-				s.reporter.Report(emit, ID, action)
+				s.reporter.Report(ID, action)
 			}
 		case err := <-errs:
 			// a subscriber that fell behind missed transitions, it did not lose the bus
 			logger.Warnf(ctx, "systemd subscription fell behind, relisting: %v", err)
-			if err := s.relist(ctx, emit); err != nil {
+			if err := s.relist(ctx); err != nil {
 				return err
 			}
 		case <-ctx.Done():
@@ -180,7 +180,7 @@ func (s *Systemd) watchUnits(ctx context.Context, emit source.EmitFunc) error {
 }
 
 // relist replays the state of every eru unit, so a transition the subscription missed is reconciled.
-func (s *Systemd) relist(ctx context.Context, emit source.EmitFunc) error {
+func (s *Systemd) relist(ctx context.Context) error {
 	running, err := s.runningUnits(ctx)
 	if err != nil {
 		return err
@@ -190,7 +190,7 @@ func (s *Systemd) relist(ctx context.Context, emit source.EmitFunc) error {
 		if !ok {
 			continue
 		}
-		s.reporter.Report(emit, ID, source.ActionOf(active))
+		s.reporter.Report(ID, source.ActionOf(active))
 	}
 	return nil
 }

@@ -229,7 +229,8 @@ func watch(t *testing.T, c *Cocoon) <-chan event {
 	t.Cleanup(cancel)
 
 	events := make(chan event, 16)
-	go c.watchDaemon(ctx, func(ID, action string) { events <- event{ID, action} })
+	c.reporter.Attach(func(ID, action string) { events <- event{ID, action} })
+	go c.watchDaemon(ctx)
 	return events
 }
 
