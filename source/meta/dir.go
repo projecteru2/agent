@@ -65,17 +65,26 @@ func (d *Dir) Watch(ctx context.Context, reporter *source.Reporter, emit source.
 		return err
 	}
 
+	logger := log.WithFunc("meta.Watch")
 	err = watcher.Run(ctx, func(name string, created bool) {
 		ID, ok := IDFromFile(name)
-		if !ok {
+		if !ok || !IsID(ID) {
 			return
 		}
 		if created {
-			reporter.Report(emit, ID, common.StatusStart)
+			switch _, readErr := d.Read(ID); {
+			case errors.Is(readErr, errOtherKind):
+			case readErr != nil:
+				logger.Warnf(ctx, "skipping the meta file of %s: %v", ID, readErr)
+			default:
+				reporter.Report(emit, ID, common.StatusStart)
+			}
 			return
 		}
-		reporter.Report(emit, ID, common.StatusDie)
-		reporter.Forget(ID)
+		if reporter.Known(ID) {
+			reporter.Report(emit, ID, common.StatusDie)
+			reporter.Forget(ID)
+		}
 	})
 	if errors.Is(err, os.ErrClosed) || errors.Is(err, context.Canceled) {
 		return nil

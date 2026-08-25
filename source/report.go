@@ -31,6 +31,14 @@ func (r *Reporter) Note(ID, action string) {
 	r.moved(ID, action)
 }
 
+func (r *Reporter) Known(ID string) bool {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	_, ok := r.last[ID]
+	return ok
+}
+
 // Forget stops tracking a workload that went away, so it is reported again when it comes back.
 func (r *Reporter) Forget(ID string) {
 	r.mutex.Lock()
