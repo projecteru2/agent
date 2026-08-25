@@ -36,9 +36,6 @@ func LoadConfig(configPath string) (*types.Config, error) {
 func applyDefaults(value reflect.Value) error {
 	for i := range value.NumField() {
 		field := value.Field(i)
-		if !field.CanSet() {
-			continue
-		}
 		structField := value.Type().Field(i)
 		if tag := structField.Tag.Get("default"); tag != "" && field.IsZero() {
 			if err := yaml.Unmarshal([]byte(tag), field.Addr().Interface()); err != nil {
@@ -55,9 +52,6 @@ func applyDefaults(value reflect.Value) error {
 func checkRequired(value reflect.Value) error {
 	for i := range value.NumField() {
 		field := value.Field(i)
-		if !field.CanSet() {
-			continue
-		}
 		if structField := value.Type().Field(i); structField.Tag.Get("required") == "true" && field.IsZero() {
 			return fmt.Errorf("%s is required, but blank", structField.Name)
 		}
