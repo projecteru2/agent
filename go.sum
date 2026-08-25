@@ -115,12 +115,10 @@ github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 h1:o4JXh1EVt
 github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55/go.mod h1:OmDBASR4679mdNQnz2pUhc2G8CO2JrUAVFDRBDP/hJE=
 github.com/prashantv/gostub v1.1.0 h1:BTyx3RfQjRHnUWaGF9oQos79AlQ5k8WNktv7VGvVH4g=
 github.com/prashantv/gostub v1.1.0/go.mod h1:A5zLQHz7ieHGG7is6LLXLz7I8+3LZzsrV0P1IAHhP5U=
-github.com/projecteru2/core v0.0.0-20260824231617-78144ce3a911 h1:WgKqmaC5nngJkHhi2qaySx4dM6itupFj8ZvDJenBR1E=
-github.com/projecteru2/core v0.0.0-20260824231617-78144ce3a911/go.mod h1:QUErIAwj8RpDX8vYG6TnVsjShlbu2wDnQIZjR9XgyQI=
+github.com/projecteru2/core v0.0.0-20260825005017-ee20dafdc9ea h1:zxXkREzYXDI43JgaTumnqmdLYlwjd4BK3mdLvdWxBF0=
+github.com/projecteru2/core v0.0.0-20260825005017-ee20dafdc9ea/go.mod h1:KN5dGHDKlGvwL8HOR/J4Z59MWSkUSlVV/LQX8DlI0vo=
 github.com/projecteru2/libyavirt v0.0.0-20231128023216-96fef06a6ca4 h1:3a0IhsOtH9J+iSn/DV7v9gpW2lBDGhkp+XEvTaSiK4g=
 github.com/projecteru2/libyavirt v0.0.0-20231128023216-96fef06a6ca4/go.mod h1:+EcdWF8KyTf2u8Zxu3397nSmalCSmpuxvGwcX1g3RL0=
-github.com/prometheus-community/pro-bing v0.9.1 h1:kpuAr6AU2oRtzGihJSUcetHtjc7ku7h6PxeuW9RVrQw=
-github.com/prometheus-community/pro-bing v0.9.1/go.mod h1:z79wYTxAOf6FpTng0QdIhZ3j/Nd5l3+gnFSCIT+SiSQ=
 github.com/prometheus/client_golang v1.24.1 h1:JnJkREXzWxUdCuPFpIWZiPispT9xVV59uiuyR2bPlnU=
 github.com/prometheus/client_golang v1.24.1/go.mod h1:F+oSRECHg4sse5ucfYpYDeIv/hu68Zo0uoHKetWnzcE=
 github.com/prometheus/client_model v0.6.2 h1:oBsgwpGs7iVziMvrGhE53c/GrLUsZdHnqNwqPLxwZyk=

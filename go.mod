@@ -9,7 +9,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/jinzhu/configor v1.2.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/projecteru2/core v0.0.0-20260824231617-78144ce3a911
+	github.com/projecteru2/core v0.0.0-20260825005017-ee20dafdc9ea
 	github.com/projecteru2/libyavirt v0.0.0-20231128023216-96fef06a6ca4
 	github.com/prometheus/client_golang v1.24.1
 	github.com/rs/zerolog v1.35.1
@@ -45,7 +45,6 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
@@ -58,7 +57,6 @@ require (
 	github.com/panjf2000/ants/v2 v2.12.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/prometheus-community/pro-bing v0.9.1 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
