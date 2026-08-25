@@ -1,11 +1,8 @@
 package types
 
 type Node struct {
-	Name      string
-	Endpoint  string
-	Podname   string
-	Labels    map[string]string
-	Available bool
+	Name     string
+	Endpoint string
 }
 
 type NodeStatus struct {

@@ -52,10 +52,7 @@ func NewFakeStore() store.Store {
 		if !ok {
 			return nil
 		}
-		return &types.Node{
-			Name:      node.Name,
-			Available: node.Available,
-		}
+		return &types.Node{Name: node.Name}
 	}, func(ctx context.Context, nodename string) error {
 		m.Lock()
 		defer m.Unlock()

@@ -23,10 +23,8 @@ func (c *Store) GetNode(ctx context.Context, nodename string) (*types.Node, erro
 	}
 
 	node := &types.Node{
-		Name:      resp.Name,
-		Podname:   resp.Podname,
-		Endpoint:  resp.Endpoint,
-		Available: resp.Available,
+		Name:     resp.Name,
+		Endpoint: resp.Endpoint,
 	}
 	return node, nil
 }
