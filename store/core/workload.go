@@ -16,12 +16,8 @@ import (
 func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus, ttl int64) error {
 	workloadStatus := fmt.Sprintf("%+v", status)
 	if ttl == 0 {
-		cached, ok := c.cache.Get(status.ID)
-		if ok {
-			str := cached.(string)
-			if str == workloadStatus {
-				return nil
-			}
+		if cached, ok := c.cache.Get(status.ID); ok && cached == workloadStatus {
+			return nil
 		}
 	}
 

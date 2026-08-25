@@ -3,9 +3,7 @@ package core
 import (
 	"context"
 	"sync"
-	"time"
 
-	"github.com/patrickmn/go-cache"
 	"github.com/projecteru2/core/client"
 	pb "github.com/projecteru2/core/rpc/gen"
 
@@ -21,7 +19,7 @@ var (
 type Store struct {
 	clientPool *client.Pool
 	config     *types.Config
-	cache      *cache.Cache
+	cache      *statusCache
 }
 
 func New(ctx context.Context, config *types.Config) (*Store, error) {
@@ -34,8 +32,7 @@ func New(ctx context.Context, config *types.Config) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	cache := cache.New(time.Duration(config.HealthCheck.CacheTTL)*time.Second, 24*time.Hour)
-	return &Store{clientPool, config, cache}, nil
+	return &Store{clientPool, config, newStatusCache()}, nil
 }
 
 func (c *Store) GetClient() pb.CoreRPCClient {

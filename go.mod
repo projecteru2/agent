@@ -8,7 +8,6 @@ require (
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/jinzhu/configor v1.2.2
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/projecteru2/core v0.0.0-20260825005017-ee20dafdc9ea
 	github.com/projecteru2/libyavirt v0.0.0-20231128023216-96fef06a6ca4
 	github.com/prometheus/client_golang v1.24.1
