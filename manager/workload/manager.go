@@ -17,6 +17,11 @@ import (
 	"github.com/projecteru2/agent/utils"
 )
 
+type collectTask struct {
+	cancel context.CancelFunc
+	done   chan struct{}
+}
+
 type Manager struct {
 	config    *types.Config
 	store     store.Store
@@ -31,7 +36,7 @@ type Manager struct {
 	startingWorkloads  map[string]*utils.RetryTask
 
 	collectMutex sync.Mutex
-	collecting   map[string]context.CancelFunc
+	collecting   map[string]*collectTask
 
 	logMutex   sync.RWMutex
 	logTargets map[string]*logTarget
@@ -56,7 +61,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		cas:               utils.NewGroupCAS(),
 		logBroadcaster:    newLogBroadcaster(),
 		startingWorkloads: map[string]*utils.RetryTask{},
-		collecting:        map[string]context.CancelFunc{},
+		collecting:        map[string]*collectTask{},
 		logTargets:        map[string]*logTarget{},
 	}, nil
 }
@@ -112,20 +117,32 @@ func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {
 	m.collectMutex.Lock()
 	defer m.collectMutex.Unlock()
 
-	if cancel, ok := m.collecting[w.ID]; ok {
-		cancel()
-	}
-	ctx, cancel := context.WithCancel(ctx)
-	m.collecting[w.ID] = cancel
-	go m.collector.Collect(ctx, w)
+	m.cancelCollecting(w.ID)
+
+	sampleCtx, cancel := context.WithCancel(ctx)
+	task := &collectTask{cancel: cancel, done: make(chan struct{})}
+	m.collecting[w.ID] = task
+	go func() {
+		defer close(task.done)
+		m.collector.Collect(sampleCtx, w)
+	}()
 }
 
 func (m *Manager) stopCollecting(ID string) {
 	m.collectMutex.Lock()
 	defer m.collectMutex.Unlock()
 
-	if cancel, ok := m.collecting[ID]; ok {
-		cancel()
-		delete(m.collecting, ID)
+	m.cancelCollecting(ID)
+}
+
+// cancelCollecting waits for the sampler to exit: it unregisters the workload's gauges on its way
+// out, so it has to be gone before another sampler registers the same workload again.
+func (m *Manager) cancelCollecting(ID string) {
+	task, ok := m.collecting[ID]
+	if !ok {
+		return
 	}
+	delete(m.collecting, ID)
+	task.cancel()
+	<-task.done
 }

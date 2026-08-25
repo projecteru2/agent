@@ -31,6 +31,7 @@ func TestCgroupMem(t *testing.T) {
 
 	assert.Equal(t, uint64(104857600), stat.Current)
 	assert.Equal(t, uint64(209715200), stat.Peak)
+	assert.True(t, stat.HasPeak)
 	assert.Equal(t, uint64(52428800), stat.Anon)
 	assert.Equal(t, uint64(1073741824), stat.Limit)
 }
@@ -42,6 +43,7 @@ func TestCgroupMemToleratesAnAbsentPeakAndAnUnlimitedMax(t *testing.T) {
 	assert.Equal(t, uint64(2048), stat.Current)
 	assert.Equal(t, uint64(1024), stat.Anon)
 	assert.Zero(t, stat.Peak)
+	assert.False(t, stat.HasPeak)
 	assert.Zero(t, stat.Limit)
 }
 

@@ -25,6 +25,7 @@ type cpuStat struct {
 type memStat struct {
 	Current uint64
 	Peak    uint64
+	HasPeak bool
 	Anon    uint64
 	Limit   uint64
 }
@@ -69,15 +70,15 @@ func (c *cgroup) mem() (memStat, error) {
 		return memStat{}, err
 	}
 	// memory.peak needs linux 5.19, memory.max is absent without the memory controller
-	peak, err := readUintOptional(filepath.Join(c.path, "memory.peak"))
+	peak, hasPeak, err := readUintOptional(filepath.Join(c.path, "memory.peak"))
 	if err != nil {
 		return memStat{}, err
 	}
-	limit, err := readUintOptional(filepath.Join(c.path, "memory.max"))
+	limit, _, err := readUintOptional(filepath.Join(c.path, "memory.max"))
 	if err != nil {
 		return memStat{}, err
 	}
-	return memStat{Current: current, Peak: peak, Anon: values["anon"], Limit: limit}, nil
+	return memStat{Current: current, Peak: peak, HasPeak: hasPeak, Anon: values["anon"], Limit: limit}, nil
 }
 
 func (c *cgroup) io() ([]ioStat, error) {
@@ -197,12 +198,12 @@ func readUint(path string) (uint64, error) {
 	return strconv.ParseUint(field, 10, 64)
 }
 
-func readUintOptional(path string) (uint64, error) {
-	value, err := readUint(path)
+func readUintOptional(path string) (value uint64, present bool, err error) {
+	value, err = readUint(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return 0, nil
+		return 0, false, nil
 	}
-	return value, err
+	return value, err == nil, err
 }
 
 func readLines(path string) ([]string, error) {

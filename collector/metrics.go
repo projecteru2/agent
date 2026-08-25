@@ -80,7 +80,7 @@ type MetricsClient struct {
 	collectors []prometheus.Collector
 }
 
-func NewMetricsClient(statsd, hostname string, w *source.Workload) *MetricsClient {
+func NewMetricsClient(statsd, hostname string, w *source.Workload, unsupported []string) *MetricsClient {
 	clientsMutex.Lock()
 	defer clientsMutex.Unlock()
 	if metricsClient, ok := clients[w.ID]; ok {
@@ -113,6 +113,9 @@ func NewMetricsClient(statsd, hostname string, w *source.Workload) *MetricsClien
 		gauges: make(map[string]gauge, len(metricSpecs)),
 	}
 	for _, spec := range metricSpecs {
+		if slices.Contains(unsupported, spec.name) {
+			continue
+		}
 		opts := prometheus.GaugeOpts{Name: spec.name, Help: spec.help, ConstLabels: labels}
 		g := gauge{statsd: spec.statsd}
 		if spec.label == "" {
@@ -220,7 +223,10 @@ func (m *MetricsClient) Send(ctx context.Context) error {
 }
 
 func (m *MetricsClient) set(name string, value float64) {
-	g := m.gauges[name]
+	g, ok := m.gauges[name]
+	if !ok {
+		return
+	}
 	if m.statsd != "" {
 		m.data[g.statsd] = value
 	}
@@ -228,7 +234,10 @@ func (m *MetricsClient) set(name string, value float64) {
 }
 
 func (m *MetricsClient) setVec(name, label string, value float64) {
-	g := m.gauges[name]
+	g, ok := m.gauges[name]
+	if !ok {
+		return
+	}
 	if m.statsd != "" {
 		m.data[label+"."+g.statsd] = value
 	}

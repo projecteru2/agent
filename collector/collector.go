@@ -15,7 +15,12 @@ import (
 	"github.com/projecteru2/agent/utils"
 )
 
-const sysNetRoot = "/sys/class/net"
+const (
+	sysNetRoot = "/sys/class/net"
+
+	// hostCacheTTL is under the smallest useful metrics step, so a tick still sees a fresh read
+	hostCacheTTL = time.Second
+)
 
 type device struct {
 	major uint64
@@ -30,6 +35,14 @@ type sample struct {
 	host hostCPU
 }
 
+// unsupported names the gauges this node's kernel cannot answer, so they are never exported.
+func (s *sample) unsupported() []string {
+	if s.mem.HasPeak {
+		return nil
+	}
+	return []string{"mem_max_usage"}
+}
+
 // Collector samples the cgroup and netns counters of the workloads a source yields.
 type Collector struct {
 	config    *types.Config
@@ -42,6 +55,11 @@ type Collector struct {
 
 	devicesMutex sync.Mutex
 	devices      map[device]string
+
+	hostMutex sync.Mutex
+	hostAt    time.Time
+	hostTimes hostCPU
+	hostErr   error
 }
 
 func New(ctx context.Context, config *types.Config) *Collector {
@@ -81,7 +99,7 @@ func (c *Collector) Collect(ctx context.Context, w *source.Workload) {
 	if c.transfers.Len() > 0 {
 		addr = c.transfers.Get(w.ID, 0)
 	}
-	client := NewMetricsClient(addr, c.hostname, w)
+	client := NewMetricsClient(addr, c.hostname, w, prev.unsupported())
 	defer removeMetricsClient(w.ID)
 
 	tick := time.NewTicker(time.Duration(c.config.Metrics.Step) * time.Second)
@@ -124,11 +142,24 @@ func (c *Collector) sample(w *source.Workload) (*sample, error) {
 	if err != nil {
 		return nil, err
 	}
-	host, err := hostCPUTimes(c.procRoot)
+	host, err := c.host()
 	if err != nil {
 		return nil, err
 	}
 	return &sample{cpu: cpu, mem: mem, io: io, net: net, host: host}, nil
+}
+
+// host reads /proc/stat at most once per cache ttl: it is the same file for every workload here.
+func (c *Collector) host() (hostCPU, error) {
+	c.hostMutex.Lock()
+	defer c.hostMutex.Unlock()
+
+	if time.Since(c.hostAt) < hostCacheTTL {
+		return c.hostTimes, c.hostErr
+	}
+	c.hostTimes, c.hostErr = hostCPUTimes(c.procRoot)
+	c.hostAt = time.Now()
+	return c.hostTimes, c.hostErr
 }
 
 func (c *Collector) netStats(w *source.Workload) ([]netStat, error) {

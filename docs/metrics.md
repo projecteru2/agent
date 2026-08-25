@@ -12,6 +12,8 @@ Every sample is read straight off the node — cgroup v2 files plus the network 
 
 Sampling happens every `metrics.step` seconds. Rates are computed over that window, so a `metrics.step` of `30` means the `_per_second` gauges are 30 second averages.
 
+The node-wide cpu split that the two `cpu_host_*_usage` ratios divide by is read from `/proc/stat` at most once a second and shared by every workload, instead of once per workload per tick.
+
 ## Gauges
 
 Every gauge carries the same constant labels: `containerID`, `hostname`, `appname`, `entrypoint`, `orchestrator` and `labels` — the last being the workload's own labels, minus eru's internal ones, flattened to `k=v,k=v`.
@@ -34,12 +36,14 @@ Two views of the same cgroup counters. The host view divides by what the node ha
 | Gauge | Meaning |
 |---|---|
 | `mem_usage` | bytes in use, from `memory.current` |
-| `mem_max_usage` | peak bytes in use, from `memory.peak` — `0` on kernels before 5.19 |
+| `mem_max_usage` | peak bytes in use, from `memory.peak` |
 | `mem_rss` | resident bytes, from `memory.stat` `anon` |
-| `mem_percent` | `mem_usage` over the workload's memory limit |
-| `mem_rss_percent` | `mem_rss` over the workload's memory limit |
+| `mem_percent` | `mem_usage` over the workload's memory ceiling |
+| `mem_rss_percent` | `mem_rss` over the workload's memory ceiling |
 
-The two percentages are only exported when the workload has a memory limit.
+`memory.peak` needs Linux 5.19. On an older kernel `mem_max_usage` is not registered at all for that workload, so it is absent from `/metrics` rather than reported as a constant `0`.
+
+The memory ceiling is the workload's own `memory.max`, or the node's total memory when that is `max`. The two percentages are exported whenever a ceiling is known, which — since the node total is always known on Linux — means always; on a host where the agent cannot read `/proc/meminfo` an unlimited workload has no ceiling and reports neither.
 
 ### Network
 
