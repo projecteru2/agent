@@ -39,9 +39,9 @@ func (m *Manager) forwardJournal(ctx context.Context) {
 func (m *Manager) forwardConsole(ctx context.Context, w *source.Workload) {
 	// a restarted vm gets a new console, so the path is read back per attempt rather than held from here
 	console := collector.NewConsole(w.ID, w.Meta.Appname, func() (string, error) {
-		fresh, err := m.source.Get(ctx, w.ID)
-		if err != nil {
-			return "", err
+		fresh := m.refreshed(ctx, w.ID)
+		if fresh == nil {
+			return "", source.ErrUnknownWorkload
 		}
 		return fresh.Log.ConsoleSocket, nil
 	})

@@ -95,6 +95,13 @@ func TestConsoleRetriesWhenThePathCannotBeRead(t *testing.T) {
 	assert.Equal(t, "boot", nextEntry(t, entries).Data)
 }
 
+func TestConsoleKeepsBackingOffWhenASessionSaysNothing(t *testing.T) {
+	console := NewConsole(consoleWorkload, consoleAppname, at(socketConsole(t, "", "", "late boot\n")))
+	entries, _ := readConsole(t, console)
+
+	assert.Equal(t, "late boot", nextEntry(t, entries).Data)
+}
+
 func TestConsoleOpensACharacterDevice(t *testing.T) {
 	console := NewConsole(consoleWorkload, consoleAppname, at(os.DevNull))
 

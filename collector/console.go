@@ -57,11 +57,11 @@ func (c *Console) Read(ctx context.Context, handle func(*Entry)) {
 
 	backoff := consoleRetryMin
 	for {
-		connected, err := c.pump(ctx, handle)
+		delivered, err := c.pump(ctx, handle)
 		if ctx.Err() != nil {
 			return
 		}
-		if connected {
+		if delivered {
 			backoff = consoleRetryMin
 		}
 		// the console goes away with the vm and comes back with it, so a closed one is not a failure
@@ -80,7 +80,7 @@ func (c *Console) Read(ctx context.Context, handle func(*Entry)) {
 	}
 }
 
-// pump reads one console session, reporting whether it opened at all so a retry can back off.
+// pump reads one console session, reporting whether it delivered a line so a retry can back off.
 func (c *Console) pump(ctx context.Context, handle func(*Entry)) (bool, error) {
 	conn, err := c.open(ctx)
 	if err != nil {
@@ -90,14 +90,16 @@ func (c *Console) pump(ctx context.Context, handle func(*Entry)) (bool, error) {
 	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
 	defer stop()
 
+	delivered := false
 	reader := bufio.NewReaderSize(conn, scanBufferSize)
 	for {
 		line, err := reader.ReadString('\n')
 		if line = strings.TrimRight(line, "\r\n"); line != "" {
 			c.emit(line, handle)
+			delivered = true
 		}
 		if err != nil {
-			return true, err
+			return delivered, err
 		}
 	}
 }
