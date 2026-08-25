@@ -37,6 +37,9 @@ type Systemd struct {
 	config *types.Config
 	conn   *dbus.Conn
 	dir    string
+
+	reportedMutex sync.Mutex
+	reported      map[string]string
 }
 
 func New(ctx context.Context, config *types.Config) (*Systemd, error) {
@@ -54,7 +57,7 @@ func New(ctx context.Context, config *types.Config) (*Systemd, error) {
 		logger.Error(ctx, err, "failed to connect to the system bus")
 		return nil, err
 	}
-	return &Systemd{config: config, conn: conn, dir: config.MetaDir}, nil
+	return &Systemd{config: config, conn: conn, dir: config.MetaDir, reported: map[string]string{}}, nil
 }
 
 func (s *Systemd) List(ctx context.Context) ([]*source.Workload, error) {
@@ -164,10 +167,11 @@ func (s *Systemd) watchMetaDir(ctx context.Context, emit emitFunc) error {
 			return
 		}
 		if created {
-			emit(ID, common.StatusStart)
+			s.emitChange(emit, ID, common.StatusStart)
 			return
 		}
-		emit(ID, common.StatusDie)
+		s.emitChange(emit, ID, common.StatusDie)
+		s.forget(unitOf(ID))
 	})
 	if errors.Is(err, os.ErrClosed) || errors.Is(err, context.Canceled) {
 		return nil
@@ -201,12 +205,9 @@ func (s *Systemd) watchUnits(ctx context.Context, emit emitFunc) error {
 			if !ok {
 				continue
 			}
-			state, _ := changed.Value().(string)
-			switch state {
-			case stateActive:
-				emit(ID, common.StatusStart)
-			case stateInactive, stateFailed:
-				emit(ID, common.StatusDie)
+			// PropertiesChanged fires for every property, so only a settled state that moved is news
+			if action, ok := actionFor(changed.Value()); ok {
+				s.emitChange(emit, ID, action)
 			}
 		case err := <-errs:
 			// a subscriber that fell behind missed transitions, it did not lose the bus
@@ -231,13 +232,38 @@ func (s *Systemd) relist(ctx context.Context, emit emitFunc) error {
 		if !ok {
 			continue
 		}
+		action := common.StatusDie
 		if active {
-			emit(ID, common.StatusStart)
-			continue
+			action = common.StatusStart
 		}
-		emit(ID, common.StatusDie)
+		s.emitChange(emit, ID, action)
 	}
 	return nil
+}
+
+// emitChange reports an action for a unit only when it is not the one already reported for it.
+func (s *Systemd) emitChange(emit emitFunc, ID, action string) {
+	if s.report(unitOf(ID), action) {
+		emit(ID, action)
+	}
+}
+
+func (s *Systemd) report(unit, action string) bool {
+	s.reportedMutex.Lock()
+	defer s.reportedMutex.Unlock()
+
+	if s.reported[unit] == action {
+		return false
+	}
+	s.reported[unit] = action
+	return true
+}
+
+func (s *Systemd) forget(unit string) {
+	s.reportedMutex.Lock()
+	defer s.reportedMutex.Unlock()
+
+	delete(s.reported, unit)
 }
 
 func (s *Systemd) runningUnits(ctx context.Context) (map[string]bool, error) {
@@ -271,6 +297,17 @@ func (s *Systemd) withNetns(ctx context.Context, w *source.Workload) *source.Wor
 		w.NetnsPID = int(pid)
 	}
 	return w
+}
+
+// actionFor maps a settled ActiveState onto an event; activating and deactivating report nothing.
+func actionFor(state any) (string, bool) {
+	switch state {
+	case stateActive:
+		return common.StatusStart, true
+	case stateInactive, stateFailed:
+		return common.StatusDie, true
+	}
+	return "", false
 }
 
 // needsNetns reports whether the workload has a running network of its own, so the host counters are not its.
