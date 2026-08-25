@@ -1,5 +1,6 @@
 {
   "id": "agent",
+  "kind": "process",
   "appname": "eru",
   "entrypoint": "agent",
   "cgroup": "/sys/fs/cgroup/system.slice/eru-agent.service",

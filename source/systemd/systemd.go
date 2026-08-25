@@ -2,8 +2,6 @@ package systemd
 
 import (
 	"context"
-	"errors"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -13,14 +11,11 @@ import (
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/source"
+	"github.com/projecteru2/agent/source/meta"
 	"github.com/projecteru2/agent/types"
 )
 
 const (
-	unitPrefix  = "eru-"
-	unitSuffix  = ".service"
-	unitPattern = unitPrefix + "*" + unitSuffix
-
 	stateActive   = "active"
 	stateInactive = "inactive"
 	stateFailed   = "failed"
@@ -29,25 +24,20 @@ const (
 	signalDepth = 100
 )
 
-type emitFunc func(ID, action string)
-
 var _ source.Source = (*Systemd)(nil)
 
 type Systemd struct {
-	config *types.Config
-	conn   *dbus.Conn
-	dir    string
-
-	reportedMutex sync.Mutex
-	reported      map[string]string
+	conn     *dbus.Conn
+	dir      *meta.Dir
+	reporter *source.Reporter
 }
 
 func New(ctx context.Context, config *types.Config) (*Systemd, error) {
 	logger := log.WithFunc("systemd.New")
 	logger.Infof(ctx, "systemd source starting, watching %s", config.MetaDir)
 
-	// the meta dir is on tmpfs, so it is empty after a reboot and inotify has nothing to watch
-	if err := os.MkdirAll(config.MetaDir, 0o755); err != nil { //nolint:gosec // core writes this dir over ssh as well
+	dir, err := meta.NewDir(config.MetaDir, meta.KindProcess)
+	if err != nil {
 		logger.Errorf(ctx, err, "failed to create the meta dir %s", config.MetaDir)
 		return nil, err
 	}
@@ -57,13 +47,13 @@ func New(ctx context.Context, config *types.Config) (*Systemd, error) {
 		logger.Error(ctx, err, "failed to connect to the system bus")
 		return nil, err
 	}
-	return &Systemd{config: config, conn: conn, dir: config.MetaDir, reported: map[string]string{}}, nil
+	return &Systemd{conn: conn, dir: dir, reporter: source.NewReporter()}, nil
 }
 
 func (s *Systemd) List(ctx context.Context) ([]*source.Workload, error) {
 	logger := log.WithFunc("systemd.List")
 
-	entries, err := os.ReadDir(s.dir)
+	files, err := s.dir.List(ctx)
 	if err != nil {
 		logger.Error(ctx, err, "failed to read the meta dir")
 		return nil, err
@@ -75,26 +65,17 @@ func (s *Systemd) List(ctx context.Context) ([]*source.Workload, error) {
 		return nil, err
 	}
 
-	workloads := make([]*source.Workload, 0, len(entries))
-	for _, entry := range entries {
-		ID, ok := workloadIDFromFile(entry.Name())
-		if !ok {
-			continue
-		}
-		m, err := readMeta(s.dir, ID)
-		if err != nil {
-			logger.Warnf(ctx, "skipping the meta file of %s: %v", ID, err)
-			continue
-		}
-		active := running[unitOf(ID)]
-		s.report(unitOf(ID), actionOf(active))
-		workloads = append(workloads, s.withNetns(ctx, m.workload(active)))
+	workloads := make([]*source.Workload, 0, len(files))
+	for _, f := range files {
+		active := running[unitOf(f.ID)]
+		s.reporter.Note(f.ID, source.ActionOf(active))
+		workloads = append(workloads, s.withNetns(ctx, f.Workload(active)))
 	}
 	return workloads, nil
 }
 
 func (s *Systemd) Get(ctx context.Context, ID string) (*source.Workload, error) {
-	m, err := readMeta(s.dir, ID)
+	f, err := s.dir.Read(ID)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +86,7 @@ func (s *Systemd) Get(ctx context.Context, ID string) (*source.Workload, error) 
 	}
 	active, _ := state.Value.Value().(string)
 
-	return s.withNetns(ctx, m.workload(active == stateActive)), nil
+	return s.withNetns(ctx, f.Workload(active == stateActive)), nil
 }
 
 func (s *Systemd) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage, <-chan error) {
@@ -113,7 +94,7 @@ func (s *Systemd) Events(ctx context.Context) (<-chan *types.WorkloadEventMessag
 	errChan := make(chan error, 1)
 
 	ctx, cancel := context.WithCancel(ctx)
-	emit := emitFunc(func(ID, action string) {
+	emit := source.EmitFunc(func(ID, action string) {
 		select {
 		case eventChan <- &types.WorkloadEventMessage{ID: ID, Type: eventType, Action: action, TimeNano: time.Now().UnixNano()}:
 		case <-ctx.Done():
@@ -134,7 +115,7 @@ func (s *Systemd) Events(ctx context.Context) (<-chan *types.WorkloadEventMessag
 
 		var wg sync.WaitGroup
 		wg.Go(func() {
-			if err := s.watchMetaDir(ctx, emit); err != nil {
+			if err := s.dir.Watch(ctx, s.reporter, emit); err != nil {
 				fail(err)
 			}
 		})
@@ -157,31 +138,7 @@ func (s *Systemd) Alive(ctx context.Context) bool {
 	return true
 }
 
-func (s *Systemd) watchMetaDir(ctx context.Context, emit emitFunc) error {
-	watcher, err := newDirWatcher(s.dir)
-	if err != nil {
-		return err
-	}
-
-	err = watcher.run(ctx, func(name string, created bool) {
-		ID, ok := workloadIDFromFile(name)
-		if !ok {
-			return
-		}
-		if created {
-			s.emitChange(emit, ID, common.StatusStart)
-			return
-		}
-		s.emitChange(emit, ID, common.StatusDie)
-		s.forget(unitOf(ID))
-	})
-	if errors.Is(err, os.ErrClosed) || errors.Is(err, context.Canceled) {
-		return nil
-	}
-	return err
-}
-
-func (s *Systemd) watchUnits(ctx context.Context, emit emitFunc) error {
+func (s *Systemd) watchUnits(ctx context.Context, emit source.EmitFunc) error {
 	logger := log.WithFunc("systemd.watchUnits")
 	// a previous Events left its subscription on this shared connection, still feeding dead channels
 	_ = s.conn.Unsubscribe()
@@ -208,7 +165,7 @@ func (s *Systemd) watchUnits(ctx context.Context, emit emitFunc) error {
 				continue
 			}
 			if action, ok := actionFor(changed.Value()); ok {
-				s.emitChange(emit, ID, action)
+				s.reporter.Report(emit, ID, action)
 			}
 		case err := <-errs:
 			// a subscriber that fell behind missed transitions, it did not lose the bus
@@ -223,7 +180,7 @@ func (s *Systemd) watchUnits(ctx context.Context, emit emitFunc) error {
 }
 
 // relist replays the state of every eru unit, so a transition the subscription missed is reconciled.
-func (s *Systemd) relist(ctx context.Context, emit emitFunc) error {
+func (s *Systemd) relist(ctx context.Context, emit source.EmitFunc) error {
 	running, err := s.runningUnits(ctx)
 	if err != nil {
 		return err
@@ -233,33 +190,9 @@ func (s *Systemd) relist(ctx context.Context, emit emitFunc) error {
 		if !ok {
 			continue
 		}
-		s.emitChange(emit, ID, actionOf(active))
+		s.reporter.Report(emit, ID, source.ActionOf(active))
 	}
 	return nil
-}
-
-func (s *Systemd) emitChange(emit emitFunc, ID, action string) {
-	if s.report(unitOf(ID), action) {
-		emit(ID, action)
-	}
-}
-
-func (s *Systemd) report(unit, action string) bool {
-	s.reportedMutex.Lock()
-	defer s.reportedMutex.Unlock()
-
-	if s.reported[unit] == action {
-		return false
-	}
-	s.reported[unit] = action
-	return true
-}
-
-func (s *Systemd) forget(unit string) {
-	s.reportedMutex.Lock()
-	defer s.reportedMutex.Unlock()
-
-	delete(s.reported, unit)
 }
 
 func (s *Systemd) runningUnits(ctx context.Context) (map[string]bool, error) {
@@ -293,13 +226,6 @@ func (s *Systemd) withNetns(ctx context.Context, w *source.Workload) *source.Wor
 		w.NetnsPID = int(pid)
 	}
 	return w
-}
-
-func actionOf(active bool) string {
-	if active {
-		return common.StatusStart
-	}
-	return common.StatusDie
 }
 
 func actionFor(state any) (string, bool) {

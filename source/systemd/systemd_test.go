@@ -6,78 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/source"
 )
 
-func TestEmitChangeOnlyReportsAnActionThatMoved(t *testing.T) {
-	s := &Systemd{reported: map[string]string{}}
-	var emitted []string
-	emit := emitFunc(func(_, action string) { emitted = append(emitted, action) })
-
-	for range 5 {
-		s.emitChange(emit, cniWorkload, common.StatusStart)
-	}
-	for range 5 {
-		s.emitChange(emit, cniWorkload, common.StatusDie)
-	}
-	s.emitChange(emit, cniWorkload, common.StatusStart)
-
-	assert.Equal(t, []string{common.StatusStart, common.StatusDie, common.StatusStart}, emitted)
-}
-
-func TestEmitChangeTreatsFailedAndInactiveAsOneDeath(t *testing.T) {
-	s := &Systemd{reported: map[string]string{}}
-	var emitted []string
-	emit := emitFunc(func(_, action string) { emitted = append(emitted, action) })
-
-	s.emitChange(emit, cniWorkload, common.StatusStart)
-	for _, state := range []string{stateFailed, stateInactive} {
-		action, ok := actionFor(state)
-		assert.True(t, ok)
-		s.emitChange(emit, cniWorkload, action)
-	}
-
-	assert.Equal(t, []string{common.StatusStart, common.StatusDie}, emitted)
-}
-
-func TestEmitChangeReportsEachUnitOnItsOwn(t *testing.T) {
-	s := &Systemd{reported: map[string]string{}}
-	var emitted []string
-	emit := emitFunc(func(ID, _ string) { emitted = append(emitted, ID) })
-
-	s.emitChange(emit, cniWorkload, common.StatusStart)
-	s.emitChange(emit, hostNetWorkload, common.StatusStart)
-	s.emitChange(emit, cniWorkload, common.StatusStart)
-
-	assert.Equal(t, []string{cniWorkload, hostNetWorkload}, emitted)
-}
-
-func TestListSeedsWhatItAlreadyToldTheManager(t *testing.T) {
-	s := &Systemd{reported: map[string]string{}}
-	var emitted []string
-	emit := emitFunc(func(_, action string) { emitted = append(emitted, action) })
-
-	s.report(unitOf(cniWorkload), actionOf(true))
-	s.emitChange(emit, cniWorkload, common.StatusStart)
-	assert.Empty(t, emitted)
-
-	s.emitChange(emit, cniWorkload, common.StatusDie)
-	assert.Equal(t, []string{common.StatusDie}, emitted)
-}
-
-func TestActionOf(t *testing.T) {
-	assert.Equal(t, common.StatusStart, actionOf(true))
-	assert.Equal(t, common.StatusDie, actionOf(false))
-}
-
-func TestForgetLetsARemovedUnitBeReportedAgain(t *testing.T) {
-	s := &Systemd{reported: map[string]string{}}
-
-	assert.True(t, s.report(unitOf(cniWorkload), common.StatusStart))
-	assert.False(t, s.report(unitOf(cniWorkload), common.StatusStart))
-
-	s.forget(unitOf(cniWorkload))
-	assert.True(t, s.report(unitOf(cniWorkload), common.StatusStart))
-}
+const workloadID = "0f9c1a2b3d4e5f60718293a4b5c6d7e8"
 
 func TestActionForIgnoresTheTransitionalStates(t *testing.T) {
 	tests := map[string]string{
@@ -96,4 +28,26 @@ func TestActionForIgnoresTheTransitionalStates(t *testing.T) {
 			assert.Equal(t, want, action)
 		})
 	}
+}
+
+func TestNeedsNetnsOnlyForARunningWorkloadWithItsOwnNetwork(t *testing.T) {
+	w := &source.Workload{
+		ID:      workloadID,
+		Meta:    source.Meta{Networks: map[string]string{"eru-cni": "10.0.0.5"}},
+		Running: true,
+	}
+	assert.True(t, needsNetns(w))
+
+	w.NetnsPID = 42
+	assert.False(t, needsNetns(w))
+
+	w.NetnsPID = 0
+	w.HostIface = "tap-" + workloadID
+	assert.False(t, needsNetns(w))
+
+	w.HostIface = ""
+	w.Running = false
+	assert.False(t, needsNetns(w))
+
+	assert.False(t, needsNetns(&source.Workload{ID: workloadID, Running: true}))
 }
