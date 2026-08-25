@@ -52,7 +52,6 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGUSR1)
 	errChan := make(chan error, 2)
-	defer close(errChan)
 
 	var wg sync.WaitGroup
 
