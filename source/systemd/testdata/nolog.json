@@ -1,6 +1,0 @@
-{
-  "id": "nolog",
-  "appname": "myapp",
-  "entrypoint": "worker",
-  "cgroup": "/sys/fs/cgroup/eru.slice/eru-nolog.service"
-}

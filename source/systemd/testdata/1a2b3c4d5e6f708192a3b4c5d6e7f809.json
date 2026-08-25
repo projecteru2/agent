@@ -1,0 +1,9 @@
+{
+  "id": "1a2b3c4d5e6f708192a3b4c5d6e7f809",
+  "kind": "process",
+  "appname": "myapp",
+  "entrypoint": "worker",
+  "ident": "QQQQQQ",
+  "cgroup": "/sys/fs/cgroup/eru.slice/eru-1a2b3c4d5e6f708192a3b4c5d6e7f809.service",
+  "log": {"journal_unit": "eru-1a2b3c4d5e6f708192a3b4c5d6e7f809.service"}
+}

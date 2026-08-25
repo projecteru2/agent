@@ -117,7 +117,10 @@ func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {
 	m.collectMutex.Lock()
 	defer m.collectMutex.Unlock()
 
-	m.cancelCollecting(w.ID)
+	// a repeated start is not a restart: the sampler this workload already has keeps running
+	if _, ok := m.collecting[w.ID]; ok {
+		return
+	}
 
 	sampleCtx, cancel := context.WithCancel(ctx)
 	task := &collectTask{cancel: cancel, done: make(chan struct{})}
@@ -128,16 +131,12 @@ func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {
 	}()
 }
 
+// stopCollecting waits for the sampler to exit: it unregisters the workload's gauges on its way
+// out, so it has to be gone before another sampler registers the same workload again.
 func (m *Manager) stopCollecting(ID string) {
 	m.collectMutex.Lock()
 	defer m.collectMutex.Unlock()
 
-	m.cancelCollecting(ID)
-}
-
-// cancelCollecting waits for the sampler to exit: it unregisters the workload's gauges on its way
-// out, so it has to be gone before another sampler registers the same workload again.
-func (m *Manager) cancelCollecting(ID string) {
 	task, ok := m.collecting[ID]
 	if !ok {
 		return

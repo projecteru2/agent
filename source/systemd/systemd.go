@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,6 +37,9 @@ type Systemd struct {
 	config *types.Config
 	conn   *dbus.Conn
 	dir    string
+
+	reportedMutex sync.Mutex
+	reported      map[string]string
 }
 
 func New(ctx context.Context, config *types.Config) (*Systemd, error) {
@@ -53,7 +57,7 @@ func New(ctx context.Context, config *types.Config) (*Systemd, error) {
 		logger.Error(ctx, err, "failed to connect to the system bus")
 		return nil, err
 	}
-	return &Systemd{config: config, conn: conn, dir: config.MetaDir}, nil
+	return &Systemd{config: config, conn: conn, dir: config.MetaDir, reported: map[string]string{}}, nil
 }
 
 func (s *Systemd) List(ctx context.Context) ([]*source.Workload, error) {
@@ -163,10 +167,11 @@ func (s *Systemd) watchMetaDir(ctx context.Context, emit emitFunc) error {
 			return
 		}
 		if created {
-			emit(ID, common.StatusStart)
+			s.emitChange(emit, ID, common.StatusStart)
 			return
 		}
-		emit(ID, common.StatusDie)
+		s.emitChange(emit, ID, common.StatusDie)
+		s.forget(unitOf(ID))
 	})
 	if errors.Is(err, os.ErrClosed) || errors.Is(err, context.Canceled) {
 		return nil
@@ -190,18 +195,19 @@ func (s *Systemd) watchUnits(ctx context.Context, emit emitFunc) error {
 		case update := <-updates:
 			ID, ok := workloadIDFromUnit(update.UnitName)
 			if !ok {
+				// the subscription is node wide, so only a name under eru's prefix is worth a line
+				if strings.HasPrefix(update.UnitName, unitPrefix) {
+					logger.Debugf(ctx, "ignoring unit %s, it is not a workload", update.UnitName)
+				}
 				continue
 			}
 			changed, ok := update.Changed["ActiveState"]
 			if !ok {
 				continue
 			}
-			state, _ := changed.Value().(string)
-			switch state {
-			case stateActive:
-				emit(ID, common.StatusStart)
-			case stateInactive, stateFailed:
-				emit(ID, common.StatusDie)
+			// PropertiesChanged fires for every property, so only a settled state that moved is news
+			if action, ok := actionFor(changed.Value()); ok {
+				s.emitChange(emit, ID, action)
 			}
 		case err := <-errs:
 			// a subscriber that fell behind missed transitions, it did not lose the bus
@@ -226,22 +232,50 @@ func (s *Systemd) relist(ctx context.Context, emit emitFunc) error {
 		if !ok {
 			continue
 		}
+		action := common.StatusDie
 		if active {
-			emit(ID, common.StatusStart)
-			continue
+			action = common.StatusStart
 		}
-		emit(ID, common.StatusDie)
+		s.emitChange(emit, ID, action)
 	}
 	return nil
 }
 
+func (s *Systemd) emitChange(emit emitFunc, ID, action string) {
+	if s.report(unitOf(ID), action) {
+		emit(ID, action)
+	}
+}
+
+func (s *Systemd) report(unit, action string) bool {
+	s.reportedMutex.Lock()
+	defer s.reportedMutex.Unlock()
+
+	if s.reported[unit] == action {
+		return false
+	}
+	s.reported[unit] = action
+	return true
+}
+
+func (s *Systemd) forget(unit string) {
+	s.reportedMutex.Lock()
+	defer s.reportedMutex.Unlock()
+
+	delete(s.reported, unit)
+}
+
 func (s *Systemd) runningUnits(ctx context.Context) (map[string]bool, error) {
+	// the bus matches a glob only, so eru-agent.service comes back too and is dropped here
 	units, err := s.conn.ListUnitsByPatternsContext(ctx, nil, []string{unitPattern})
 	if err != nil {
 		return nil, err
 	}
 	running := make(map[string]bool, len(units))
 	for _, unit := range units {
+		if _, ok := workloadIDFromUnit(unit.Name); !ok {
+			continue
+		}
 		running[unit.Name] = unit.ActiveState == stateActive
 	}
 	return running, nil
@@ -262,6 +296,16 @@ func (s *Systemd) withNetns(ctx context.Context, w *source.Workload) *source.Wor
 		w.NetnsPID = int(pid)
 	}
 	return w
+}
+
+func actionFor(state any) (string, bool) {
+	switch state {
+	case stateActive:
+		return common.StatusStart, true
+	case stateInactive, stateFailed:
+		return common.StatusDie, true
+	}
+	return "", false
 }
 
 // needsNetns reports whether the workload has a running network of its own, so the host counters are not its.
