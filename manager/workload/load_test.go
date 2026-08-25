@@ -21,21 +21,19 @@ func TestLoad(t *testing.T) {
 }
 
 func assertInitStatus(t *testing.T, store *mocks.MockStore) {
-	assert.Equal(t, store.GetMockWorkloadStatus("Asuka"), &types.WorkloadStatus{
-		ID:      "Asuka",
-		Running: false,
-		Healthy: false,
-	})
+	assert.Equal(t, store.GetMockWorkloadStatus("Asuka"), wantStatus("Asuka", "eva2", false, false))
+	assert.Equal(t, store.GetMockWorkloadStatus("Rei"), wantStatus("Rei", "eva0", true, false))
+	assert.Equal(t, store.GetMockWorkloadStatus("Shinji"), wantStatus("Shinji", "eva1", true, true))
+}
 
-	assert.Equal(t, store.GetMockWorkloadStatus("Rei"), &types.WorkloadStatus{
-		ID:      "Rei",
-		Running: true,
-		Healthy: false,
-	})
-
-	assert.Equal(t, store.GetMockWorkloadStatus("Shinji"), &types.WorkloadStatus{
-		ID:      "Shinji",
-		Running: true,
-		Healthy: true,
-	})
+func wantStatus(ID, entrypoint string, running, healthy bool) *types.WorkloadStatus {
+	return &types.WorkloadStatus{
+		ID:         ID,
+		Running:    running,
+		Healthy:    healthy,
+		Extension:  []byte("null"),
+		Appname:    "nerv",
+		Nodename:   "fake",
+		Entrypoint: entrypoint,
+	}
 }

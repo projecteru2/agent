@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/projecteru2/agent/common"
 )
 
 func TestWritePid(t *testing.T) {
@@ -147,6 +149,26 @@ func TestGetIP(t *testing.T) {
 	assert.Equal(t, GetIP(host), "127.0.0.1")
 	host = "invalid-string"
 	assert.Equal(t, GetIP(host), "")
+}
+
+func TestProcRoot(t *testing.T) {
+	assert.Equal(t, "/proc", ProcRoot())
+}
+
+func TestCgroupPath(t *testing.T) {
+	path, err := CgroupPath("/sys/fs/cgroup", "testdata/proc", 1234)
+	assert.NoError(t, err)
+	assert.Equal(t, "/sys/fs/cgroup/system.slice/docker-abc123.scope", path)
+}
+
+func TestCgroupPathRejectsACgroupV1OnlyProcess(t *testing.T) {
+	_, err := CgroupPath("/sys/fs/cgroup", "testdata/proc", 5678)
+	assert.ErrorIs(t, err, common.ErrNoCgroupV2)
+}
+
+func TestCgroupPathFailsForAProcessThatIsGone(t *testing.T) {
+	_, err := CgroupPath("/sys/fs/cgroup", "testdata/proc", 9999)
+	assert.Error(t, err)
 }
 
 func TestWithTimeout(t *testing.T) {

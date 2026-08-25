@@ -1,16 +1,19 @@
 # Architecture
 
-The agent is one process with two independent managers and an HTTP server. Both managers ask `manager.NewClients` for the same three things — the core store, the runtime and this node's ip — and the clients behind it are per-process singletons, so there is one connection pool to core and one connection to the runtime daemon no matter how many managers want them. If either manager's `Run` returns an error the process cancels its context and exits.
+The agent is one process with two independent managers and an HTTP server. Both managers ask `manager.NewClients` for the same two things — the core store and the runtime source — and the clients behind it are per-process singletons, so there is one connection pool to core and one connection to the runtime daemon no matter how many managers want them. If either manager's `Run` returns an error the process cancels its context and exits.
+
+Everything runtime-specific lives in a **source**: it lists the workloads the node runs, streams their state changes and answers whether its daemon is alive. Everything else — the metrics sampler, the health prober — is a runtime-agnostic **collector** that reads Linux files. A source hands a collector a `source.Workload`: the id, the metadata core wrote at create time, the workload's cgroup directory, the pid whose network namespace to read (or a host interface), and where its log lines are. No collector makes an IPC call.
 
 ## Packages
 
 | Package | Responsibility |
 |---|---|
-| `manager` | Builds the store, runtime and node ip both managers share |
+| `manager` | Builds the store and source both managers share |
 | `manager/node` | Node status heartbeat and shutdown |
 | `manager/workload` | Workload discovery, health checks, log attach and broadcast |
-| `runtime` | The `Runtime` interface both backends implement |
-| `runtime/docker`, `runtime/yavirt` | The two backends |
+| `source` | The `Source` interface every runtime implements, and the `Workload` it yields |
+| `source/docker`, `source/yavirt` | The two runtime backends |
+| `collector` | Runtime-agnostic hot paths: cgroup v2 metrics, network counters, health probes |
 | `store` | The `Store` interface the managers report through |
 | `store/core` | gRPC client pool talking to `eru-core` |
 | `logs` | Log record encoders and the reconnecting forwarder |
@@ -21,7 +24,7 @@ The agent is one process with two independent managers and an HTTP server. Both 
 
 `manager/node` reports this node alive. Every `heartbeat_interval` seconds it:
 
-1. Pings the runtime daemon. If the daemon is unreachable the report is skipped, so a node whose Docker died stops looking alive and core expires it.
+1. Pings the runtime daemon through the source. If the daemon is unreachable the report is skipped, so a node whose Docker died stops looking alive and core expires it.
 2. Calls `SetNodeStatus` with a ttl of three times the interval, retrying three times with exponential backoff.
 
 The ttl outlives the interval on purpose: a single lost or slow report must not evict the node.
@@ -46,7 +49,9 @@ If the stream errors the manager waits `global_connection_timeout` and resubscri
 
 **Health sweep.** Every `healthcheck.interval` seconds it lists **all** workloads, stopped ones included, and re-checks each. Listing all of them is deliberate: an event-driven check that returns late must not be the last word on a workload the die event already buried.
 
-**Attach.** For each running workload it opens the runtime's stdout and stderr streams and pumps them line by line. Each line becomes a JSON record:
+**Metrics.** Each running workload gets one sampling goroutine, started when the workload is first seen running and cancelled on its die event. The sampler reads the workload's cgroup v2 files and its netns counters directly, so a tick costs a handful of small file reads and no call to any daemon. See [metrics](metrics.md).
+
+**Attach.** A source that streams a workload's output implements `source.Attacher`; for each running workload the manager opens its stdout and stderr and pumps them line by line. Each line becomes a JSON record:
 
 ```json
 {
@@ -71,4 +76,4 @@ Both workload paths report through `store.Store`. The core store sends `SetWorkl
 
 ## Concurrency
 
-Health checks for one workload are serialised by a per-id compare-and-swap lock, so an event-driven check and a sweep check cannot run against the same workload at once. Everything else is plain goroutines; the process has no worker pool and no `init()`.
+Health checks for one workload are serialised by a per-id compare-and-swap lock, so an event-driven check and a sweep check cannot run against the same workload at once. Metrics sampling is deduplicated the same way: starting a sampler for a workload cancels the one already running for that id. Everything else is plain goroutines; the process has no worker pool and no `init()`.

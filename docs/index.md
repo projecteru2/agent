@@ -22,9 +22,15 @@
                                      |
                     +----------------+----------------+
                     |                                 |
-             docker runtime                    yavirt runtime
-       (containers: attach, events,      (guests: events, status,
-        stats, health checks)             health checks)
+             docker source                     yavirt source
+       (containers: list, events,        (guests: list, events,
+        attach)                           status)
+                    |                                 |
+                    +----------------+----------------+
+                                     |
+                              collectors
+                    (cgroup v2 metrics, netns counters,
+                     health probes -- no IPC on a tick)
 ```
 
 ## Guides
@@ -32,7 +38,7 @@
 - [Installation](installation.md) — building, the container image, the systemd unit
 - [Configuration](configuration.md) — every key in `agent.yaml`, the flags and the environment variables
 - [Architecture](architecture.md) — what the two managers do and how status reaches core
-- [Runtimes](runtimes.md) — what Docker and yavirt each support, and how health checks are declared
+- [Runtimes](runtimes.md) — what the Docker and yavirt sources each support, and how health checks are declared
 - [Metrics](metrics.md) — the Prometheus gauges, their labels, and the statsd sink
 
 ## Source

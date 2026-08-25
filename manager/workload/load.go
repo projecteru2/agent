@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/projecteru2/core/log"
+
+	"github.com/projecteru2/agent/source"
 )
 
-func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[string]string) ([]string, error) {
-	var workloadIDs []string
-	var err error
+func (m *Manager) listWithRetry(ctx context.Context) ([]*source.Workload, error) {
 	ticker := time.NewTicker(m.config.GlobalConnectionTimeout)
 	defer ticker.Stop()
 	for {
@@ -18,12 +18,12 @@ func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[strin
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-ticker.C:
-			workloadIDs, err = m.runtimeClient.ListWorkloadIDs(ctx, filter)
+			workloads, err := m.source.List(ctx)
 			if err != nil {
-				log.WithFunc("workload.listWorkloadIDsWithRetry").Error(ctx, err, "failed to load workloads, will retry")
+				log.WithFunc("workload.listWithRetry").Error(ctx, err, "failed to load workloads, will retry")
 				continue
 			}
-			return workloadIDs, nil
+			return workloads, nil
 		}
 	}
 }
@@ -31,30 +31,21 @@ func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[strin
 func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 	logger := log.WithFunc("workload.initWorkloadStatus")
 	logger.Info(ctx, "load workloads")
-	workloadIDs, err := m.listWorkloadIDsWithRetry(ctx, m.baseFilter)
+	workloads, err := m.listWithRetry(ctx)
 	if err != nil {
 		logger.Error(ctx, err, "failed to load workloads")
 		return err
 	}
 
 	var wg sync.WaitGroup
-	for _, ID := range workloadIDs {
-		logger.Debugf(ctx, "detect workload %s", ID)
+	for _, w := range workloads {
+		logger.Debugf(ctx, "detect workload %s", w.ID)
 		wg.Go(func() {
-			workloadStatus, err := m.runtimeClient.GetStatus(ctx, ID, true)
-			if err != nil {
-				logger.Errorf(ctx, err, "get workload %v status failed", ID)
-				return
+			if w.Running {
+				logger.Debugf(ctx, "workload %s is running", w.ID)
+				m.start(ctx, w)
 			}
-
-			if workloadStatus.Running {
-				logger.Debugf(ctx, "workload %s is running", workloadStatus.ID)
-				go m.attach(ctx, ID)
-			}
-
-			if err := m.setWorkloadStatus(ctx, workloadStatus); err != nil {
-				logger.Errorf(ctx, err, "update workload %v status failed", ID)
-			}
+			m.checkOneWorkload(ctx, w)
 		})
 	}
 	wg.Wait()

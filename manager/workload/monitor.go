@@ -17,8 +17,7 @@ func (m *Manager) initMonitor(ctx context.Context) (<-chan *types.WorkloadEventM
 	eventHandler.Handle(common.StatusStart, m.handleWorkloadStart)
 	eventHandler.Handle(common.StatusDie, m.handleWorkloadDie)
 
-	eventChan, errChan := m.runtimeClient.Events(ctx, m.baseFilter)
-	return eventChan, errChan
+	return m.source.Events(ctx)
 }
 
 func (m *Manager) watchEvent(ctx context.Context, eventChan <-chan *types.WorkloadEventMessage) {
@@ -58,7 +57,11 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 	}
 
 	retryTask := utils.NewRetryTask(ctx, utils.GetMaxAttemptsByTTL(m.config.GetHealthCheckStatusTTL()), func() error {
-		if !m.checkOneWorkload(ctx, ID) {
+		w, err := m.source.Get(ctx, ID)
+		if err != nil {
+			return err
+		}
+		if !m.checkOneWorkload(ctx, w) {
 			return common.ErrWorkloadUnhealthy
 		}
 		return nil
@@ -83,35 +86,47 @@ func (m *Manager) forgetRetryTask(ID string, retryTask *utils.RetryTask) {
 func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.WorkloadEventMessage) {
 	logger := log.WithFunc("workload.handleWorkloadStart").WithField("ID", event.ID)
 	logger.Debug(ctx, "handling start")
-	workloadStatus, err := m.runtimeClient.GetStatus(ctx, event.ID, true)
+	w, err := m.source.Get(ctx, event.ID)
+	if err != nil {
+		logger.Error(ctx, err, "failed to get workload")
+		return
+	}
+
+	if w.Running {
+		m.start(ctx, w)
+	}
+
+	status, err := m.workloadStatus(ctx, w)
 	if err != nil {
 		logger.Error(ctx, err, "failed to get workload status")
 		return
 	}
-
-	if workloadStatus.Running {
-		go m.attach(ctx, event.ID)
-	}
-
-	if workloadStatus.Healthy {
-		if err := m.store.SetWorkloadStatus(ctx, workloadStatus, m.config.GetHealthCheckStatusTTL()); err != nil {
-			logger.Error(ctx, err, "failed to update workload status")
-		}
-	} else {
+	if !status.Healthy {
 		m.checkOneWorkloadWithBackoffRetry(ctx, event.ID)
+		return
+	}
+	if err := m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL()); err != nil {
+		logger.Error(ctx, err, "failed to update workload status")
 	}
 }
 
 func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEventMessage) {
 	logger := log.WithFunc("workload.handleWorkloadDie").WithField("ID", event.ID)
 	logger.Debug(ctx, "handling die")
-	workloadStatus, err := m.runtimeClient.GetStatus(ctx, event.ID, true)
+	m.stopCollecting(event.ID)
+
+	w, err := m.source.Get(ctx, event.ID)
+	if err != nil {
+		logger.Error(ctx, err, "failed to get workload")
+		return
+	}
+	status, err := m.workloadStatus(ctx, w)
 	if err != nil {
 		logger.Error(ctx, err, "failed to get workload status")
 		return
 	}
 
-	if err := m.store.SetWorkloadStatus(ctx, workloadStatus, m.config.GetHealthCheckStatusTTL()); err != nil {
+	if err := m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL()); err != nil {
 		logger.Error(ctx, err, "failed to update workload status")
 	}
 }

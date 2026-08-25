@@ -13,17 +13,23 @@ import (
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/logs"
+	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 )
 
-func (m *Manager) attach(ctx context.Context, ID string) {
-	logger := log.WithFunc("workload.attach").WithField("ID", ID)
+func (m *Manager) attach(ctx context.Context, w *source.Workload) {
+	attacher, ok := m.source.(source.Attacher)
+	if !ok {
+		return
+	}
+
+	logger := log.WithFunc("workload.attach").WithField("ID", w.ID)
 	logger.Debug(ctx, "attaching workload")
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	transfer := m.forwards.Get(ID, 0)
+	transfer := m.forwards.Get(w.ID, 0)
 	if transfer == "" {
 		transfer = logs.Discard
 	}
@@ -33,65 +39,44 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 		return
 	}
 
-	workloadName, err := m.runtimeClient.GetWorkloadName(ctx, ID)
+	outr, errr, err := attacher.Attach(ctx, w.ID)
 	if err != nil {
-		if !errors.Is(err, common.ErrNotImplemented) {
-			logger.Error(ctx, err, "failed to get workload name")
-		} else {
-			logger.Debug(ctx, "should ignore this workload")
-		}
+		logger.Errorf(ctx, err, "failed to attach workload %s", w.Meta.Appname)
 		return
 	}
+	logger.Infof(ctx, "attach %s workload success", w.Meta.Appname)
 
-	name, entryPoint, ident, err := utils.GetAppInfo(workloadName)
-	if err != nil {
-		logger.Errorf(ctx, err, "invalid workload name %s", workloadName)
-		return
-	}
-
-	outr, errr, err := m.runtimeClient.AttachWorkload(ctx, ID)
-	if err != nil {
-		logger.Errorf(ctx, err, "failed to attach workload %s", workloadName)
-		return
-	}
-	logger.Infof(ctx, "attach %s workload success", workloadName)
-
-	go m.runtimeClient.CollectWorkloadMetrics(ctx, ID)
-
-	extra, err := m.runtimeClient.LogFieldsExtra(ctx, ID)
-	if err != nil {
-		logger.Error(ctx, err, "failed to get log fields extra")
-	}
+	extra := w.LogFields()
 
 	var wg sync.WaitGroup
-	pump := func(typ string, source io.Reader) {
-		logger.Debugf(ctx, "attach pump %s %s start", workloadName, typ)
-		defer logger.Debugf(ctx, "attach pump %s %s finished", workloadName, typ)
+	pump := func(typ string, reader io.Reader) {
+		logger.Debugf(ctx, "attach pump %s %s start", w.Meta.Appname, typ)
+		defer logger.Debugf(ctx, "attach pump %s %s finished", w.Meta.Appname, typ)
 
-		buf := bufio.NewReader(source)
+		buf := bufio.NewReader(reader)
 		for {
 			data, err := buf.ReadString('\n')
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
-					logger.Errorf(ctx, err, "attach pump %s %s failed", workloadName, typ)
+					logger.Errorf(ctx, err, "attach pump %s %s failed", w.Meta.Appname, typ)
 				}
 				return
 			}
 			data = strings.TrimSuffix(data, "\n")
 			data = strings.TrimSuffix(data, "\r")
 			l := &types.Log{
-				ID:         ID,
-				Name:       name,
+				ID:         w.ID,
+				Name:       w.Meta.Appname,
 				Type:       typ,
-				EntryPoint: entryPoint,
-				Ident:      ident,
+				EntryPoint: w.Meta.Entrypoint,
+				Ident:      w.Meta.Ident,
 				Data:       utils.ReplaceNonUtf8(data),
 				Datetime:   time.Now().Format(common.DateTimeFormat),
 				Extra:      extra,
 			}
 			m.logBroadcaster.logC <- l
-			if err := writer.Write(ctx, l); err != nil && (entryPoint != "agent" || !utils.IsDockerized()) {
-				logger.Errorf(ctx, err, "%s workload %s write failed", workloadName, entryPoint)
+			if err := writer.Write(ctx, l); err != nil && (w.Meta.Entrypoint != "agent" || !utils.IsDockerized()) {
+				logger.Errorf(ctx, err, "%s workload %s write failed", w.Meta.Appname, w.Meta.Entrypoint)
 			}
 		}
 	}

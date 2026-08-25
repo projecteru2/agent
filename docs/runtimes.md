@@ -1,17 +1,19 @@
 # Runtimes
 
-`runtime` sets which backend the agent drives. All three implement the same `Runtime` interface, but they do not all implement every operation.
+`runtime` sets which source the agent drives. All three implement the same `Source` interface — list the workloads, stream their events, answer whether the daemon is alive — but they do not all yield every fact a collector can use.
 
 | Capability | `docker` | `yavirt` | `mocks` |
 |---|---|---|---|
 | List workloads | yes | yes | yes |
 | Event stream | yes | yes | scripted |
-| Status and health check | yes | yes | scripted |
-| Attach and forward logs | yes | no | yes |
-| Per-workload metrics | yes | no | no |
 | Daemon liveness ping | yes | yes | scripted |
+| Attach and forward logs | yes | no | yes |
+| Cgroup path, so per-workload metrics | yes | no | no |
+| Health check address | yes | yes | scripted |
 
 `mocks` needs neither Docker nor yavirt and is what the test suite runs against; pair it with `store: mocks` to bring the agent up with no core at all.
+
+Health checks and metrics are not a source's business: the source yields the workload's probe address, cgroup directory and netns pid, and the collectors do the rest, identically for every runtime.
 
 ## Docker
 
@@ -28,7 +30,7 @@ The label path is the faster one and is the direction this is heading; it requir
 
 **Networks.** The agent reports the first network it finds on a running container. A container on the host network reports the node ip and health checks against `127.0.0.1`; any other network reports the container's own address and health checks against that.
 
-**Resources.** cpu is `CpuQuota / CpuPeriod` when both are set, otherwise the host cpu count. Memory is the larger of the container's memory limit and reservation, falling back to host total memory when neither is set.
+**Resources.** The agent no longer asks Docker what a container was allowed: the metrics sampler reads `cpu.max` and `memory.max` out of the container's own cgroup on every tick. cpu is `quota / period`, falling back to the host cpu count when the quota is `max`; memory falls back to the node total when the limit is `max`. The cgroup directory comes from `/proc/<pid>/cgroup`, so it is found whatever cgroup driver the daemon uses — but it must be a **unified cgroup v2 hierarchy**. On a cgroup v1 node the agent warns and reports no metrics.
 
 ## Yavirt
 
@@ -38,7 +40,7 @@ The agent talks to yavirt over gRPC at `yavirt.endpoint`.
 
 Guests are filtered by the same eru mark label. `check_only_mine: true` compares the guest's hostname to the agent's. `skip_guest_report_regexps` gives a second, explicit exclusion: any guest id matching one of the expressions is treated as not ours.
 
-Yavirt guests have no log attach and no metrics collection: `AttachWorkload` and `GetWorkloadName` return "not implemented" and the workload manager logs that at debug level and moves on. Health checks and status reporting work exactly as they do for containers.
+Yavirt guests have no log attach and no metrics: the source does not implement `source.Attacher` and yields no cgroup path, so the manager skips both. Health checks and status reporting work exactly as they do for containers.
 
 ## Health checks
 
@@ -49,4 +51,4 @@ A workload declares its health check in the `ERU_META` label that core writes wh
 
 Both probes must pass for the workload to be healthy. A workload that is running and declares no health check is always healthy; a workload that is not running is never healthy.
 
-For containers the probe address is the container's own address, or `127.0.0.1` for host networking. For yavirt guests every ip the guest owns is probed.
+For containers the probe address is the container's own address, or `127.0.0.1` for host networking. For yavirt guests it is the first ip the guest owns.

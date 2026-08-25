@@ -1,8 +1,10 @@
 # Metrics
 
-The agent exports per-workload metrics for the Docker runtime. Yavirt guests are not sampled.
+The agent exports per-workload metrics for every source that yields a cgroup directory. Today that is the Docker source; yavirt guests are not sampled.
 
-Collection starts when the agent attaches to a running workload and stops when that workload dies, at which point its gauges are unregistered and the workload disappears from `/metrics`.
+Collection starts when the agent first sees a workload running and stops when that workload dies, at which point its gauges are unregistered and the workload disappears from `/metrics`.
+
+Every sample is read straight off the node — cgroup v2 files plus the network counters of the workload's namespace. A tick makes no call to any daemon, so the cost is the same whether the node runs one workload or a hundred daemons' worth. A **unified cgroup v2 hierarchy is required**; on a cgroup v1 node the agent warns and exports nothing per workload.
 
 ## Endpoint
 
@@ -31,9 +33,9 @@ Two views of the same cgroup counters. The host view divides by what the node ha
 
 | Gauge | Meaning |
 |---|---|
-| `mem_usage` | bytes in use |
-| `mem_max_usage` | peak bytes in use |
-| `mem_rss` | resident bytes |
+| `mem_usage` | bytes in use, from `memory.current` |
+| `mem_max_usage` | peak bytes in use, from `memory.peak` — `0` on kernels before 5.19 |
+| `mem_rss` | resident bytes, from `memory.stat` `anon` |
 | `mem_percent` | `mem_usage` over the workload's memory limit |
 | `mem_rss_percent` | `mem_rss` over the workload's memory limit |
 
@@ -45,7 +47,7 @@ Per-second rates, with an extra `nic` label naming the interface.
 
 `bytes_send`, `bytes_recv`, `packets_send`, `packets_recv`, `err_in`, `err_out`, `drop_in`, `drop_out`
 
-Counters are read from the workload's network namespace, which is why the container image needs `/proc` bind mounted at `/hostProc`.
+Counters are read from `/proc/<pid>/net/dev` of the workload's network namespace, which is why the container image needs `/proc` bind mounted at `/hostProc`. A workload the source reports on a host interface instead is read from `/sys/class/net/<iface>/statistics/` — one interface, no namespace.
 
 ### Block IO
 
@@ -58,7 +60,7 @@ Per device, with an extra `dev` label holding the device path resolved from its 
 | `io_service_bytes_read_per_second`, `io_service_bytes_write_per_second` | byte rates |
 | `io_serviced_read_per_second`, `io_serviced_write_per_second` | operation rates |
 
-Device path resolution walks `/dev` looking for the device node with the matching `rdev`, so block io metrics are a Linux-only feature.
+The counters come from the workload's `io.stat`. Device path resolution walks `/dev` looking for the device node with the matching `rdev`, so block io metrics are a Linux-only feature; the result is cached per major:minor, so a tick costs a map lookup and not a directory scan.
 
 ## statsd
 

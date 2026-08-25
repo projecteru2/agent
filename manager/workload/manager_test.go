@@ -8,18 +8,18 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/projecteru2/agent/common"
-	"github.com/projecteru2/agent/runtime/mocks"
+	"github.com/projecteru2/agent/source/mocks"
 	"github.com/projecteru2/agent/types"
 )
 
 func TestRun(t *testing.T) {
 	manager := newMockWorkloadManager(t)
-	runtime := manager.runtimeClient.(*mocks.Nerv)
+	src := manager.source.(*mocks.Nerv)
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second*30)
 	defer cancel()
 	go func() {
-		runtime.StartEvents()
-		runtime.StartCustomEvent(&types.WorkloadEventMessage{
+		src.StartEvents()
+		src.StartCustomEvent(&types.WorkloadEventMessage{
 			ID:     "Kaworu",
 			Action: "start",
 		})

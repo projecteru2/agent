@@ -9,24 +9,28 @@ import (
 
 	"github.com/projecteru2/core/log"
 
+	"github.com/projecteru2/agent/collector"
 	"github.com/projecteru2/agent/manager"
-	"github.com/projecteru2/agent/runtime"
+	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/store"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 )
 
 type Manager struct {
-	config        *types.Config
-	store         store.Store
-	runtimeClient runtime.Runtime
+	config    *types.Config
+	store     store.Store
+	source    source.Source
+	collector *collector.Collector
 
-	nodeIP     string
-	forwards   *utils.HashBackends
-	baseFilter map[string]string
+	forwards *utils.HashBackends
+	cas      *utils.GroupCAS
 
 	checkWorkloadMutex sync.Mutex
 	startingWorkloads  map[string]*utils.RetryTask
+
+	collectMutex sync.Mutex
+	collecting   map[string]context.CancelFunc
 
 	logBroadcaster *logBroadcaster
 }
@@ -38,17 +42,17 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		return nil, err
 	}
 
-	m := &Manager{
+	return &Manager{
 		config:            config,
 		store:             clients.Store,
-		runtimeClient:     clients.Runtime,
-		nodeIP:            clients.NodeIP,
+		source:            clients.Source,
+		collector:         collector.New(ctx, config),
 		forwards:          utils.NewHashBackends(config.Log.Forwards),
+		cas:               utils.NewGroupCAS(),
 		logBroadcaster:    newLogBroadcaster(),
 		startingWorkloads: map[string]*utils.RetryTask{},
-	}
-	m.baseFilter = newBaseFilter(config, m.store.GetIdentifier(ctx))
-	return m, nil
+		collecting:        map[string]context.CancelFunc{},
+	}, nil
 }
 
 func (m *Manager) Run(ctx context.Context) error {
@@ -81,5 +85,33 @@ func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter
 			}
 			return
 		}
+	}
+}
+
+// start attaches the workload's output and samples it, both idempotent per workload.
+func (m *Manager) start(ctx context.Context, w *source.Workload) {
+	m.startCollecting(ctx, w)
+	go m.attach(ctx, w)
+}
+
+func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {
+	m.collectMutex.Lock()
+	defer m.collectMutex.Unlock()
+
+	if cancel, ok := m.collecting[w.ID]; ok {
+		cancel()
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	m.collecting[w.ID] = cancel
+	go m.collector.Collect(ctx, w)
+}
+
+func (m *Manager) stopCollecting(ID string) {
+	m.collectMutex.Lock()
+	defer m.collectMutex.Unlock()
+
+	if cancel, ok := m.collecting[ID]; ok {
+		cancel()
+		delete(m.collecting, ID)
 	}
 }

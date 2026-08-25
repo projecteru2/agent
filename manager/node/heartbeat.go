@@ -38,7 +38,7 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 	logger.Debug(ctx, "report begins")
 	defer logger.Debug(ctx, "report ends")
 
-	if !m.runtimeClient.IsDaemonRunning(ctx) {
+	if !m.source.Alive(ctx) {
 		logger.Warn(ctx, "cannot connect to runtime daemon")
 		return
 	}

@@ -26,7 +26,9 @@ func TestAttach(t *testing.T) {
 		}
 	}()
 
-	go manager.attach(ctx, "Rei")
-	go manager.attach(ctx, "Rei")
+	rei, err := manager.source.Get(ctx, "Rei")
+	assert.Nil(t, err)
+	go manager.attach(ctx, rei)
+	go manager.attach(ctx, rei)
 	time.Sleep(2 * time.Second)
 }

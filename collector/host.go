@@ -1,0 +1,58 @@
+package collector
+
+import (
+	"fmt"
+	"path/filepath"
+	"strconv"
+	"strings"
+)
+
+const (
+	clockTick = 100
+
+	kilobyte = 1024
+)
+
+type hostCPU struct {
+	User   float64
+	System float64
+}
+
+// hostCPUTimes reads the node-wide user and system time, in seconds.
+func hostCPUTimes(procRoot string) (hostCPU, error) {
+	lines, err := readLines(filepath.Join(procRoot, "stat"))
+	if err != nil {
+		return hostCPU{}, err
+	}
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) < 4 || fields[0] != "cpu" {
+			continue
+		}
+		return hostCPU{
+			User:   float64(parseUint(fields[1])) / clockTick,
+			System: float64(parseUint(fields[3])) / clockTick,
+		}, nil
+	}
+	return hostCPU{}, fmt.Errorf("no aggregate cpu line in %s/stat", procRoot)
+}
+
+// hostMemTotal reads the node's total memory, in bytes.
+func hostMemTotal(procRoot string) (uint64, error) {
+	lines, err := readLines(filepath.Join(procRoot, "meminfo"))
+	if err != nil {
+		return 0, err
+	}
+	for _, line := range lines {
+		value, ok := strings.CutPrefix(line, "MemTotal:")
+		if !ok {
+			continue
+		}
+		total, err := strconv.ParseUint(strings.TrimSuffix(strings.TrimSpace(value), " kB"), 10, 64)
+		if err != nil {
+			return 0, err
+		}
+		return total * kilobyte, nil
+	}
+	return 0, fmt.Errorf("no MemTotal in %s/meminfo", procRoot)
+}
