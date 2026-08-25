@@ -32,7 +32,7 @@ func TestNetStatsFromProcFailsForAWorkloadThatIsGone(t *testing.T) {
 }
 
 func TestNetStatsFromIface(t *testing.T) {
-	stats, err := netStatsFromIface("testdata/sys", "eth0")
+	stats, err := netStatsFromIface("testdata/sys", "eth0", false)
 	require.NoError(t, err)
 	require.Len(t, stats, 1)
 
@@ -46,5 +46,23 @@ func TestNetStatsFromIface(t *testing.T) {
 		ErrOut:      6,
 		DropIn:      7,
 		DropOut:     8,
+	}, stats[0])
+}
+
+func TestNetStatsFromIfaceMirrorsAHostSideTap(t *testing.T) {
+	stats, err := netStatsFromIface("testdata/sys", "eth0", true)
+	require.NoError(t, err)
+	require.Len(t, stats, 1)
+
+	assert.Equal(t, netStat{
+		Name:        "eth0",
+		BytesRecv:   222,
+		BytesSent:   111,
+		PacketsRecv: 4,
+		PacketsSent: 3,
+		ErrIn:       6,
+		ErrOut:      5,
+		DropIn:      8,
+		DropOut:     7,
 	}, stats[0])
 }

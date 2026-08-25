@@ -167,7 +167,7 @@ func (c *Collector) netStats(w *source.Workload) ([]netStat, error) {
 	case w.NetnsPID > 0:
 		return netStatsFromProc(c.procRoot, w.NetnsPID)
 	case w.HostIface != "":
-		return netStatsFromIface(sysNetRoot, w.HostIface)
+		return netStatsFromIface(sysNetRoot, w.HostIface, w.HostIfaceMirrored)
 	default:
 		return nil, nil
 	}

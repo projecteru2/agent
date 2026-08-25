@@ -19,6 +19,13 @@ type netStat struct {
 	DropOut     uint64
 }
 
+func (s *netStat) mirror() {
+	s.BytesRecv, s.BytesSent = s.BytesSent, s.BytesRecv
+	s.PacketsRecv, s.PacketsSent = s.PacketsSent, s.PacketsRecv
+	s.ErrIn, s.ErrOut = s.ErrOut, s.ErrIn
+	s.DropIn, s.DropOut = s.DropOut, s.DropIn
+}
+
 func netStatsFromProc(procRoot string, pid int) ([]netStat, error) {
 	lines, err := readLines(filepath.Join(procRoot, strconv.Itoa(pid), "net", "dev"))
 	if err != nil {
@@ -53,7 +60,7 @@ func netStatsFromProc(procRoot string, pid int) ([]netStat, error) {
 	return stats, nil
 }
 
-func netStatsFromIface(sysRoot, iface string) ([]netStat, error) {
+func netStatsFromIface(sysRoot, iface string, mirrored bool) ([]netStat, error) {
 	dir := filepath.Join(sysRoot, iface, "statistics")
 	stat := netStat{Name: iface}
 	for _, counter := range []struct {
@@ -74,6 +81,9 @@ func netStatsFromIface(sysRoot, iface string) ([]netStat, error) {
 			return nil, err
 		}
 		*counter.field = value
+	}
+	if mirrored {
+		stat.mirror()
 	}
 	return []netStat{stat}, nil
 }

@@ -101,11 +101,12 @@ func (f *File) Workload(running bool) *source.Workload {
 			JournalIdentifier: f.Log.JournalIdentifier,
 			ConsoleSocket:     f.Log.ConsoleSocket,
 		},
-		CgroupPath: f.Cgroup,
-		NetnsPID:   f.NetnsPID,
-		HostIface:  f.Iface,
-		LocalIP:    cmp.Or(source.Addr(f.Networks), common.LocalIP),
-		Running:    running,
+		CgroupPath:        f.Cgroup,
+		NetnsPID:          f.NetnsPID,
+		HostIface:         f.Iface,
+		HostIfaceMirrored: f.Kind == KindVM,
+		LocalIP:           cmp.Or(source.Addr(f.Networks), common.LocalIP),
+		Running:           running,
 	}
 }
 

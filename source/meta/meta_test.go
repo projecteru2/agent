@@ -51,6 +51,7 @@ func TestReadRendersAVMWorkload(t *testing.T) {
 	w := f.Workload(true)
 	assert.Equal(t, "/sys/fs/cgroup/cocoon.slice/vm-"+cocoonVMID+".scope", w.CgroupPath)
 	assert.Equal(t, "tap-"+vmWorkload, w.HostIface)
+	assert.True(t, w.HostIfaceMirrored)
 	assert.Zero(t, w.NetnsPID)
 	assert.Equal(t, "10.0.0.9", w.LocalIP)
 	assert.Equal(t, "/var/lib/cocoon/run/ch/"+cocoonVMID+"/console.sock", w.Log.ConsoleSocket)
@@ -65,6 +66,7 @@ func TestReadOfAHostNetworkWorkload(t *testing.T) {
 	assert.False(t, w.Running)
 	assert.Equal(t, common.LocalIP, w.LocalIP)
 	assert.Nil(t, w.Meta.HealthCheck)
+	assert.False(t, w.HostIfaceMirrored)
 }
 
 func TestReadRejectsBadInput(t *testing.T) {

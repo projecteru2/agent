@@ -49,9 +49,10 @@ type Workload struct {
 	Meta Meta
 	Log  Log
 
-	CgroupPath string
-	NetnsPID   int
-	HostIface  string
+	CgroupPath        string
+	NetnsPID          int
+	HostIface         string
+	HostIfaceMirrored bool
 
 	LocalIP string
 	Running bool
