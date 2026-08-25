@@ -8,12 +8,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/projecteru2/core/log"
+
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/logs"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
-
-	"github.com/projecteru2/core/log"
 )
 
 func (m *Manager) attach(ctx context.Context, ID string) {
@@ -32,7 +32,6 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 		return
 	}
 
-	// get app info
 	workloadName, err := m.runtimeClient.GetWorkloadName(ctx, ID)
 	if err != nil {
 		if err != common.ErrNotImplemented {
@@ -49,7 +48,6 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 		return
 	}
 
-	// attach workload
 	outr, errr, err := m.runtimeClient.AttachWorkload(ctx, ID)
 	if err != nil {
 		logger.Errorf(ctx, err, "failed to attach workload %s", workloadName)
@@ -57,17 +55,15 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 	}
 	logger.Infof(ctx, "attach %s workload success", workloadName)
 
-	// attach metrics
-	_ = utils.Pool.Submit(func() { m.runtimeClient.CollectWorkloadMetrics(ctx, ID) })
+	go m.runtimeClient.CollectWorkloadMetrics(ctx, ID)
 
 	extra, err := m.runtimeClient.LogFieldsExtra(ctx, ID)
 	if err != nil {
 		logger.Error(ctx, err, "failed to get log fields extra")
 	}
 
-	wg := &sync.WaitGroup{}
+	var wg sync.WaitGroup
 	pump := func(typ string, source io.Reader) {
-		defer wg.Done()
 		logger.Debugf(ctx, "attach pump %s %s start", workloadName, typ)
 		defer logger.Debugf(ctx, "attach pump %s %s finished", workloadName, typ)
 
@@ -92,16 +88,13 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 				Datetime:   time.Now().Format(common.DateTimeFormat),
 				Extra:      extra,
 			}
-			if m.logBroadcaster != nil && m.logBroadcaster.logC != nil {
-				m.logBroadcaster.logC <- l
-			}
-			if err := writer.Write(l); err != nil && !(entryPoint == "agent" && utils.IsDockerized()) {
+			m.logBroadcaster.logC <- l
+			if err := writer.Write(ctx, l); err != nil && (entryPoint != "agent" || !utils.IsDockerized()) {
 				logger.Errorf(ctx, err, "%s workload %s write failed", workloadName, entryPoint)
 			}
 		}
 	}
-	wg.Add(2)
 	defer wg.Wait()
-	_ = utils.Pool.Submit(func() { pump("stdout", outr) })
-	_ = utils.Pool.Submit(func() { pump("stderr", errr) })
+	wg.Go(func() { pump("stdout", outr) })
+	wg.Go(func() { pump("stderr", errr) })
 }

@@ -3,53 +3,46 @@ package types
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"time"
 
-	coretypes "github.com/projecteru2/core/types"
-
 	"github.com/projecteru2/core/log"
-	cli "github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v2"
+	coretypes "github.com/projecteru2/core/types"
+	"github.com/urfave/cli/v3"
+	"gopkg.in/yaml.v3"
 )
 
-// DockerConfig contain docker endpoint
 type DockerConfig struct {
 	Endpoint string `yaml:"endpoint" required:"false"`
 }
 
-// YavirtConfig contain yavirt endpoint
 type YavirtConfig struct {
 	Endpoint               string   `yaml:"endpoint" required:"false"`
 	SkipGuestReportRegexps []string `yaml:"skip_guest_report_regexps" required:"false"`
 }
 
-// MetricsConfig contain metrics config
 type MetricsConfig struct {
 	Step      int64    `yaml:"step" default:"10"`
 	Transfers []string `yaml:"transfers"`
 }
 
-// APIConfig contain api config
 type APIConfig struct {
 	Addr string `yaml:"addr"`
 }
 
-// LogConfig contain log config
 type LogConfig struct {
 	Forwards []string `yaml:"forwards"`
 	Stdout   bool     `yaml:"stdout"`
 }
 
-// HealthCheckConfig contain healthcheck config
 type HealthCheckConfig struct {
 	Interval int   `yaml:"interval" default:"60"`
 	Timeout  int   `yaml:"timeout" default:"10"`
 	CacheTTL int64 `yaml:"cache_ttl" default:"300"`
 }
 
-// Config contain all configs
 type Config struct {
 	PidFile           string   `yaml:"pid" default:"/tmp/agent.pid"`
 	Core              []string `yaml:"core" required:"true"`
@@ -73,26 +66,25 @@ type Config struct {
 	GlobalConnectionTimeout time.Duration `yaml:"global_connection_timeout" default:"5s"`
 }
 
-// GetHealthCheckStatusTTL returns the TTL for health check status.
-// Because selfmon is integrated in eru-core, so there returns 0.
+// GetHealthCheckStatusTTL returns 0: selfmon lives in eru-core, so core owns the ttl.
 func (config *Config) GetHealthCheckStatusTTL() int64 {
 	return 0
 }
 
-// Prepare 从 cli 覆写并做准备
-func (config *Config) Prepare(c *cli.Context) {
+// Prepare overrides the loaded config with the command line flags.
+func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	if c.String("hostname") != "" {
 		config.HostName = c.String("hostname")
 	} else {
 		hostname, err := os.Hostname()
 		if err != nil {
-			log.WithFunc("Prepare").Fatalf(c.Context, err, "Get hostname failed %v", err)
+			log.WithFunc("Prepare").Fatalf(ctx, err, "Get hostname failed")
 		}
 		config.HostName = hostname
 	}
 
-	if c.String("core-endpoint") != "" {
-		config.Core = c.StringSlice("core-endpoint")
+	if endpoints := c.StringSlice("core-endpoint"); len(endpoints) > 0 {
+		config.Core = endpoints
 	}
 	if c.String("core-username") != "" {
 		config.Auth.Username = c.String("core-username")
@@ -142,7 +134,6 @@ func (config *Config) Prepare(c *cli.Context) {
 	if c.String("store") != "" {
 		config.Store = c.String("store")
 	}
-	// validate
 	if config.PidFile == "" {
 		config.PidFile = "./agent.pid"
 	}
@@ -157,11 +148,10 @@ func (config *Config) Prepare(c *cli.Context) {
 	}
 }
 
-// Print config
-func (config *Config) Print() {
-	bs, err := yaml.Marshal(config)
+func (config *Config) Print(ctx context.Context) {
+	bs, err := yaml.Marshal(config.redacted())
 	if err != nil {
-		log.WithFunc("Print").Fatalf(nil, err, "print config failed %v", err) //nolint
+		log.WithFunc("Print").Fatalf(ctx, err, "print config")
 	}
 
 	fmt.Println("---- current config ----")
@@ -170,4 +160,12 @@ func (config *Config) Print() {
 		fmt.Println(scanner.Text())
 	}
 	fmt.Println("------------------------")
+}
+
+func (config *Config) redacted() *Config {
+	safe := *config
+	if safe.Auth.Password != "" {
+		safe.Auth.Password = "[redacted]"
+	}
+	return &safe
 }

@@ -7,23 +7,20 @@ import (
 	"sync"
 	"time"
 
+	"github.com/projecteru2/core/log"
+
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
-
-	"github.com/projecteru2/core/log"
 )
 
-// Discard .
 const Discard = "__discard__"
 
-// KeepaliveInterval .
-var KeepaliveInterval = time.Second * 30
+var (
+	KeepaliveInterval = time.Second * 30
 
-// CloseWaitInterval .
-var CloseWaitInterval = time.Second * 5
+	CloseWaitInterval = time.Second * 5
+)
 
-// Writer is a writer!
 type Writer struct {
 	sync.RWMutex
 	addr          string
@@ -33,20 +30,6 @@ type Writer struct {
 	needReconnect bool
 }
 
-type discard struct {
-}
-
-// Write writer
-func (d discard) Write([]byte) (n int, err error) {
-	return 0, nil
-}
-
-// Close closer
-func (d discard) Close() error {
-	return nil
-}
-
-// NewWriter return writer
 func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, err error) {
 	if addr == Discard {
 		return &Writer{
@@ -61,7 +44,7 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 	}
 
 	writer = &Writer{addr: u.Host, scheme: u.Scheme, stdout: stdout}
-	writer.enc, err = writer.createEncoder()
+	writer.enc, err = writer.createEncoder(ctx)
 
 	switch {
 	case err == common.ErrInvalidScheme:
@@ -76,14 +59,13 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 		logger.Infof(ctx, "create writer for %s success", addr)
 	}
 
-	_ = utils.Pool.Submit(func() { writer.keepalive(ctx) })
+	go writer.keepalive(ctx)
 	return writer, nil
 }
 
-// Write write log to remote
-func (w *Writer) Write(logline *types.Log) error {
+func (w *Writer) Write(ctx context.Context, logline *types.Log) error {
 	if w.stdout {
-		log.WithFunc("Write").Info(nil, logline) //nolint
+		log.WithFunc("Write").Info(ctx, logline)
 	}
 	if len(w.addr) == 0 && len(w.scheme) == 0 {
 		return nil
@@ -98,11 +80,11 @@ func (w *Writer) Write(logline *types.Log) error {
 		err = w.enc.Encode(logline)
 	})
 
-	w.checkError(err)
+	w.checkError(ctx, err)
 	return err
 }
 
-func (w *Writer) close() error {
+func (w *Writer) close(ctx context.Context) error {
 	var err error
 	w.withLock(func() {
 		if w.enc != nil {
@@ -110,7 +92,7 @@ func (w *Writer) close() error {
 			w.enc = nil
 		}
 	})
-	log.WithFunc("close").Infof(nil, "writer for %s closed", w.addr) //nolint
+	log.WithFunc("close").Infof(ctx, "writer for %s closed", w.addr)
 	return err
 }
 
@@ -150,8 +132,7 @@ func (w *Writer) createTCPEncoder() (Encoder, error) {
 	return NewStreamEncoder(conn), nil
 }
 
-// CreateConn create conn
-func (w *Writer) createEncoder() (enc Encoder, err error) {
+func (w *Writer) createEncoder(ctx context.Context) (enc Encoder, err error) {
 	switch w.scheme {
 	case "udp":
 		enc, err = w.createUDPEncoder()
@@ -160,13 +141,13 @@ func (w *Writer) createEncoder() (enc Encoder, err error) {
 	case "journal":
 		enc, err = CreateJournalEncoder()
 	default:
-		log.WithFunc("createEncoder").Errorf(nil, err, "Invalid scheme: %s", w.scheme) //nolint
+		log.WithFunc("createEncoder").Warnf(ctx, "invalid scheme %s", w.scheme)
 		err = common.ErrInvalidScheme
 	}
 	return enc, err
 }
 
-func (w *Writer) reconnect() {
+func (w *Writer) reconnect(ctx context.Context) {
 	needReconnect := false
 	w.withRLock(func() {
 		needReconnect = w.needReconnect
@@ -176,17 +157,17 @@ func (w *Writer) reconnect() {
 	}
 	logger := log.WithFunc("reconnect")
 
-	logger.Debugf(nil, "Reconnecting to %s...", w.addr) //nolint
-	enc, err := w.createEncoder()
+	logger.Debugf(ctx, "Reconnecting to %s...", w.addr)
+	enc, err := w.createEncoder(ctx)
 	if err == nil {
 		w.withLock(func() {
 			w.enc = enc
 			w.needReconnect = false
 		})
-		logger.Debugf(nil, "Connect to %s successfully", w.addr) //nolint
+		logger.Debugf(ctx, "Connect to %s successfully", w.addr)
 		return
 	}
-	logger.Warnf(nil, "Failed to connect to %s: %s", w.addr, err) //nolint
+	logger.Warnf(ctx, "Failed to connect to %s: %s", w.addr, err)
 }
 
 func (w *Writer) keepalive(ctx context.Context) {
@@ -194,28 +175,38 @@ func (w *Writer) keepalive(ctx context.Context) {
 	for {
 		select {
 		case <-timer.C:
-			w.reconnect()
+			w.reconnect(ctx)
 			timer.Reset(KeepaliveInterval)
 		case <-ctx.Done():
-			// leave some time for the pending writing
+			// give the pending writes a chance to drain before closing
 			time.Sleep(CloseWaitInterval)
-			if err := w.close(); err != nil {
-				log.WithFunc("keepalive").Errorf(nil, err, "failed to close writer %s", w.addr) //nolint
+			if err := w.close(ctx); err != nil {
+				log.WithFunc("keepalive").Errorf(ctx, err, "failed to close writer %s", w.addr)
 			}
 			return
 		}
 	}
 }
 
-func (w *Writer) checkError(err error) {
+func (w *Writer) checkError(ctx context.Context, err error) {
 	if err != nil && err != common.ErrConnecting {
-		log.WithFunc("checkError").Error(nil, err, "Sending log failed") //nolint
+		log.WithFunc("checkError").Error(ctx, err, "Sending log failed")
 		w.withLock(func() {
 			if w.enc != nil {
-				w.enc.Close()
+				_ = w.enc.Close()
 				w.enc = nil
 				w.needReconnect = true
 			}
 		})
 	}
+}
+
+type discard struct{}
+
+func (d discard) Write([]byte) (n int, err error) {
+	return 0, nil
+}
+
+func (d discard) Close() error {
+	return nil
 }

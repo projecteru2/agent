@@ -9,8 +9,7 @@ import (
 	"github.com/projecteru2/core/log"
 )
 
-// CheckHTTP 检查一个workload的所有URL
-// CheckHTTP 事实上一般也就一个
+// CheckHTTP reports whether every backend answers with the expected status code.
 func CheckHTTP(ctx context.Context, ID string, backends []string, code int, timeout time.Duration) bool {
 	logger := log.WithFunc("CheckHTTP").WithField("ID", ID).WithField("backends", backends).WithField("code", code)
 	for _, backend := range backends {
@@ -23,8 +22,7 @@ func CheckHTTP(ctx context.Context, ID string, backends []string, code int, time
 	return true
 }
 
-// CheckTCP 检查一个TCP
-// 这里不支持ctx?
+// CheckTCP reports whether every backend accepts a TCP connection.
 func CheckTCP(ctx context.Context, ID string, backends []string, timeout time.Duration) bool {
 	logger := log.WithFunc("CheckTCP").WithField("ID", ID).WithField("backends", backends)
 	for _, backend := range backends {
@@ -34,47 +32,27 @@ func CheckTCP(ctx context.Context, ID string, backends []string, timeout time.Du
 			logger.Debug(ctx, "Check health failed via tcp")
 			return false
 		}
-		conn.Close()
+		_ = conn.Close()
 	}
 	return true
 }
 
-// 偷来的函数
-// 谁要官方的context没有收录他 ¬ ¬
-func get(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
-	if client == nil {
-		client = http.DefaultClient
-	}
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := client.Do(req.WithContext(ctx))
-	if err != nil {
-		select {
-		case <-ctx.Done():
-			err = ctx.Err()
-		default:
-		}
-	}
-	return resp, err
-}
-
-// 就先定义 [200, 500) 这个区间的 code 都算是成功吧
 func checkOneURL(ctx context.Context, url string, expectedCode int, timeout time.Duration) bool {
 	logger := log.WithFunc("checkOneURL").WithField("url", url)
-	var resp *http.Response
-	var err error
-	WithTimeout(ctx, timeout, func(ctx context.Context) {
-		resp, err = get(ctx, nil, url) //nolint
-	})
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		logger.Error(ctx, err, "Error when building request")
+		return false
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		logger.Error(ctx, err, "Error when checking")
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if expectedCode == 0 {
 		return resp.StatusCode < 500 && resp.StatusCode >= 200
 	}

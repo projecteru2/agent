@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -27,36 +27,33 @@ func TestCAS(t *testing.T) {
 	require.NotNil(t, free1)
 }
 
-func TestCASConccurently(t *testing.T) {
-	var wg sync.WaitGroup
-	cas := NewGroupCAS()
-
-	n := 1000
+func TestCASConcurrently(t *testing.T) {
+	const n = 1000
 	key := "key"
-	var sum int32
-	wg.Add(n)
+	cas := NewGroupCAS()
+	start := make(chan struct{})
 
-	for i := 0; i < n; i++ {
-		go func(idx int) {
-			defer wg.Done()
+	var wg sync.WaitGroup
+	var held, acquisitions atomic.Int32
 
-			_, acq := cas.Acquire(fmt.Sprintf("%d", idx))
-			require.True(t, acq)
+	for i := range n {
+		wg.Go(func() {
+			_, acquiredOwn := cas.Acquire(strconv.Itoa(i))
+			require.True(t, acquiredOwn)
 
+			<-start
 			free, acquired := cas.Acquire(key)
-			t.Log(acquired)
 			if !acquired {
 				return
 			}
-
-			// makes sure that there're only one thread has been acquired.
-			require.True(t, atomic.CompareAndSwapInt32(&sum, 0, 1), atomic.LoadInt32(&sum))
-			// marks there's no thread is acquired in advance.
-			require.True(t, atomic.CompareAndSwapInt32(&sum, 1, 0))
-
+			acquisitions.Add(1)
+			require.Equal(t, int32(1), held.Add(1), "two callers hold the same key")
+			held.Add(-1)
 			free()
-		}(i)
+		})
 	}
 
+	close(start)
 	wg.Wait()
+	require.Positive(t, acquisitions.Load())
 }

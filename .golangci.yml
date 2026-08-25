@@ -1,73 +1,79 @@
+version: "2"
+
 run:
   timeout: 5m
   tests: false
-  skip-dirs:
-    - vendor
-    - tools
-    - 3rdmocks
   modules-download-mode: readonly
 
-linters-settings:
-  maligned:
-    suggest-new: true
-  gocritic:
-    disabled-checks:
-      - captLocal
-
 linters:
-  disable-all: true
+  default: none
   enable:
+    - asciicheck
     - bodyclose
-    - deadcode
-    # - depguard
     - dogsled
+    - errcheck
     - gochecknoinits
     - goconst
+    - gocritic
     - gocyclo
-    - gofmt
-    - goimports
-    # golint is replaced by revive
-    # - golint
-    - revive
     - goprintffuncname
     - gosec
-    - gosimple
     - govet
     - ineffassign
-    # interfacer is deprecated
-    # - interfacer
     - misspell
+    - modernize
     - nakedret
-    - nolintlint
-    - rowserrcheck
-    # scopelint is replaced by exportloopref
-    # - scopelint
-    - exportloopref
+    - nestif
+    - revive
     - staticcheck
-    - structcheck
-    - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
-    - asciicheck
-    - nestif
-    - errcheck
-    - gocritic
-    #- gocognit
-    #- gomnd
-    #- dupl
-      #Consider this
-      # - godox
-      # - funlen
-      # - lll
-      # - gochecknoglobals
-      # don't enable:
-      # - whitespace
-      # - goerr113
-      # - godot
-      # - maligned
-      # - prealloc
-      # - testpackage
-      # - wsl
-      # - stylecheck
+  settings:
+    gocritic:
+      disabled-checks:
+        - captLocal
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+    misspell:
+      locale: US
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    gocyclo:
+      min-complexity: 30
+    nakedret:
+      max-func-lines: 30
+    nestif:
+      min-complexity: 5
+  exclusions:
+    generated: strict
+    paths:
+      - mocks
+      - dist
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+          - gosec
+          - unparam
+          - goconst
+          - gocyclo
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      extra:
+        group-params: true
+    goimports:
+      local-prefixes:
+        - github.com/projecteru2/agent

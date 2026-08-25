@@ -7,15 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/projecteru2/agent/utils"
-
 	"github.com/projecteru2/core/log"
+
+	"github.com/projecteru2/agent/utils"
 )
 
-// LabelMeta .
 const LabelMeta = "ERU_META"
 
-// HealthCheck .
 type HealthCheck struct {
 	TCPPorts []string
 	HTTPPort string
@@ -28,7 +26,6 @@ type healthCheckMeta struct {
 	HealthCheck *HealthCheck
 }
 
-// Guest yavirt virtual machine
 type Guest struct {
 	ID            string
 	Status        string
@@ -52,15 +49,13 @@ type Guest struct {
 	once sync.Once
 }
 
-// CheckHealth returns if the guest is healthy
 func (g *Guest) CheckHealth(ctx context.Context, timeout time.Duration) bool {
-	// init health check bridge
 	g.once.Do(func() {
 		if meta, ok := g.Labels[LabelMeta]; ok {
 			hcm := &healthCheckMeta{}
 			err := json.Unmarshal([]byte(meta), hcm)
 			if err != nil {
-				log.WithFunc("CheckHealth").Error(ctx, err, "invalid json format, guest %v, meta %v", g.ID, meta)
+				log.WithFunc("CheckHealth").Errorf(ctx, err, "invalid json format, guest %v, meta %v", g.ID, meta)
 				return
 			}
 			g.HealthCheck = hcm.HealthCheck

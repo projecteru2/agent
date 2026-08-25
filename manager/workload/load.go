@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/core/log"
 )
 
@@ -32,19 +31,16 @@ func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[strin
 func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 	logger := log.WithFunc("initWorkloadStatus")
 	logger.Info(ctx, "load workloads")
-	workloadIDs, err := m.listWorkloadIDsWithRetry(ctx, m.getBaseFilter())
+	workloadIDs, err := m.listWorkloadIDsWithRetry(ctx, m.baseFilter)
 	if err != nil {
 		logger.Error(ctx, err, "failed to load workloads")
 		return err
 	}
 
-	wg := &sync.WaitGroup{}
-	for _, workloadID := range workloadIDs {
-		logger.Debugf(ctx, "detect workload %s", workloadID)
-		wg.Add(1)
-		ID := workloadID
-		_ = utils.Pool.Submit(func() {
-			defer wg.Done()
+	var wg sync.WaitGroup
+	for _, ID := range workloadIDs {
+		logger.Debugf(ctx, "detect workload %s", ID)
+		wg.Go(func() {
 			workloadStatus, err := m.runtimeClient.GetStatus(ctx, ID, true)
 			if err != nil {
 				logger.Errorf(ctx, err, "get workload %v status failed", ID)
@@ -53,7 +49,7 @@ func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 
 			if workloadStatus.Running {
 				logger.Debugf(ctx, "workload %s is running", workloadStatus.ID)
-				_ = utils.Pool.Submit(func() { m.attach(ctx, ID) })
+				go m.attach(ctx, ID)
 			}
 
 			if err := m.setWorkloadStatus(ctx, workloadStatus); err != nil {

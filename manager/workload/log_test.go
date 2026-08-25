@@ -7,17 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/projecteru2/agent/types"
-
-	"github.com/bmizerany/pat"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/projecteru2/agent/types"
 )
 
 func TestLogBroadcaster(t *testing.T) {
 	manager := newMockWorkloadManager(t)
-	//	log.SetupLog("debug")
 
-	logCtx, logCancel := context.WithCancel(context.Background())
+	logCtx, logCancel := context.WithCancel(t.Context())
 	defer logCancel()
 
 	handler := func(w http.ResponseWriter, req *http.Request) {
@@ -37,16 +35,16 @@ func TestLogBroadcaster(t *testing.T) {
 		}
 	}
 	server := &http.Server{Addr: ":12310"}
+	defer func() { _ = server.Shutdown(context.Background()) }()
 
 	go func() {
-		restfulAPIServer := pat.New()
-		restfulAPIServer.Add("GET", "/log/", http.HandlerFunc(handler))
-		server.Handler = restfulAPIServer
+		mux := http.NewServeMux()
+		mux.HandleFunc("GET /log/{$}", handler)
+		server.Handler = mux
 		assert.Equal(t, server.ListenAndServe(), http.ErrServerClosed)
 	}()
 
 	go func() {
-		// wait for subscribers
 		time.Sleep(3 * time.Second)
 		manager.logBroadcaster.logC <- &types.Log{
 			ID:         "Rei",
@@ -64,11 +62,10 @@ func TestLogBroadcaster(t *testing.T) {
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 7*time.Second)
 	defer cancel()
 	go manager.logBroadcaster.run(ctx)
 
-	// wait for http server to start
 	time.Sleep(time.Second)
 
 	reqCtx, reqCancel := context.WithTimeout(ctx, 3*time.Second)
@@ -82,14 +79,13 @@ func TestLogBroadcaster(t *testing.T) {
 	defer resp.Body.Close()
 
 	reader := bufio.NewReader(resp.Body)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		line, err := reader.ReadBytes('\n')
 		assert.Nil(t, err)
 		t.Log(string(line))
 	}
 
 	logCancel()
-	// wait log subscriber to be removed
 	time.Sleep(time.Second)
 
 	manager.logBroadcaster.logC <- &types.Log{
@@ -99,10 +95,7 @@ func TestLogBroadcaster(t *testing.T) {
 		EntryPoint: "eva0",
 		Data:       "data1",
 	}
-	count := 0
-	manager.logBroadcaster.subscribersMap.ForEach(func(_ string, _ map[string]*subscriber) bool {
-		count++
-		return true
-	})
-	assert.Equal(t, count, 0)
+	manager.logBroadcaster.RLock()
+	defer manager.logBroadcaster.RUnlock()
+	assert.Empty(t, manager.logBroadcaster.subscribersMap)
 }

@@ -7,13 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/go-units"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestBufPipe(t *testing.T) {
-	size, _ := units.RAMInBytes("10M")
-	r, w := NewBufPipe(size)
+	r, w := NewBufPipe(10 << 20)
 	w.Write([]byte("test"))
 	go func() {
 		time.Sleep(time.Second)

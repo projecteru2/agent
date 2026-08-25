@@ -7,28 +7,17 @@ import (
 	"math/big"
 	"time"
 
+	pb "github.com/projecteru2/core/rpc/gen"
+
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
-	pb "github.com/projecteru2/core/rpc/gen"
 )
 
-func getCacheTTL(ttl int64) time.Duration {
-	n, _ := rand.Int(rand.Reader, big.NewInt(ttl))
-	delta := n.Int64() / 4
-	ttl = ttl - ttl/8 + delta
-	return time.Duration(ttl) * time.Second
-}
-
-// SetWorkloadStatus deploy containers
 func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus, ttl int64) error {
 	workloadStatus := fmt.Sprintf("%+v", status)
 	if ttl == 0 {
-		cached, ok := c.cache.Get(status.ID)
-		if ok {
-			str := cached.(string)
-			if str == workloadStatus {
-				return nil
-			}
+		if cached, ok := c.cache.Get(status.ID); ok && cached == workloadStatus {
+			return nil
 		}
 	}
 
@@ -63,4 +52,11 @@ func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadSta
 	}
 
 	return err
+}
+
+func getCacheTTL(ttl int64) time.Duration {
+	n, _ := rand.Int(rand.Reader, big.NewInt(ttl))
+	delta := n.Int64() / 4
+	ttl = ttl - ttl/8 + delta
+	return time.Duration(ttl) * time.Second
 }

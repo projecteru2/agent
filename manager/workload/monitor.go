@@ -4,11 +4,11 @@ import (
 	"context"
 	"time"
 
+	"github.com/projecteru2/core/log"
+
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
-
-	"github.com/projecteru2/core/log"
 )
 
 var eventHandler = NewEventHandler()
@@ -17,7 +17,7 @@ func (m *Manager) initMonitor(ctx context.Context) (<-chan *types.WorkloadEventM
 	eventHandler.Handle(common.StatusStart, m.handleWorkloadStart)
 	eventHandler.Handle(common.StatusDie, m.handleWorkloadDie)
 
-	eventChan, errChan := m.runtimeClient.Events(ctx, m.getBaseFilter())
+	eventChan, errChan := m.runtimeClient.Events(ctx, m.baseFilter)
 	return eventChan, errChan
 }
 
@@ -26,24 +26,26 @@ func (m *Manager) watchEvent(ctx context.Context, eventChan <-chan *types.Worklo
 	eventHandler.Watch(ctx, eventChan)
 }
 
-// monitor with retry
 func (m *Manager) monitor(ctx context.Context) {
 	logger := log.WithFunc("monitor")
 	for {
 		eventChan, errChan := m.initMonitor(ctx)
-		_ = utils.Pool.Submit(func() { m.watchEvent(ctx, eventChan) })
+		go m.watchEvent(ctx, eventChan)
 		select {
 		case <-ctx.Done():
 			logger.Info(ctx, "context canceled, stop monitoring")
 			return
-		case err := <-errChan:
+		case err, ok := <-errChan:
+			if !ok {
+				logger.Info(ctx, "event stream closed, stop monitoring")
+				return
+			}
 			logger.Error(ctx, err, "received an err, will retry")
 			time.Sleep(m.config.GlobalConnectionTimeout)
 		}
 	}
 }
 
-// 检查一个workload，允许重试
 func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID string) {
 	logger := log.WithFunc("checkOneWorkloadWithBackoffRetry").WithField("ID", ID)
 	logger.Debug(ctx, "check workload")
@@ -51,23 +53,32 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 	m.checkWorkloadMutex.Lock()
 	defer m.checkWorkloadMutex.Unlock()
 
-	if retryTask, ok := m.startingWorkloads.Get(ID); ok {
-		retryTask.Stop(ctx)
+	if retryTask, ok := m.startingWorkloads[ID]; ok {
+		retryTask.Stop()
 	}
 
 	retryTask := utils.NewRetryTask(ctx, utils.GetMaxAttemptsByTTL(m.config.GetHealthCheckStatusTTL()), func() error {
 		if !m.checkOneWorkload(ctx, ID) {
-			// 这个err就是用来判断要不要继续的，不用打在日志里
+			// this error only drives the retry loop, it is never surfaced
 			return common.ErrWorkloadUnhealthy
 		}
 		return nil
 	})
-	m.startingWorkloads.Set(ID, retryTask)
-	_ = utils.Pool.Submit(func() {
+	m.startingWorkloads[ID] = retryTask
+	go func() {
 		if err := retryTask.Run(ctx); err != nil {
 			logger.Debug(ctx, "workload still not healthy")
 		}
-	})
+		m.forgetRetryTask(ID, retryTask)
+	}()
+}
+
+func (m *Manager) forgetRetryTask(ID string, retryTask *utils.RetryTask) {
+	m.checkWorkloadMutex.Lock()
+	defer m.checkWorkloadMutex.Unlock()
+	if m.startingWorkloads[ID] == retryTask {
+		delete(m.startingWorkloads, ID)
+	}
 }
 
 func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.WorkloadEventMessage) {
@@ -80,7 +91,7 @@ func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.Workload
 	}
 
 	if workloadStatus.Running {
-		_ = utils.Pool.Submit(func() { m.attach(ctx, event.ID) })
+		go m.attach(ctx, event.ID)
 	}
 
 	if workloadStatus.Healthy {

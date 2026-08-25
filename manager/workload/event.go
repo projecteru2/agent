@@ -4,31 +4,29 @@ import (
 	"context"
 	"sync"
 
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
-
 	"github.com/projecteru2/core/log"
+
+	"github.com/projecteru2/agent/types"
 )
 
-// EventHandler define event handler
+// EventHandlerFunc reacts to one workload event.
+type EventHandlerFunc func(context.Context, *types.WorkloadEventMessage)
+
 type EventHandler struct {
 	sync.Mutex
-	handlers map[string]func(context.Context, *types.WorkloadEventMessage)
+	handlers map[string]EventHandlerFunc
 }
 
-// NewEventHandler new a event handler
 func NewEventHandler() *EventHandler {
-	return &EventHandler{handlers: make(map[string]func(context.Context, *types.WorkloadEventMessage))}
+	return &EventHandler{handlers: map[string]EventHandlerFunc{}}
 }
 
-// Handle hand a event
-func (e *EventHandler) Handle(action string, h func(context.Context, *types.WorkloadEventMessage)) {
+func (e *EventHandler) Handle(action string, h EventHandlerFunc) {
 	e.Lock()
 	defer e.Unlock()
 	e.handlers[action] = h
 }
 
-// Watch watch change
 func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventMessage) {
 	logger := log.WithFunc("Watch")
 	for {
@@ -41,7 +39,7 @@ func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventM
 			logger.Infof(ctx, "monitor: workload id %s action %s", ev.ID, ev.Action)
 			e.Lock()
 			if h := e.handlers[ev.Action]; h != nil {
-				_ = utils.Pool.Submit(func() { h(ctx, ev) })
+				go h(ctx, ev)
 			}
 			e.Unlock()
 		case <-ctx.Done():

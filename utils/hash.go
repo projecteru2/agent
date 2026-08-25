@@ -2,30 +2,25 @@ package utils
 
 import "hash/fnv"
 
-// HashBackends is a simple hash backend
 type HashBackends struct {
-	data   []string
-	length uint32
+	data []string
 }
 
-// NewHashBackends new a hash backends
 func NewHashBackends(data []string) *HashBackends {
-	return &HashBackends{data, uint32(len(data))}
+	return &HashBackends{data: data}
 }
 
-// Get get a backend
 func (s *HashBackends) Get(v string, offset int) string {
-	if s.length == 0 {
+	if len(s.data) == 0 {
 		return ""
 	}
 	h := fnv.New32a()
 	if _, err := h.Write([]byte(v)); err != nil {
 		return ""
 	}
-	return s.data[(h.Sum32()+uint32(offset))%s.length]
+	return s.data[(int(h.Sum32())+offset)%len(s.data)]
 }
 
-// Len get len of backends
-func (s *HashBackends) Len() uint32 {
-	return s.length
+func (s *HashBackends) Len() int {
+	return len(s.data)
 }

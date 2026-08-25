@@ -14,41 +14,16 @@ type pipe struct {
 	rerr, werr error
 }
 
-// A PipeReader is the read half of a pipe.
 type PipeReader struct {
 	*pipe
 }
 
-// A PipeWriter is the write half of a pipe.
-type PipeWriter struct {
-	*pipe
-}
-
-// NewBufPipe creates a synchronous pipe with capacity
-func NewBufPipe(bufCap int64) (*PipeReader, *PipeWriter) {
-	p := &pipe{
-		buf:    bytes.NewBuffer(nil),
-		cond:   sync.NewCond(new(sync.Mutex)),
-		cap:    bufCap,
-		length: 0,
-		rerr:   nil,
-		werr:   nil,
-	}
-	return &PipeReader{
-			pipe: p,
-		}, &PipeWriter{
-			pipe: p,
-		}
-}
-
-// Read implements the standard Read interface
 func (r *PipeReader) Read(data []byte) (int, error) {
 	r.cond.L.Lock()
 	defer r.cond.L.Unlock()
 
 RETRY:
 	n, err := r.buf.Read(data)
-	// If not closed and no read, wait for writing.
 	if err == io.EOF && r.rerr == nil && n == 0 {
 		r.cond.Wait()
 		goto RETRY
@@ -63,13 +38,11 @@ RETRY:
 	return n, err
 }
 
-// Close closes the reader
 func (r *PipeReader) Close() error {
 	return r.CloseWithError(nil)
 }
 
-// CloseWithError closes the reader; subsequent writes to the write half of the
-// pipe will return the error err.
+// CloseWithError closes the reader, later writes on the pipe return err.
 func (r *PipeReader) CloseWithError(err error) error {
 	r.cond.L.Lock()
 	defer r.cond.L.Unlock()
@@ -81,7 +54,11 @@ func (r *PipeReader) CloseWithError(err error) error {
 	return nil
 }
 
-// Write implements the standard Write interface: discard if current length exceeds capacity
+type PipeWriter struct {
+	*pipe
+}
+
+// Write appends data to the buffer, discarding it once the buffer is over capacity.
 func (w *PipeWriter) Write(data []byte) (int, error) {
 	w.cond.L.Lock()
 	defer w.cond.L.Unlock()
@@ -90,12 +67,10 @@ func (w *PipeWriter) Write(data []byte) (int, error) {
 		return 0, w.werr
 	}
 
-	// discard
 	if w.length > w.cap {
 		return len(data), nil
 	}
 	n, err := w.buf.Write(data)
-	// io.Writer stipulates n < 0 if err != nil
 	if n > 0 {
 		w.length += int64(n)
 	}
@@ -103,12 +78,10 @@ func (w *PipeWriter) Write(data []byte) (int, error) {
 	return n, err
 }
 
-// Close closes the writer
 func (w *PipeWriter) Close() error {
 	return w.CloseWithError(nil)
 }
 
-// CloseWithError closes the writer
 func (w *PipeWriter) CloseWithError(err error) error {
 	w.cond.L.Lock()
 	defer w.cond.L.Unlock()
@@ -119,4 +92,16 @@ func (w *PipeWriter) CloseWithError(err error) error {
 	w.rerr = err
 	w.cond.Signal()
 	return nil
+}
+
+func NewBufPipe(bufCap int64) (*PipeReader, *PipeWriter) {
+	p := &pipe{
+		buf:    bytes.NewBuffer(nil),
+		cond:   sync.NewCond(new(sync.Mutex)),
+		cap:    bufCap,
+		length: 0,
+		rerr:   nil,
+		werr:   nil,
+	}
+	return &PipeReader{pipe: p}, &PipeWriter{pipe: p}
 }

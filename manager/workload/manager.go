@@ -6,124 +6,69 @@ import (
 	"io"
 	"sync"
 
-	"github.com/alphadose/haxmap"
-	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/core/log"
+
+	"github.com/projecteru2/agent/manager"
 	"github.com/projecteru2/agent/runtime"
-	"github.com/projecteru2/agent/runtime/docker"
-	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
-	"github.com/projecteru2/agent/runtime/yavirt"
 	"github.com/projecteru2/agent/store"
-	corestore "github.com/projecteru2/agent/store/core"
-	storemocks "github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
-
-	"github.com/projecteru2/core/log"
 )
 
-// Manager .
 type Manager struct {
 	config        *types.Config
 	store         store.Store
 	runtimeClient runtime.Runtime
 
-	nodeIP   string
-	forwards *utils.HashBackends
+	nodeIP     string
+	forwards   *utils.HashBackends
+	baseFilter map[string]string
 
-	checkWorkloadMutex *sync.Mutex
-	startingWorkloads  *haxmap.Map[string, *utils.RetryTask]
+	checkWorkloadMutex sync.Mutex
+	startingWorkloads  map[string]*utils.RetryTask
 
 	logBroadcaster *logBroadcaster
 
-	// storeIdentifier indicates which eru this agent belongs to
-	// it can be used to identify the corresponding core
-	// and all containers that belong to this core
 	storeIdentifier string
 }
 
-// NewManager returns a workload manager
 func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
-	m := &Manager{config: config}
-
-	switch config.Store {
-	case common.GRPCStore:
-		corestore.Init(ctx, config)
-		store := corestore.Get()
-		if store == nil {
-			return nil, common.ErrGetStoreFailed
-		}
-		m.store = store
-	case common.MocksStore:
-		m.store = storemocks.NewFakeStore()
-	default:
-		return nil, common.ErrInvalidStoreType
-	}
-
-	node, err := m.store.GetNode(ctx, config.HostName)
+	clients, err := manager.NewClients(ctx, config)
 	if err != nil {
-		log.WithFunc("NewManager").Errorf(ctx, err, "failed to get node %s", config.HostName)
+		log.WithFunc("NewManager").Errorf(ctx, err, "failed to create clients for node %s", config.HostName)
 		return nil, err
 	}
 
-	nodeIP := utils.GetIP(node.Endpoint)
-	if nodeIP == "" {
-		nodeIP = common.LocalIP
+	m := &Manager{
+		config:            config,
+		store:             clients.Store,
+		runtimeClient:     clients.Runtime,
+		nodeIP:            clients.NodeIP,
+		forwards:          utils.NewHashBackends(config.Log.Forwards),
+		logBroadcaster:    newLogBroadcaster(),
+		startingWorkloads: map[string]*utils.RetryTask{},
 	}
-
-	switch config.Runtime {
-	case common.DockerRuntime:
-		docker.InitClient(config, nodeIP)
-		m.runtimeClient = docker.GetClient()
-		if m.runtimeClient == nil {
-			return nil, common.ErrGetRuntimeFailed
-		}
-	case common.YavirtRuntime:
-		yavirt.InitClient(config)
-		m.runtimeClient = yavirt.GetClient()
-		if m.runtimeClient == nil {
-			return nil, common.ErrGetRuntimeFailed
-		}
-	case common.MocksRuntime:
-		m.runtimeClient = runtimemocks.FromTemplate()
-	default:
-		return nil, common.ErrInvalidRuntimeType
-	}
-
-	m.logBroadcaster = newLogBroadcaster()
-	m.forwards = utils.NewHashBackends(config.Log.Forwards)
 	m.storeIdentifier = m.store.GetIdentifier(ctx)
-	m.nodeIP = nodeIP
-	m.checkWorkloadMutex = &sync.Mutex{}
-	m.startingWorkloads = haxmap.New[string, *utils.RetryTask]()
-
+	m.baseFilter = newBaseFilter(config, m.storeIdentifier)
 	return m, nil
 }
 
-// Run will start agent
-// blocks by ctx.Done()
-// either call this in a separated goroutine, or used in main to block main goroutine
 func (m *Manager) Run(ctx context.Context) error {
-	// start log broadcaster
-	_ = utils.Pool.Submit(func() { m.logBroadcaster.run(ctx) })
+	go m.logBroadcaster.run(ctx)
 
-	// initWorkloadStatus container
 	if err := m.initWorkloadStatus(ctx); err != nil {
 		return err
 	}
 
-	// start status watcher
-	_ = utils.Pool.Submit(func() { m.monitor(ctx) })
+	go m.monitor(ctx)
 
-	// start health check
-	_ = utils.Pool.Submit(func() { m.healthCheck(ctx) })
+	go m.healthCheck(ctx)
 
-	// wait for signal
 	<-ctx.Done()
 	log.WithFunc("Run").Info(ctx, "exiting")
 	return nil
 }
 
-// PullLog pull logs for specific app
 func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter) {
 	ID, errChan, unsubscribe := m.logBroadcaster.subscribe(ctx, app, buf)
 	defer unsubscribe()

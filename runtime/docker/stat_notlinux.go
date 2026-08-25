@@ -1,14 +1,13 @@
 //go:build !linux
-// +build !linux
 
 package docker
 
 import (
 	"context"
 
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/docker"
-	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/docker"
+	"github.com/shirou/gopsutil/v4/net"
 )
 
 func getStats(ctx context.Context, _ string, _ int, _ string) (*docker.CgroupCPUStat, cpu.TimesStat, []net.IOCountersStat, error) {
@@ -16,12 +15,11 @@ func getStats(ctx context.Context, _ string, _ int, _ string) (*docker.CgroupCPU
 		TimesStat: cpu.TimesStat{},
 		Usage:     0.0,
 	}
-	// get system cpu stats
 	systemCPUsStats, err := cpu.TimesWithContext(ctx, false)
 	if err != nil {
 		return nil, cpu.TimesStat{}, []net.IOCountersStat{}, err
 	}
-	// 0 means all cpu
+	// index 0 aggregates every cpu
 	systemCPUStats := systemCPUsStats[0]
 	return containerCPUStats, systemCPUStats, []net.IOCountersStat{}, nil
 }

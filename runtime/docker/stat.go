@@ -5,16 +5,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/projecteru2/agent/utils"
-
 	"github.com/projecteru2/core/log"
-	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/v4/net"
+
+	"github.com/projecteru2/agent/utils"
 )
 
-// CollectWorkloadMetrics .
 func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //nolint
-	// TODO
-	// FIXME fuck internal pkg
 	proc := "/proc"
 	if utils.IsDockerized() {
 		proc = "/hostProc"
@@ -24,9 +21,9 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
 		logger.Error(ctx, err, "failed to detect container")
+		return
 	}
 
-	// init stats
 	containerCPUStats, systemCPUStats, containerNetStats, err := getStats(ctx, container.ID, container.Pid, proc)
 	if err != nil {
 		logger.Error(ctx, err, "get stats failed")
@@ -94,13 +91,12 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		cpuHostUserUsage := 0.0
 		if deltaSystemCPUUserUsage > 0 {
 			cpuHostUserUsage = deltaContainerCPUUserUsage / deltaSystemCPUUserUsage
-
 		}
 		mClient.CPUHostUsage(cpuHostUsage)
 		mClient.CPUHostSysUsage(cpuHostSysUsage)
 		mClient.CPUHostUserUsage(cpuHostUserUsage)
 
-		cpuContainerUsage := deltaContainerCPUUsage / containerCPUCount // 实际消耗的 CPU 秒 / 允许消耗的 CPU 秒
+		cpuContainerUsage := deltaContainerCPUUsage / containerCPUCount
 		cpuContainerSysUsage := 0.0
 		if deltaContainerCPUUsage > 0 {
 			cpuContainerSysUsage = deltaContainerCPUSysUsage / deltaContainerCPUUsage
@@ -161,7 +157,6 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		for _, entry := range newBlkioStats.IOServicedWriteRecusive {
 			mClient.IOServicedWrite(entry.Dev, float64(entry.Value))
 		}
-		// update diff
 		diffBlkioStats := getBlkIOMetricsDifference(blkioStats, newBlkioStats)
 		for _, entry := range diffBlkioStats.IOServiceBytesReadRecursive {
 			mClient.IOServiceBytesReadPerSecond(entry.Dev, float64(entry.Value)/delta)
@@ -186,7 +181,7 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		case <-tick.C:
 			updateMetrics()
 		case <-ctx.Done():
-			mClient.Unregister()
+			removeMetricsClient(container.ID)
 			return
 		}
 	}

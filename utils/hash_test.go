@@ -13,7 +13,6 @@ func TestHashBackend(t *testing.T) {
 	}
 	backend := NewHashBackends(data)
 	assert.EqualValues(t, backend.Len(), 2)
-	// a certain string will always get a certain hash
 	assert.Equal(t, backend.Get("param1", 0), "s2")
 	assert.Equal(t, backend.Get("param2", 0), "s1")
 }

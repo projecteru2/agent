@@ -7,17 +7,17 @@ import (
 	"github.com/projecteru2/core/log"
 )
 
-// RetryTask .
+// RetryFunc is one attempt of a retried operation.
+type RetryFunc func() error
+
 type RetryTask struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
-	Func        func() error
+	Func        RetryFunc
 	MaxAttempts int
 }
 
-// NewRetryTask .
-func NewRetryTask(ctx context.Context, maxAttempts int, f func() error) *RetryTask {
-	// make sure to execute at least once
+func NewRetryTask(ctx context.Context, maxAttempts int, f RetryFunc) *RetryTask {
 	if maxAttempts < 1 {
 		maxAttempts = 1
 	}
@@ -30,18 +30,17 @@ func NewRetryTask(ctx context.Context, maxAttempts int, f func() error) *RetryTa
 	}
 }
 
-// Run start running retry task
 func (r *RetryTask) Run(ctx context.Context) error {
 	logger := log.WithFunc("Run")
 	logger.Debug(ctx, "start")
-	defer r.Stop(ctx)
+	defer r.Stop()
 
 	var err error
 	interval := 1
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	for i := 0; i < r.MaxAttempts; i++ {
+	for range r.MaxAttempts {
 		select {
 		case <-r.ctx.Done():
 			logger.Debug(ctx, "abort")
@@ -59,14 +58,13 @@ func (r *RetryTask) Run(ctx context.Context) error {
 	return err
 }
 
-// Stop stops running task
-func (r *RetryTask) Stop(context.Context) {
+func (r *RetryTask) Stop() {
 	r.cancel()
 }
 
-// BackoffRetry retries up to `maxAttempts` times, and the interval will grow exponentially
-func BackoffRetry(ctx context.Context, maxAttempts int, f func() error) error {
+// BackoffRetry runs f up to maxAttempts times, doubling the wait after each failure.
+func BackoffRetry(ctx context.Context, maxAttempts int, f RetryFunc) error {
 	retryTask := NewRetryTask(ctx, maxAttempts, f)
-	defer retryTask.Stop(ctx)
+	defer retryTask.Stop()
 	return retryTask.Run(ctx)
 }

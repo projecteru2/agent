@@ -1,7 +1,7 @@
 package docker
 
 import (
-	enginetypes "github.com/docker/docker/api/types"
+	enginecontainer "github.com/docker/docker/api/types/container"
 
 	"github.com/projecteru2/agent/utils"
 )
@@ -11,7 +11,6 @@ const (
 	WriteOp = "Write"
 )
 
-// per device level
 type BlkIOMetrics struct {
 	IOServiceBytesReadRecursive  []*BlkIOEntry
 	IOServiceBytesWriteRecursive []*BlkIOEntry
@@ -24,7 +23,7 @@ type BlkIOEntry struct {
 	Value uint64
 }
 
-func fromEngineBlkioStats(raw *enginetypes.BlkioStats) (*BlkIOMetrics, error) {
+func fromEngineBlkioStats(raw *enginecontainer.BlkioStats) (*BlkIOMetrics, error) {
 	blkioMetrics := &BlkIOMetrics{}
 	for _, entry := range raw.IoServiceBytesRecursive {
 		devPath, err := utils.GetDevicePath(entry.Major, entry.Minor)
@@ -53,8 +52,8 @@ func fromEngineBlkioStats(raw *enginetypes.BlkioStats) (*BlkIOMetrics, error) {
 	return blkioMetrics, nil
 }
 
-// getBlkIOMetricsDifference calculate differences between old and new metrics (new-old), for missing metrics, will use default 0 as value
-func getBlkIOMetricsDifference(old *BlkIOMetrics, new *BlkIOMetrics) (diff *BlkIOMetrics) {
+// getBlkIOMetricsDifference returns new-old per device, counting a missing device as 0.
+func getBlkIOMetricsDifference(old, new *BlkIOMetrics) (diff *BlkIOMetrics) {
 	return &BlkIOMetrics{
 		IOServiceBytesReadRecursive:  getGroupDifference(old.IOServiceBytesReadRecursive, new.IOServiceBytesReadRecursive),
 		IOServiceBytesWriteRecursive: getGroupDifference(old.IOServiceBytesWriteRecursive, new.IOServiceBytesWriteRecursive),
@@ -63,7 +62,7 @@ func getBlkIOMetricsDifference(old *BlkIOMetrics, new *BlkIOMetrics) (diff *BlkI
 	}
 }
 
-func getGroupDifference(old []*BlkIOEntry, new []*BlkIOEntry) (diff []*BlkIOEntry) {
+func getGroupDifference(old, new []*BlkIOEntry) (diff []*BlkIOEntry) {
 	lookup := func(dev string, entryList []*BlkIOEntry) uint64 {
 		for _, entry := range entryList {
 			if entry.Dev == dev {
@@ -79,5 +78,5 @@ func getGroupDifference(old []*BlkIOEntry, new []*BlkIOEntry) (diff []*BlkIOEntr
 		}
 		diff = append(diff, diffEntry)
 	}
-	return
+	return diff
 }

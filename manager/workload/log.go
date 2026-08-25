@@ -7,11 +7,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/alphadose/haxmap"
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
 	corelog "github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
+
+	"github.com/projecteru2/agent/types"
 )
 
 type subscriber struct {
@@ -30,45 +29,34 @@ func (s *subscriber) isDone() bool {
 	}
 }
 
-// logBroadcaster receives log and broadcasts to subscribers
 type logBroadcaster struct {
 	sync.RWMutex
 	logC           chan *types.Log
-	subscribersMap *haxmap.Map[string, map[string]*subscriber] // format: map[app string, map[ID string]*subscriber]
+	subscribersMap map[string]map[string]*subscriber
 }
 
 func newLogBroadcaster() *logBroadcaster {
 	return &logBroadcaster{
 		logC:           make(chan *types.Log),
-		subscribersMap: haxmap.New[string, map[string]*subscriber](),
+		subscribersMap: map[string]map[string]*subscriber{},
 	}
 }
 
-func (l *logBroadcaster) getSubscribers(app string) map[string]*subscriber {
-	subs, ok := l.subscribersMap.Get(app)
-	if !ok {
-		subs = map[string]*subscriber{}
-		l.subscribersMap.Set(app, subs)
-	}
-	return subs
-}
-
-func (l *logBroadcaster) deleteSubscribers(app string) {
-	l.subscribersMap.Del(app)
-}
-
-// subscribe subscribes logs of the specific app.
 func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.ReadWriter) (string, chan error, func()) {
 	l.Lock()
 	defer l.Unlock()
 
-	subscribers := l.getSubscribers(app)
+	subscribers := l.subscribersMap[app]
+	if subscribers == nil {
+		subscribers = map[string]*subscriber{}
+		l.subscribersMap[app] = subscribers
+	}
 	ID := coreutils.RandomString(8)
-	ctx, cancel := context.WithCancel(ctx)
+	subCtx, cancel := context.WithCancel(ctx)
 	errChan := make(chan error)
 
 	subscribers[ID] = &subscriber{
-		ctx:     ctx,
+		ctx:     subCtx,
 		cancel:  cancel,
 		buf:     buf,
 		errChan: errChan,
@@ -77,62 +65,59 @@ func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.R
 	corelog.Infof(ctx, "%s %s log subscribed", app, ID)
 	return ID, errChan, func() {
 		cancel()
-		_ = utils.Pool.Submit(func() { l.unsubscribe(app, ID) })
+		go l.unsubscribe(ctx, app, ID)
 	}
 }
 
-func (l *logBroadcaster) unsubscribe(app string, ID string) {
+func (l *logBroadcaster) unsubscribe(ctx context.Context, app, ID string) {
 	l.Lock()
 	defer l.Unlock()
 
-	subscribers := l.getSubscribers(app)
-	subscriber, ok := subscribers[ID]
-	if ok {
+	subscribers := l.subscribersMap[app]
+	if subscriber, ok := subscribers[ID]; ok {
 		close(subscriber.errChan)
 	}
 	delete(subscribers, ID)
 
-	corelog.Infof(nil, "%s %s detached", app, ID) //nolint
+	corelog.Infof(ctx, "%s %s detached", app, ID)
 
-	// if no subscribers for this app, remove the key
 	if len(subscribers) == 0 {
-		l.deleteSubscribers(app)
+		delete(l.subscribersMap, app)
 	}
 }
 
-func (l *logBroadcaster) broadcast(log *types.Log) {
+func (l *logBroadcaster) broadcast(ctx context.Context, log *types.Log) {
 	l.RLock()
 	defer l.RUnlock()
 
-	subscribers := l.getSubscribers(log.Name)
+	subscribers := l.subscribersMap[log.Name]
 	if len(subscribers) == 0 {
 		return
 	}
 	data, err := json.Marshal(log)
 	if err != nil {
-		corelog.Error(nil, err) //nolint
+		corelog.Error(ctx, err)
 		return
 	}
 	line := fmt.Sprintf("%X\r\n%s\r\n\r\n", len(data)+2, string(data))
 
-	// use wait group to make sure the logs are ordered
-	wg := &sync.WaitGroup{}
-	wg.Add(len(subscribers))
+	// waiting here keeps the log lines ordered across subscribers
+	var wg sync.WaitGroup
 	for ID, sub := range subscribers {
-		ID := ID
-		sub := sub
-		_ = utils.Pool.Submit(func() {
-			defer wg.Done()
+		wg.Go(func() {
 			if sub.isDone() {
 				return
 			}
 			if _, err := sub.buf.Write([]byte(line)); err != nil {
-				corelog.Debugf(nil, "[broadcast] failed to write into %v, err: %v", ID, err) //nolint
+				corelog.Debugf(ctx, "[broadcast] failed to write into %v, err: %v", ID, err)
 				sub.cancel()
-				sub.errChan <- err
+				select {
+				case sub.errChan <- err:
+				default:
+				}
 				return
 			}
-			sub.buf.Flush()
+			_ = sub.buf.Flush()
 		})
 	}
 	wg.Wait()
@@ -145,7 +130,7 @@ func (l *logBroadcaster) run(ctx context.Context) {
 			corelog.Info(ctx, "[logBroadcaster] stops")
 			return
 		case log := <-l.logC:
-			l.broadcast(log)
+			l.broadcast(ctx, log)
 		}
 	}
 }

@@ -5,52 +5,51 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net"
-	"net/http/httputil"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
-	"github.com/projecteru2/agent/common"
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
-	"github.com/projecteru2/core/cluster"
-	coreutils "github.com/projecteru2/core/utils"
-	"github.com/vishvananda/netns"
-
-	enginetypes "github.com/docker/docker/api/types"
 	enginecontainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	enginefilters "github.com/docker/docker/api/types/filters"
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/docker/go-units"
+	"github.com/projecteru2/core/cluster"
 	"github.com/projecteru2/core/log"
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/mem"
+	coreutils "github.com/projecteru2/core/utils"
+	"github.com/shirou/gopsutil/v4/mem"
+	"github.com/vishvananda/netns"
+
+	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 )
-
-// Docker .
-type Docker struct {
-	client *engineapi.Client
-	config *types.Config
-
-	nodeIP    string
-	cpuCore   float64 // 因为到时候要乘以 float64 所以就直接转换成 float64 吧
-	memory    int64
-	cas       *utils.GroupCAS
-	transfers *utils.HashBackends
-}
 
 const (
 	fieldPodName         = "ERU_POD"
 	fieldNodeName        = "ERU_NODE_NAME"
 	fieldStoreIdentifier = "eru.coreid"
+
+	defaultNIC       = "eth0"
+	attachBufferSize = 10 << 20
 )
 
-// New returns a wrapper of docker client
+type Docker struct {
+	client *engineapi.Client
+	config *types.Config
+
+	nodeIP    string
+	cpuCore   float64
+	memory    int64
+	cas       *utils.GroupCAS
+	transfers *utils.HashBackends
+}
+
 func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, error) {
 	d := &Docker{
 		config:    config,
@@ -68,14 +67,13 @@ func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, err
 	}
 
 	if utils.IsDockerized() {
-		os.Setenv("HOST_PROC", "/hostProc")
+		if err = os.Setenv("HOST_PROC", "/hostProc"); err != nil {
+			return nil, err
+		}
 	}
 
-	cpus, err := cpu.Info()
-	if err != nil {
-		return nil, err
-	}
-	logger.Infof(ctx, "Host has %d cpus", len(cpus))
+	cpus := runtime.NumCPU()
+	logger.Infof(ctx, "Host has %d cpus", cpus)
 
 	memory, err := mem.VirtualMemory()
 	if err != nil {
@@ -83,27 +81,16 @@ func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, err
 	}
 	logger.Infof(ctx, "Host has %d memory", memory.Total)
 
-	d.cpuCore = float64(len(cpus))
-	d.memory = int64(memory.Total)
+	d.cpuCore = float64(cpus)
+	d.memory = int64(min(memory.Total, math.MaxInt64))
 	return d, nil
 }
 
-func (d *Docker) getFilterArgs(filters map[string]string) enginefilters.Args {
-	f := enginefilters.NewArgs()
-
-	for key, value := range filters {
-		f.Add("label", fmt.Sprintf("%s=%s", key, value))
-	}
-
-	return f
-}
-
-// ListWorkloadIDs lists workload IDs filtered by given condition
 func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string) ([]string, error) {
 	f := d.getFilterArgs(filters)
-	opts := enginetypes.ContainerListOptions{Filters: f, All: true}
+	opts := enginecontainer.ListOptions{Filters: f, All: true}
 
-	var containers []enginetypes.Container
+	var containers []enginecontainer.Summary
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
 		containers, err = d.client.ContainerList(ctx, opts)
@@ -120,31 +107,29 @@ func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 	return workloads, nil
 }
 
-// AttachWorkload .
 func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.Reader, error) {
 	logger := log.WithFunc("AttachWorkload").WithField("ID", ID)
-	resp, err := d.client.ContainerAttach(ctx, ID, enginetypes.ContainerAttachOptions{
+	resp, err := d.client.ContainerAttach(ctx, ID, enginecontainer.AttachOptions{
 		Stream: true,
 		Stdin:  false,
 		Stdout: true,
 		Stderr: true,
 	})
-	if err != nil && err != httputil.ErrPersistEOF { //nolint
+	if err != nil {
 		logger.Error(ctx, err, "failed to attach workload")
 		return nil, nil, err
 	}
 
-	capacity, _ := units.RAMInBytes("10M")
-	outr, outw := utils.NewBufPipe(capacity)
-	errr, errw := utils.NewBufPipe(capacity)
+	outr, outw := utils.NewBufPipe(attachBufferSize)
+	errr, errw := utils.NewBufPipe(attachBufferSize)
 
-	_ = utils.Pool.Submit(func() {
+	go func() {
 		defer func() {
 			resp.Close()
-			outw.Close()
-			errw.Close()
-			outr.Close()
-			errr.Close()
+			_ = outw.Close()
+			_ = errw.Close()
+			_ = outr.Close()
+			_ = errr.Close()
 			logger.Debug(ctx, "buf pipes closed")
 		}()
 
@@ -152,146 +137,30 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 			logger.Error(ctx, err, "attach get stream failed")
 		}
 		logger.Info(ctx, "attach workload finished")
-	})
+	}()
 
 	return outr, errr, nil
 }
 
-// checkHostname check if ERU_NODE_NAME env in container is the hostname of this agent
-// TODO should be removed in the future, should always use label to filter
-func (d *Docker) checkHostname(env []string) bool {
-	for _, e := range env {
-		ps := strings.SplitN(e, "=", 2)
-		if len(ps) != 2 {
-			continue
-		}
-		if ps[0] == "ERU_NODE_NAME" && ps[1] == d.config.HostName {
-			return true
-		}
-	}
-	return false
-}
-
-func getAddrsFromNS(cid string, ifname string) ([]net.Addr, error) {
-	// Lock the OS Thread so we don't accidentally switch namespaces
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	// Save the current network namespace
-	origns, _ := netns.Get()
-	defer origns.Close()
-	defer netns.Set(origns) //nolint:errcheck
-
-	containerNS, err := netns.GetFromDocker(cid)
-	if err != nil {
-		return nil, err
-	}
-	defer containerNS.Close()
-
-	if err := netns.Set(containerNS); err != nil {
-		return nil, err
-	}
-	eth0, err := net.InterfaceByName(ifname)
-	if err != nil {
-		return nil, err
-	}
-	addrs, err := eth0.Addrs()
-	if err != nil {
-		return nil, err
-	}
-	return addrs, nil
-}
-
-// detectWorkload detect a container by ID
-func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, error) {
-	// 标准化为 inspect 的数据
-	var c enginetypes.ContainerJSON
-	var err error
-	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		c, err = d.client.ContainerInspect(ctx, ID)
-	})
-	if err != nil {
-		return nil, err
-	}
-	label := c.Config.Labels
-
-	if _, ok := label[cluster.ERUMark]; !ok {
-		return nil, common.ErrInvaildContainer
-	}
-
-	// TODO should be removed in the future
-	if d.config.CheckOnlyMine && !utils.UseLabelAsFilter() && !d.checkHostname(c.Config.Env) {
-		return nil, common.ErrInvaildContainer
-	}
-
-	// 生成基准 meta
-	meta := coreutils.DecodeMetaInLabel(ctx, label)
-
-	// 是否符合 eru pattern，如果一个容器又有 ERUMark 又是三段式的 name，那它就是个 ERU 容器
-	container, err := generateContainerMeta(ctx, c, meta, label)
-	if err != nil {
-		return nil, err
-	}
-	// 计算容器用了多少 CPU
-	container = calcuateCPUNum(container, c, d.cpuCore)
-	if container.Memory == 0 || container.Memory == math.MaxInt64 {
-		container.Memory = d.memory
-	}
-	// 活着才有发布必要
-	if c.NetworkSettings != nil && container.Running { //nolint:nestif
-		networks := map[string]string{}
-		for name, endpoint := range c.NetworkSettings.Networks {
-			networkmode := enginecontainer.NetworkMode(name)
-			if networkmode.IsHost() {
-				container.LocalIP = common.LocalIP
-				networks[name] = d.nodeIP
-			} else {
-				container.LocalIP = endpoint.IPAddress
-				networks[name] = endpoint.IPAddress
-			}
-			if networks[name] == "" {
-				addrs, err := getAddrsFromNS(c.ID, "eth0")
-				if err != nil {
-					log.Error(ctx, err, "failed to get eth0 addrs")
-				}
-				if len(addrs) > 0 {
-					ip, _, err := net.ParseCIDR(addrs[0].String())
-					if err == nil {
-						container.LocalIP = ip.String()
-						networks[name] = ip.String()
-					} else {
-						log.Error(ctx, err, "failed to parse cidr %s", addrs[0].String())
-					}
-				}
-			}
-			break
-		}
-		container.Networks = networks
-	}
-
-	return container, nil
-}
-
-// Events returns the events of workloads' changes
 func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan *types.WorkloadEventMessage, <-chan error) {
 	eventChan := make(chan *types.WorkloadEventMessage)
 	errChan := make(chan error)
 
-	_ = utils.Pool.Submit(func() {
+	go func() {
 		defer close(eventChan)
 		defer close(errChan)
 
 		f := d.getFilterArgs(filters)
-		f.Add("type", events.ContainerEventType)
-		options := enginetypes.EventsOptions{Filters: f}
+		f.Add("type", string(events.ContainerEventType))
+		options := events.ListOptions{Filters: f}
 		m, e := d.client.Events(ctx, options)
 		for {
 			select {
 			case message := <-m:
 				eventChan <- &types.WorkloadEventMessage{
-					ID:       message.ID,
-					Type:     message.Type,
-					Action:   message.Action,
+					ID:       message.Actor.ID,
+					Type:     string(message.Type),
+					Action:   string(message.Action),
 					TimeNano: message.TimeNano,
 				}
 			case err := <-e:
@@ -301,12 +170,11 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 				return
 			}
 		}
-	})
+	}()
 
 	return eventChan, errChan
 }
 
-// GetStatus checks workload's status first, then returns workload status
 func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error) {
 	logger := log.WithFunc("GetStatus").WithField("ID", ID)
 	container, err := d.detectWorkload(ctx, ID)
@@ -332,7 +200,6 @@ func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*t
 		Healthy:    container.Running && container.HealthCheck == nil,
 	}
 
-	// only check the running containers
 	if checkHealth && container.Running {
 		free, acquired := d.cas.Acquire(container.ID)
 		if !acquired {
@@ -345,9 +212,8 @@ func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*t
 	return status, nil
 }
 
-// GetWorkloadName returns the name of workload
 func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error) {
-	var containerJSON enginetypes.ContainerJSON
+	var containerJSON enginecontainer.InspectResponse
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
 		containerJSON, err = d.client.ContainerInspect(ctx, ID)
@@ -360,7 +226,6 @@ func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error)
 	return containerJSON.Name, nil
 }
 
-// LogFieldsExtra .
 func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]string, error) {
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
@@ -379,31 +244,6 @@ func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]stri
 	return extra, nil
 }
 
-func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginetypes.StatsJSON, error) {
-	logger := log.WithFunc("getContainerStats").WithField("ID", ID)
-	rawStat, err := d.client.ContainerStatsOneShot(ctx, ID)
-	if err != nil {
-		logger.Error(ctx, err, "failed to get container stats")
-		return nil, err
-	}
-	b, err := io.ReadAll(rawStat.Body)
-	if err != nil {
-		logger.Error(ctx, err, "failed to read container stats")
-		return nil, err
-	}
-	stats := &enginetypes.StatsJSON{}
-	return stats, json.Unmarshal(b, stats)
-}
-
-func (d *Docker) getBlkioStats(ctx context.Context, ID string) (*enginetypes.BlkioStats, error) {
-	fullStat, err := d.getContainerStats(ctx, ID)
-	if err != nil {
-		return nil, err
-	}
-	return &fullStat.BlkioStats, nil
-}
-
-// IsDaemonRunning returns if the runtime daemon is running.
 func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
@@ -416,7 +256,154 @@ func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
 	return true
 }
 
-// Name returns the name of runtime
 func (d *Docker) Name() string {
 	return "docker"
+}
+
+func (d *Docker) getFilterArgs(filters map[string]string) enginefilters.Args {
+	f := enginefilters.NewArgs()
+
+	for key, value := range filters {
+		f.Add("label", fmt.Sprintf("%s=%s", key, value))
+	}
+
+	return f
+}
+
+func (d *Docker) checkHostname(env []string) bool {
+	for _, e := range env {
+		ps := strings.SplitN(e, "=", 2)
+		if len(ps) != 2 {
+			continue
+		}
+		if ps[0] == "ERU_NODE_NAME" && ps[1] == d.config.HostName {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, error) {
+	var c enginecontainer.InspectResponse
+	var err error
+	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
+		c, err = d.client.ContainerInspect(ctx, ID)
+	})
+	if err != nil {
+		return nil, err
+	}
+	label := c.Config.Labels
+
+	if _, ok := label[cluster.ERUMark]; !ok {
+		return nil, common.ErrInvaildContainer
+	}
+
+	if d.config.CheckOnlyMine && !utils.UseLabelAsFilter() && !d.checkHostname(c.Config.Env) {
+		return nil, common.ErrInvaildContainer
+	}
+
+	meta := coreutils.DecodeMetaInLabel(ctx, label)
+
+	container, err := generateContainerMeta(ctx, c, meta, label)
+	if err != nil {
+		return nil, err
+	}
+	container = calcuateCPUNum(container, c, d.cpuCore)
+	if container.Memory == 0 || container.Memory == math.MaxInt64 {
+		container.Memory = d.memory
+	}
+	if c.NetworkSettings != nil && container.Running {
+		container.LocalIP, container.Networks = d.workloadNetworks(ctx, c)
+	}
+
+	return container, nil
+}
+
+func (d *Docker) workloadNetworks(ctx context.Context, c enginecontainer.InspectResponse) (string, map[string]string) {
+	networks := map[string]string{}
+	names := slices.Sorted(maps.Keys(c.NetworkSettings.Networks))
+	if len(names) == 0 {
+		return "", networks
+	}
+
+	name := names[0]
+	localIP, addr := c.NetworkSettings.Networks[name].IPAddress, c.NetworkSettings.Networks[name].IPAddress
+	if enginecontainer.NetworkMode(name).IsHost() {
+		localIP, addr = common.LocalIP, d.nodeIP
+	}
+	if addr == "" {
+		if ip := addrFromNS(ctx, c.ID, defaultNIC); ip != "" {
+			localIP, addr = ip, ip
+		}
+	}
+	networks[name] = addr
+
+	return localIP, networks
+}
+
+func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginecontainer.StatsResponse, error) {
+	logger := log.WithFunc("getContainerStats").WithField("ID", ID)
+	rawStat, err := d.client.ContainerStatsOneShot(ctx, ID)
+	if err != nil {
+		logger.Error(ctx, err, "failed to get container stats")
+		return nil, err
+	}
+	b, err := io.ReadAll(rawStat.Body)
+	if err != nil {
+		logger.Error(ctx, err, "failed to read container stats")
+		return nil, err
+	}
+	stats := &enginecontainer.StatsResponse{}
+	return stats, json.Unmarshal(b, stats)
+}
+
+func (d *Docker) getBlkioStats(ctx context.Context, ID string) (*enginecontainer.BlkioStats, error) {
+	fullStat, err := d.getContainerStats(ctx, ID)
+	if err != nil {
+		return nil, err
+	}
+	return &fullStat.BlkioStats, nil
+}
+
+func addrFromNS(ctx context.Context, cid, ifname string) string {
+	logger := log.WithFunc("addrFromNS").WithField("ID", cid)
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	origns, _ := netns.Get()
+	defer func() {
+		_ = netns.Set(origns)
+		_ = origns.Close()
+	}()
+
+	containerNS, err := netns.GetFromDocker(cid)
+	if err != nil {
+		logger.Error(ctx, err, "failed to get the workload netns")
+		return ""
+	}
+	defer func() { _ = containerNS.Close() }()
+
+	if err = netns.Set(containerNS); err != nil {
+		logger.Error(ctx, err, "failed to enter the workload netns")
+		return ""
+	}
+	nic, err := net.InterfaceByName(ifname)
+	if err != nil {
+		logger.Errorf(ctx, err, "failed to find %s", ifname)
+		return ""
+	}
+	addrs, err := nic.Addrs()
+	if err != nil {
+		logger.Errorf(ctx, err, "failed to get %s addrs", ifname)
+		return ""
+	}
+	if len(addrs) == 0 {
+		return ""
+	}
+	ip, _, err := net.ParseCIDR(addrs[0].String())
+	if err != nil {
+		logger.Errorf(ctx, err, "failed to parse cidr %s", addrs[0].String())
+		return ""
+	}
+	return ip.String()
 }

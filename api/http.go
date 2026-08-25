@@ -1,40 +1,66 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
-	"runtime/pprof" //nolint:nolintlint
+	_ "net/http/pprof" //nolint
+	"runtime/pprof"    //nolint:nolintlint
 	"time"
 
-	// enable profile
-	_ "net/http/pprof" //nolint
+	"github.com/projecteru2/core/log"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/projecteru2/agent/manager/workload"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/version"
-	"github.com/projecteru2/core/log"
-
-	"github.com/bmizerany/pat"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// JSON define a json
-type JSON map[string]interface{}
+type JSON map[string]any
 
-// Handler define handler
 type Handler struct {
 	config           *types.Config
 	workloadsManager *workload.Manager
 }
 
-// URL /version/
+func NewHandler(config *types.Config, workloadsManager *workload.Manager) *Handler {
+	return &Handler{
+		config:           config,
+		workloadsManager: workloadsManager,
+	}
+}
+
+func (h *Handler) Serve(ctx context.Context) {
+	if h.config.API.Addr == "" {
+		return
+	}
+	logger := log.WithFunc("serve")
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /profile/{$}", h.profile)
+	mux.HandleFunc("GET /version/{$}", h.version)
+	mux.HandleFunc("GET /log/{$}", h.log)
+	mux.Handle("GET /metrics", promhttp.Handler())
+	mux.Handle("/debug/pprof/", http.DefaultServeMux)
+
+	logger.Infof(ctx, "http api started %s", h.config.API.Addr)
+
+	server := &http.Server{
+		Addr:              h.config.API.Addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
+		logger.Error(ctx, err, "http api start failed")
+	}
+}
+
 func (h *Handler) version(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(JSON{"version": version.VERSION})
 }
 
-// URL /profile/
 func (h *Handler) profile(w http.ResponseWriter, _ *http.Request) {
 	r := JSON{}
 	for _, p := range pprof.Profiles() {
@@ -45,7 +71,6 @@ func (h *Handler) profile(w http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(w).Encode(r)
 }
 
-// URL /log/
 func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 	app := req.URL.Query().Get("app")
 	if app == "" {
@@ -53,7 +78,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	logger := log.WithFunc("log").WithField("path", "/log")
-	// fuck httpie
+	// the status line must go out before the hijack, otherwise clients see no response
 	w.WriteHeader(http.StatusOK)
 	if hijack, ok := w.(http.Hijacker); ok {
 		conn, buf, err := hijack.Hijack()
@@ -61,52 +86,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 			logger.Error(req.Context(), err, "connect failed")
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		h.workloadsManager.PullLog(req.Context(), app, buf)
-	}
-}
-
-// NewHandler new api http handler
-func NewHandler(config *types.Config, workloadsManager *workload.Manager) *Handler {
-	return &Handler{
-		config:           config,
-		workloadsManager: workloadsManager,
-	}
-}
-
-// Serve start a api service
-// blocks by http.ListenAndServe
-// run this in a separated goroutine
-func (h *Handler) Serve() {
-	if h.config.API.Addr == "" {
-		return
-	}
-	logger := log.WithFunc("serve")
-
-	restfulAPIServer := pat.New()
-	handlers := map[string]map[string]func(http.ResponseWriter, *http.Request){
-		"GET": {
-			"/profile/": h.profile,
-			"/version/": h.version,
-			"/log/":     h.log,
-		},
-	}
-
-	for method, routes := range handlers {
-		for route, handler := range routes {
-			restfulAPIServer.Add(method, route, http.HandlerFunc(handler))
-		}
-	}
-
-	http.Handle("/", restfulAPIServer)
-	http.Handle("/metrics", promhttp.Handler())
-	logger.Infof(nil, "http api started %s", h.config.API.Addr) //nolint
-
-	server := &http.Server{
-		Addr:              h.config.API.Addr,
-		ReadHeaderTimeout: 3 * time.Second,
-	}
-	if err := server.ListenAndServe(); err != nil {
-		logger.Error(nil, err, "http api start failed") //nolint
 	}
 }

@@ -5,27 +5,16 @@ import (
 	"sync"
 
 	"github.com/projecteru2/agent/types"
-
-	"github.com/projecteru2/core/log"
 )
 
 var (
-	once   sync.Once
-	client *Docker
+	once      sync.Once
+	client    *Docker
+	clientErr error
 )
 
-// InitClient init docker client
-func InitClient(config *types.Config, nodeIP string) {
-	once.Do(func() {
-		var err error
-		ctx := context.TODO()
-		if client, err = New(ctx, config, nodeIP); err != nil {
-			log.WithFunc("InitClient").Error(nil, err, "failed to make docker client") //nolint
-		}
-	})
-}
-
-// GetClient .
-func GetClient() *Docker {
-	return client
+// GetClient returns the process-wide docker runtime, creating it on first call.
+func GetClient(ctx context.Context, config *types.Config, nodeIP string) (*Docker, error) {
+	once.Do(func() { client, clientErr = New(ctx, config, nodeIP) })
+	return client, clientErr
 }

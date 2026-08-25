@@ -1,19 +1,17 @@
 package node
 
 import (
-	"context"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
 	storemocks "github.com/projecteru2/agent/store/mocks"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNodeStatusReport(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	manager := newMockNodeManager(t)
 	runtime := manager.runtimeClient.(*runtimemocks.Nerv)
 	store := manager.store.(*storemocks.MockStore)
@@ -32,8 +30,7 @@ func TestNodeStatusReport(t *testing.T) {
 }
 
 func TestHeartbeat(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	manager := newMockNodeManager(t)
 	store := manager.store.(*storemocks.MockStore)
 

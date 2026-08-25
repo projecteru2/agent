@@ -1,43 +1,40 @@
 package logs
 
 import (
-	"context"
 	"net"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNewWriterWithUDP(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	// udp writer
+	ctx := t.Context()
 	addr := "udp://127.0.0.1:23456"
 	w, err := NewWriter(ctx, addr, true)
 	assert.NoError(t, err)
-	assert.NoError(t, w.Write(&types.Log{}))
+	assert.NoError(t, w.Write(ctx, &types.Log{}))
 }
 
 func TestNewWriterWithTCP(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	// tcp writer
+	ctx := t.Context()
 
 	tcpL, err := net.Listen("tcp", ":34567")
+	require.NoError(t, err)
 	defer tcpL.Close()
+
 	addr := "tcp://127.0.0.1:34567"
 	w, err := NewWriter(ctx, addr, true)
 	assert.NoError(t, err)
-	assert.NoError(t, w.Write(&types.Log{}))
+	assert.NoError(t, w.Write(ctx, &types.Log{}))
 }
 
 func TestNewWriterWithJournal(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	addr := "journal://system"
 	enc, err := CreateJournalEncoder()
 	if err == common.ErrJournalDisable {
@@ -68,16 +65,13 @@ func TestNewWriters(t *testing.T) {
 		Discard:                 nil,
 		"udp://127.0.0.1:23456": nil,
 		"tcp://127.0.0.1:34567": nil,
-		// journal if enabled totally depends upon the system settings,
-		// "journal://system":      errJournalDisabled,
-		"invalid://hhh": nil,
+		"invalid://hhh":         nil,
 	}
 	tcpL, err := net.Listen("tcp", ":34567")
 	assert.NoError(t, err)
 	defer tcpL.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	for addr, expectedErr := range cases {
 		go func(addr string, expectedErr error) {
@@ -87,17 +81,15 @@ func TestNewWriters(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
-			err = writer.Write(&types.Log{})
+			err = writer.Write(ctx, &types.Log{})
 			assert.NoError(t, err)
 		}(addr, expectedErr)
 	}
-	// wait for closing all writers
 	time.Sleep(CloseWaitInterval + 2*time.Second)
 }
 
 func TestReconnect(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	addr := "tcp://127.0.0.1:34567"
 	writer, err := NewWriter(ctx, addr, false)
@@ -109,6 +101,6 @@ func TestReconnect(t *testing.T) {
 	assert.NoError(t, err)
 	defer tcpL.Close()
 
-	writer.reconnect()
-	assert.NoError(t, writer.Write(&types.Log{}))
+	writer.reconnect(ctx)
+	assert.NoError(t, writer.Write(ctx, &types.Log{}))
 }

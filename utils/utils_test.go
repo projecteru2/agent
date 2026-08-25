@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"math"
 	"os"
-	"sort"
+	"path/filepath"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -16,21 +15,13 @@ import (
 )
 
 func TestWritePid(t *testing.T) {
-	pidPath, err := ioutil.TempFile(os.TempDir(), "pid-")
+	pidPath := filepath.Join(t.TempDir(), "agent.pid")
+
+	WritePid(t.Context(), pidPath)
+
+	content, err := os.ReadFile(pidPath)
 	assert.NoError(t, err)
-
-	WritePid(pidPath.Name())
-
-	f, err := os.Open(pidPath.Name())
-	assert.NoError(t, err)
-
-	content, err := ioutil.ReadAll(f)
-	assert.NoError(t, err)
-
-	pid := strconv.Itoa(os.Getpid())
-	assert.Equal(t, pid, string(content))
-
-	os.Remove(pidPath.Name())
+	assert.Equal(t, strconv.Itoa(os.Getpid()), string(content))
 }
 
 func TestGetAppInfo(t *testing.T) {
@@ -54,7 +45,7 @@ func TestPipeWriter_NoBlocking(t *testing.T) {
 	io.WriteString(w, "def")
 	w.Close()
 
-	b, err := ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
 	assert.NoError(t, err)
 	assert.Equal(t, b, []byte("abcdef"))
 }
@@ -73,7 +64,7 @@ func TestMultiBlocking(t *testing.T) {
 	go block(r)
 	go block(r)
 
-	time.Sleep(time.Millisecond) // Ensure blocking.
+	time.Sleep(time.Millisecond)
 
 	data := []string{"abc", "def", "ghi"}
 	for _, s := range data {
@@ -83,29 +74,24 @@ func TestMultiBlocking(t *testing.T) {
 	}
 
 	var ss []string
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		ss = append(ss, string(<-results))
 	}
-	sort.Strings(ss)
+	slices.Sort(ss)
 	assert.Equal(t, ss, data)
 }
 
-func BenchmarkReadOnly(b *testing.B) {
-	length := 2
-	r, w := NewBufPipe(int64(b.N))
-	w.Close()
-	data := make([]byte, length)
-	io.WriteString(w, string(make([]byte, b.N, b.N)))
-	b.ResetTimer()
-	for {
-		_, err := io.ReadFull(r, data)
-		if err != nil {
-			if math.Mod(float64(b.N), float64(length)) == 0 {
-				assert.EqualError(b, err, "EOF")
-			} else {
-				assert.EqualError(b, err, "unexpected EOF")
-			}
-			break
+func BenchmarkBufPipe(b *testing.B) {
+	r, w := NewBufPipe(1 << 20)
+	payload := []byte("benchmark\n")
+	data := make([]byte, len(payload))
+
+	for b.Loop() {
+		if _, err := w.Write(payload); err != nil {
+			b.Fatalf("write: %v", err)
+		}
+		if _, err := io.ReadFull(r, data); err != nil {
+			b.Fatalf("read: %v", err)
 		}
 	}
 }
@@ -144,18 +130,16 @@ func TestReplaceNonUtf8(t *testing.T) {
 }
 
 func TestUseLabelAsFilter(t *testing.T) {
-	currentValue := os.Getenv("ERU_AGENT_EXPERIMENTAL_FILTER")
-	defer os.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", currentValue)
-	os.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", "test")
+	t.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", "test")
 	assert.Equal(t, UseLabelAsFilter(), false)
-	os.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", "label")
+	t.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", "label")
 	assert.Equal(t, UseLabelAsFilter(), true)
 }
 
 func TestGetMaxAttemptsByTTL(t *testing.T) {
-	assert.Equal(t, GetMaxAttemptsByTTL(0), 5) // selfmon enabled
+	assert.Equal(t, GetMaxAttemptsByTTL(0), 5)
 	assert.Equal(t, GetMaxAttemptsByTTL(1), 2)
-	assert.Equal(t, GetMaxAttemptsByTTL(8), 4) // 0+1+2+4
+	assert.Equal(t, GetMaxAttemptsByTTL(8), 4)
 }
 
 func TestGetIP(t *testing.T) {
@@ -166,7 +150,7 @@ func TestGetIP(t *testing.T) {
 }
 
 func TestWithTimeout(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	i := 0
 	WithTimeout(ctx, time.Second, func(ctx context.Context) {
 		select {

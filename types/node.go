@@ -1,6 +1,5 @@
 package types
 
-// Node .
 type Node struct {
 	Name      string
 	Endpoint  string
@@ -9,7 +8,6 @@ type Node struct {
 	Available bool
 }
 
-// NodeStatus .
 type NodeStatus struct {
 	Nodename string
 	Podname  string

@@ -5,12 +5,27 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/runtime/mocks"
 	"github.com/projecteru2/agent/types"
-
-	"github.com/stretchr/testify/assert"
 )
+
+func TestRun(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	runtime := manager.runtimeClient.(*mocks.Nerv)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second*30)
+	defer cancel()
+	go func() {
+		runtime.StartEvents()
+		runtime.StartCustomEvent(&types.WorkloadEventMessage{
+			ID:     "Kaworu",
+			Action: "start",
+		})
+	}()
+	assert.Nil(t, manager.Run(ctx))
+}
 
 func newMockWorkloadManager(t *testing.T) *Manager {
 	config := &types.Config{
@@ -30,22 +45,7 @@ func newMockWorkloadManager(t *testing.T) *Manager {
 		GlobalConnectionTimeout: 5 * time.Second,
 	}
 
-	m, err := NewManager(context.Background(), config)
+	m, err := NewManager(t.Context(), config)
 	assert.Nil(t, err)
 	return m
-}
-
-func TestRun(t *testing.T) {
-	manager := newMockWorkloadManager(t)
-	runtime := manager.runtimeClient.(*mocks.Nerv)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-	go func() {
-		runtime.StartEvents()
-		runtime.StartCustomEvent(&types.WorkloadEventMessage{
-			ID:     "Kaworu",
-			Action: "start",
-		})
-	}()
-	assert.Nil(t, manager.Run(ctx))
 }

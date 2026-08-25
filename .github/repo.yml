@@ -1,0 +1,10 @@
+description: "Eru node agent: watches Docker and yavirt workloads, runs health checks, forwards logs and reports node and workload status to eru core; exposes Prometheus metrics."
+homepage: https://projecteru2.github.io/agent/
+topics:
+  - eru
+  - golang
+  - agent
+  - docker
+  - virtual-machine
+  - monitoring
+  - prometheus

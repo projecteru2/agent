@@ -3,11 +3,11 @@ package core
 import (
 	"context"
 
-	"github.com/projecteru2/agent/utils"
 	pb "github.com/projecteru2/core/rpc/gen"
+
+	"github.com/projecteru2/agent/utils"
 )
 
-// GetIdentifier returns the identifier of core
 func (c *Store) GetIdentifier(ctx context.Context) string {
 	var resp *pb.CoreInfo
 	var err error

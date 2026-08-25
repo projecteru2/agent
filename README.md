@@ -1,71 +1,60 @@
-Agent
-======
-![](https://github.com/projecteru2/agent/workflows/goreleaser/badge.svg)
-![](https://github.com/projecteru2/agent/workflows/golangci-lint/badge.svg)
-[![Codacy Badge](https://app.codacy.com/project/badge/Grade/0ae492f3a2c04f7c9b743998f4184943)](https://www.codacy.com/gh/projecteru2/agent?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=projecteru2/agent&amp;utm_campaign=Badge_Grade)
+# agent
 
-Agent run on the node.
+Eru's per-node agent. It watches the workloads a node runs — Docker containers and yavirt virtual machines — health checks them, forwards their logs, exports their metrics and reports node and workload status back to [eru-core](https://github.com/projecteru2/core).
 
-### Features
+**Documentation: [projecteru2.github.io/agent](https://projecteru2.github.io/agent/)** (source in [`docs/`](docs/))
 
-* Forward log stream to remote
-* Generate container metrics
-* Bootstrap
-* Auto update containers' status and publish it by [core's](https://github.com/projecteru2/core) api.
+![lint](https://github.com/projecteru2/agent/workflows/lint/badge.svg)
+![test](https://github.com/projecteru2/agent/workflows/test/badge.svg)
 
-### Build
+## Highlights
 
-#### build binary
+- **Node heartbeat** — reports the node alive to core on an interval, with a ttl three times the interval so one lost report does not evict the node; a clean shutdown removes the status, a `SIGUSR1` restart keeps it.
+- **Workload health checks** — TCP and HTTP probes declared per workload, run on every runtime event and on a periodic sweep, with the result published through core.
+- **Log forwarding** — attaches to every running workload and ships each line as a JSON record to `tcp://`, `udp://` or `journal://` targets, sharded over several targets by workload id.
+- **Live log tailing** — `GET /log/?app=<name>` streams the logs of one application straight off the node.
+- **Prometheus metrics** — per-workload cpu, memory, per-nic network and per-device block io gauges on `/metrics`, optionally pushed to statsd as well.
+- **Two runtimes** — Docker and [yavirt](https://github.com/projecteru2/yavirt), selected by config; plus a mock runtime and store for development.
 
-`make build`
+## Quick start
 
-#### build rpm
-
-`./make-rpm`
-
-#### build image
-
-`docker build -t agent .`
-
-### Develop
-
-```shell
-go get github.com/projecteru2/agent
-cd $GOPATH/src/get github.com/projecteru2/agent
-make deps
+```bash
+make build
+cp agent.yaml.sample /etc/eru/agent.yaml   # edit core, docker and log settings
+./eru-agent --config /etc/eru/agent.yaml
 ```
 
-### Dockerized Agent manually
+Or from the published image, on a node that runs Docker:
 
-```shell
-docker run -d --privileged \
-  --name eru_agent_$HOSTNAME \
-  --net host \
-  --restart always \
+```bash
+docker run -d --name eru-agent --net host --privileged --restart always \
   -v /sys:/sys:ro \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /proc/:/hostProc/ \
-  -v <HOST_CONFIG_DIR_PATH>:/etc/eru \
-  projecteru2/agent \
-  /usr/bin/eru-agent
+  -v /etc/eru:/etc/eru \
+  projecteru2/agent /usr/bin/eru-agent
 ```
 
-### Build and Deploy by Eru itself
+See [installation](docs/installation.md) for the systemd unit and [configuration](docs/configuration.md) for every option.
 
-After we implemented bootstrap in eru2, now you can build and deploy agent with [cli](https://github.com/projecteru2/cli) tool.
+## Related projects
 
-1. Test source code and build image
+- [core](https://github.com/projecteru2/core) — the scheduler this agent reports to
+- [cli](https://github.com/projecteru2/cli) — command line client for core
+- [yavirt](https://github.com/projecteru2/yavirt) — the virtual machine runtime
+- [resource-extend](https://github.com/projecteru2/resource-extend) — extra resource plugins for core
 
-```shell
-<cli_execute_path> --name <image_name> http://bit.ly/EruAgent
+## Development
+
+```bash
+make build    # build the eru-agent binary
+make test     # go vet plus tests with the race detector
+make lint     # golangci-lint on linux and darwin
+make fmt      # gofumpt + goimports
+make mock     # regenerate the testify mocks
+make all      # deps, fmt, lint, test, build
 ```
 
-Make sure you can clone code by ssh protocol because libgit2 ask for it. So you need configure core with github certs. After the fresh image was named and tagged, it will be auto pushed to the remote registry which was defined in core.
+## License
 
-2. Deploy agent by eru with specific resource.
-
-```shell
-<cli_execute_path> container deploy -pod <pod_name> --entry agent --network <network_name> --deploy-method fill --image <projecteru2/agent>|<your_own_image> --count 1 --file <agent_config_yaml>:/etc/eru/agent.yaml [--cpu 0.3 | --mem 1024000000] http://bit.ly/EruAgent
-```
-
-Now you will find agent was started in each node, and monitor containers status include itself.
+This project is licensed under the MIT License. See [`LICENSE`](./LICENSE).

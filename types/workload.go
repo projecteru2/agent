@@ -1,6 +1,5 @@
 package types
 
-// WorkloadStatus .
 type WorkloadStatus struct {
 	ID         string
 	Running    bool

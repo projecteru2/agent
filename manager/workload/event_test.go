@@ -1,31 +1,27 @@
 package workload
 
 import (
-	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
 	storemocks "github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestEvent(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	manager := newMockWorkloadManager(t)
 	runtime := manager.runtimeClient.(*runtimemocks.Nerv)
 	store := manager.store.(*storemocks.MockStore)
-	// init workload status
 	assert.Nil(t, manager.initWorkloadStatus(ctx))
 	assertInitStatus(t, store)
 
 	go manager.monitor(ctx)
 
-	// starts the events: Shinji 400%, Asuka starts, Asuka dies, Rei dies
 	go runtime.StartEvents()
 	time.Sleep(5 * time.Second)
 

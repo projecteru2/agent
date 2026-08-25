@@ -1,0 +1,13 @@
+template: testify
+dir: "{{.InterfaceDir}}/mocks"
+pkgname: mocks
+filename: "{{.InterfaceName}}.go"
+structname: "{{.InterfaceName}}"
+force-file-write: true
+packages:
+  github.com/projecteru2/agent/runtime:
+    interfaces:
+      Runtime:
+  github.com/projecteru2/agent/store:
+    interfaces:
+      Store:

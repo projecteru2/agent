@@ -1,15 +1,24 @@
 package workload
 
 import (
-	"context"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
-
-	"github.com/stretchr/testify/assert"
 )
+
+func TestLoad(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	store := manager.store.(*mocks.MockStore)
+	ctx := t.Context()
+	err := manager.initWorkloadStatus(ctx)
+	time.Sleep(2 * time.Second)
+	assert.Nil(t, err)
+	assertInitStatus(t, store)
+}
 
 func assertInitStatus(t *testing.T, store *mocks.MockStore) {
 	assert.Equal(t, store.GetMockWorkloadStatus("Asuka"), &types.WorkloadStatus{
@@ -29,15 +38,4 @@ func assertInitStatus(t *testing.T, store *mocks.MockStore) {
 		Running: true,
 		Healthy: true,
 	})
-}
-
-func TestLoad(t *testing.T) {
-	manager := newMockWorkloadManager(t)
-	store := manager.store.(*mocks.MockStore)
-	ctx := context.Background()
-	err := manager.initWorkloadStatus(ctx)
-	// wait for attaching
-	time.Sleep(2 * time.Second)
-	assert.Nil(t, err)
-	assertInitStatus(t, store)
 }

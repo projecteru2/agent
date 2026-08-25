@@ -13,54 +13,50 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/projecteru2/agent/common"
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/version"
+	engineapi "github.com/docker/docker/client"
+	"github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
 	yavirtclient "github.com/projecteru2/libyavirt/client"
 	yavirttypes "github.com/projecteru2/libyavirt/types"
 
-	engineapi "github.com/docker/docker/client"
-	"github.com/projecteru2/core/log"
+	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/version"
 )
 
-var dockerized bool
-var once sync.Once
+var (
+	dockerized bool
+	once       sync.Once
+)
 
-// MakeDockerClient make a docker client
 func MakeDockerClient(config *types.Config) (*engineapi.Client, error) {
-	defaultHeaders := map[string]string{"User-Agent": fmt.Sprintf("eru-agent-%s", version.VERSION)}
-	return engineapi.NewClient(config.Docker.Endpoint, common.DockerCliVersion, nil, defaultHeaders)
+	return engineapi.NewClientWithOpts(
+		engineapi.WithHost(config.Docker.Endpoint),
+		engineapi.WithVersion(common.DockerCliVersion),
+		engineapi.WithHTTPHeaders(map[string]string{"User-Agent": "eru-agent-" + version.VERSION}),
+	)
 }
 
-// MakeYavirtClient make a yavirt client
 func MakeYavirtClient(config *types.Config) (yavirtclient.Client, error) {
-	yCfg := &yavirttypes.Config{
-		URI: config.Yavirt.Endpoint,
-	}
-	return yavirtclient.New(yCfg)
+	return yavirtclient.New(&yavirttypes.Config{URI: config.Yavirt.Endpoint})
 }
 
-// WritePid write pid
-func WritePid(path string) {
-	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
-		log.Fatalf(nil, err, "Save pid file failed %s", err) //nolint
+func WritePid(ctx context.Context, path string) {
+	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
+		log.Fatalf(ctx, err, "save pid file %s", path)
 	}
 }
 
-// GetAppInfo return app info
 func GetAppInfo(containerName string) (name, entrypoint, ident string, err error) {
 	return coreutils.ParseWorkloadName(containerName)
 }
 
-// UseLabelAsFilter return if use label as filter
 func UseLabelAsFilter() bool {
 	return os.Getenv("ERU_AGENT_EXPERIMENTAL_FILTER") == "label"
 }
 
-// GetMaxAttemptsByTTL .
 func GetMaxAttemptsByTTL(ttl int64) int {
-	// if selfmon is enabled, retry 5 times
+	// a zero ttl means core owns expiry, so use a fixed attempt count
 	if ttl < 1 {
 		return 5
 	}
@@ -73,7 +69,7 @@ func ReplaceNonUtf8(str string) string {
 		return str
 	}
 
-	// deal with "legal" error rune in utf8
+	// U+FFFD may be a legitimate rune, escape it before validating
 	if strings.ContainsRune(str, utf8.RuneError) {
 		str = strings.ReplaceAll(str, string(utf8.RuneError), "\\xff\\xfd")
 	}
@@ -99,7 +95,6 @@ func ReplaceNonUtf8(str string) string {
 	return string(v)
 }
 
-// IsDockerized returns if the agent is running in docker
 func IsDockerized() bool {
 	once.Do(func() {
 		dockerized = os.Getenv(common.DOCKERIZED) != ""
@@ -107,14 +102,12 @@ func IsDockerized() bool {
 	return dockerized
 }
 
-// WithTimeout runs a function with given timeout
 func WithTimeout(ctx context.Context, timeout time.Duration, f func(ctx2 context.Context)) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	f(ctx)
 }
 
-// GetIP Get hostIP
 func GetIP(daemonHost string) string {
 	u, err := url.Parse(daemonHost)
 	if err != nil {
