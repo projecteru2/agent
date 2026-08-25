@@ -51,6 +51,8 @@ type changeMessage struct {
 	Status vmStatus `json:"vm"`
 }
 
+type changeFunc func(ID string, running, gone bool)
+
 // daemon is the cocoon supervisor's read-only api on its unix socket; a node may run without one.
 type daemon struct {
 	socket  string
@@ -105,7 +107,7 @@ func (d *daemon) vms(ctx context.Context) (map[string]bool, error) {
 }
 
 // events streams the daemon's changes after its opening snapshot; it replays nothing, so the snapshot is the resync.
-func (d *daemon) events(ctx context.Context, handle func(ID string, running, gone bool)) error {
+func (d *daemon) events(ctx context.Context, handle changeFunc) error {
 	resp, err := d.get(ctx, eventsPath)
 	if err != nil {
 		return err
@@ -149,7 +151,7 @@ func (d *daemon) get(ctx context.Context, path string) (*http.Response, error) {
 	return resp, nil
 }
 
-func dispatch(event string, data []byte, handle func(ID string, running, gone bool)) error {
+func dispatch(event string, data []byte, handle changeFunc) error {
 	switch event {
 	case syncEvent:
 		body := vmsResponse{}
