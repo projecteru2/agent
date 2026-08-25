@@ -33,7 +33,8 @@ type Writer struct {
 func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, err error) {
 	if addr == Discard {
 		return &Writer{
-			enc: NewStreamEncoder(discard{}),
+			stdout: stdout,
+			enc:    NewStreamEncoder(discard{}),
 		}, nil
 	}
 	logger := log.WithFunc("NewWriter")
