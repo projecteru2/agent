@@ -1,6 +1,7 @@
 package systemd
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	coretypes "github.com/projecteru2/core/types"
 
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/source"
 )
 
@@ -112,7 +114,7 @@ func (m *meta) workload(running bool) *source.Workload {
 		CgroupPath: m.Cgroup,
 		NetnsPID:   m.NetnsPID,
 		HostIface:  m.Iface,
-		LocalIP:    source.LocalIP(m.Networks),
+		LocalIP:    cmp.Or(source.Addr(m.Networks), common.LocalIP),
 		Running:    running,
 	}
 }

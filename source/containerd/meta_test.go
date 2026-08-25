@@ -57,7 +57,7 @@ func TestWorkloadWithANetworkNamespaceButNoAddressYet(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Empty(t, w.Meta.Networks)
-	assert.Equal(t, common.LocalIP, w.LocalIP)
+	assert.Empty(t, w.LocalIP)
 }
 
 func TestWorkloadKeepsTheCNIAddressOfAHostNetworkSpec(t *testing.T) {

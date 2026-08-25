@@ -60,9 +60,9 @@ func (c *Containerd) workload(ctx context.Context, ID string, labels map[string]
 	meta := coreutils.DecodeMetaInLabel(ctx, labels)
 	nets := networks(labels)
 
-	localIP := source.LocalIP(nets)
+	// core's engines all report the node's own address for a host network workload
+	localIP := source.Addr(nets)
 	if len(nets) == 0 && s.hostNetwork {
-		// core's engines all report the node's own address for a host network workload
 		nets, localIP = map[string]string{hostNetwork: c.nodeIP}, common.LocalIP
 	}
 
