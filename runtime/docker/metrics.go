@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/projecteru2/core/cluster"
 	"github.com/projecteru2/core/log"
@@ -69,6 +70,8 @@ type gauge struct {
 }
 
 type MetricsClient struct {
+	container atomic.Pointer[Container]
+
 	statsd       string
 	statsdClient *coreutils.Statsd
 	prefix       string
@@ -82,6 +85,7 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 	clientsMutex.Lock()
 	defer clientsMutex.Unlock()
 	if metricsClient, ok := clients[container.ID]; ok {
+		metricsClient.container.Store(container)
 		return metricsClient
 	}
 
@@ -110,6 +114,7 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		data:   map[string]float64{},
 		gauges: make(map[string]gauge, len(metricSpecs)),
 	}
+	metricsClient.container.Store(container)
 	for _, spec := range metricSpecs {
 		opts := prometheus.GaugeOpts{Name: spec.name, Help: spec.help, ConstLabels: labels}
 		g := gauge{statsd: spec.statsd}
@@ -244,6 +249,14 @@ func (m *MetricsClient) checkConn(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func setMetricsContainer(ID string, container *Container) {
+	clientsMutex.Lock()
+	defer clientsMutex.Unlock()
+	if metricsClient, ok := clients[ID]; ok {
+		metricsClient.container.Store(container)
+	}
 }
 
 func removeMetricsClient(ID string) {

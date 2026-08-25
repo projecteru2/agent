@@ -56,20 +56,16 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) {
 	logger.Infof(ctx, "container %s metric report start", container.Name)
 
 	updateMetrics := func() {
-		newContainer, err := d.detectWorkload(ctx, container.ID)
-		if err != nil {
-			logger.Error(ctx, err, "can not refresh container meta")
-			return
-		}
-		containerCPUCount := newContainer.CPUNum * step
+		current := mClient.container.Load()
+		containerCPUCount := current.CPUNum * step
 		timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
-		newContainerCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(timeoutCtx, newContainer.ID, newContainer.Pid, proc)
+		newContainerCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(timeoutCtx, current.ID, current.Pid, proc)
 		if err != nil {
 			logger.Error(ctx, err, "get stats failed")
 			return
 		}
-		containerMemStats, err := getMemStats(timeoutCtx, newContainer.ID)
+		containerMemStats, err := getMemStats(timeoutCtx, current.ID)
 		if err != nil {
 			logger.Error(ctx, err, "get mem stats failed")
 			return
@@ -111,9 +107,9 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) {
 		mClient.MemUsage(float64(containerMemStats.MemUsageInBytes))
 		mClient.MemMaxUsage(float64(containerMemStats.MemMaxUsageInBytes))
 		mClient.MemRss(float64(containerMemStats.RSS))
-		if newContainer.Memory > 0 {
-			mClient.MemPercent(float64(containerMemStats.MemUsageInBytes) / float64(newContainer.Memory))
-			mClient.MemRSSPercent(float64(containerMemStats.RSS) / float64(newContainer.Memory))
+		if current.Memory > 0 {
+			mClient.MemPercent(float64(containerMemStats.MemUsageInBytes) / float64(current.Memory))
+			mClient.MemRSSPercent(float64(containerMemStats.RSS) / float64(current.Memory))
 		}
 		nics := make(map[string]net.IOCountersStat, len(containerNetStats))
 		for _, nic := range containerNetStats {
