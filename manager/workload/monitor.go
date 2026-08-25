@@ -114,6 +114,7 @@ func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEv
 	logger := log.WithFunc("workload.handleWorkloadDie").WithField("ID", event.ID)
 	logger.Debug(ctx, "handling die")
 	m.stopCollecting(event.ID)
+	m.stopForwarding(event.ID)
 
 	w, err := m.source.Get(ctx, event.ID)
 	if err != nil {

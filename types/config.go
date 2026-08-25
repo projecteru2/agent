@@ -52,9 +52,10 @@ type Config struct {
 
 	CheckOnlyMine bool `yaml:"check_only_mine" default:"false"`
 
-	Store   string `yaml:"store" default:"grpc"`
-	Runtime string `yaml:"runtime" default:"docker"`
-	MetaDir string `yaml:"meta_dir" default:"/run/eru/workloads"`
+	Store    string `yaml:"store" default:"grpc"`
+	Runtime  string `yaml:"runtime" default:"docker"`
+	MetaDir  string `yaml:"meta_dir" default:"/run/eru/workloads"`
+	StateDir string `yaml:"state_dir" default:"/var/lib/eru-agent"`
 
 	Auth   coretypes.AuthConfig `yaml:"auth"`
 	Docker DockerConfig

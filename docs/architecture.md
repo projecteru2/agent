@@ -51,7 +51,12 @@ If the stream errors the manager waits `global_connection_timeout` and resubscri
 
 **Metrics.** Each running workload gets one sampling goroutine, started when the workload is first seen running and cancelled on its die event. The sampler reads the workload's cgroup v2 files and its netns counters directly, so a tick costs a handful of small file reads and no call to any daemon. See [metrics](metrics.md).
 
-**Attach.** A source that streams a workload's output implements `source.Attacher`; for each running workload the manager opens its stdout and stderr and pumps them line by line. Each line becomes a JSON record:
+**Logs.** There are two ways a workload's output reaches the agent, and the source decides which.
+
+- **Attach** — a source that streams output implements `source.Attacher`; for each running workload the manager opens its stdout and stderr and pumps them line by line. This is the Docker path.
+- **Journal** — every other source logs to journald. The agent runs one `journalctl --follow --output=json` child process for the whole node, matching `eru-*` units or the `eru` syslog identifier, and routes each record to a workload by its `ERU_ID` field or by its unit. One reader per node replaces one attach per workload, and a cursor persisted under `state_dir` means an agent restart resumes where it stopped instead of losing the lines in between. journald's format is only readable through libsystemd, so the system tool is the reader; the agent logs that requirement at debug level on startup.
+
+Either way, each line becomes the same JSON record:
 
 ```json
 {

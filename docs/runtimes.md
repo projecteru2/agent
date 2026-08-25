@@ -7,13 +7,13 @@
 | List workloads | yes | yes | yes |
 | Event stream | yes | yes | scripted |
 | Daemon liveness ping | yes | yes | scripted |
-| Attach and forward logs | yes | no | yes |
+| Streams its own output (attach) | yes | no | yes |
 | Cgroup path, so per-workload metrics | yes | no | no |
 | Health check address | yes | yes | scripted |
 
 `mocks` needs neither Docker nor yavirt and is what the test suite runs against; pair it with `store: mocks` to bring the agent up with no core at all.
 
-Health checks and metrics are not a source's business: the source yields the workload's probe address, cgroup directory and netns pid, and the collectors do the rest, identically for every runtime.
+A source that does not attach has its workloads' logs read from the journal instead; see [architecture](architecture.md). Health checks and metrics are not a source's business either: the source yields the workload's probe address, cgroup directory and netns pid, and the collectors do the rest, identically for every runtime.
 
 ## Docker
 

@@ -32,6 +32,7 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 		{"store default", config.Store, "grpc"},
 		{"runtime default", config.Runtime, "docker"},
 		{"meta dir default", config.MetaDir, "/run/eru/workloads"},
+		{"state dir default", config.StateDir, "/var/lib/eru-agent"},
 		{"duration default", config.GlobalConnectionTimeout, 5 * time.Second},
 		{"metrics step default", config.Metrics.Step, int64(10)},
 		{"default in a section the file omits", config.HealthCheck.Interval, 60},
