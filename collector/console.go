@@ -87,10 +87,8 @@ func (c *Console) pump(ctx context.Context, handle func(*Entry)) (bool, error) {
 		return false, err
 	}
 	defer func() { _ = conn.Close() }()
-	go func() {
-		<-ctx.Done()
-		_ = conn.Close()
-	}()
+	stop := context.AfterFunc(ctx, func() { _ = conn.Close() })
+	defer stop()
 
 	reader := bufio.NewReaderSize(conn, scanBufferSize)
 	for {
