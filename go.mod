@@ -6,7 +6,6 @@ require (
 	github.com/CMGS/statsd v0.0.0-20160223095033-48c421b3c1ab
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/docker/docker v28.5.2+incompatible
-	github.com/docker/go-units v0.5.0
 	github.com/jinzhu/configor v1.2.2
 	github.com/projecteru2/core v0.0.0-20260825005017-ee20dafdc9ea
 	github.com/projecteru2/libyavirt v0.0.0-20231128023216-96fef06a6ca4
@@ -35,6 +34,7 @@ require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/go-connections v0.8.1 // indirect
+	github.com/docker/go-units v0.5.0 // indirect
 	github.com/ebitengine/purego v0.10.2 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/getsentry/sentry-go v0.48.0 // indirect

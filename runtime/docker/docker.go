@@ -19,7 +19,6 @@ import (
 	enginefilters "github.com/docker/docker/api/types/filters"
 	engineapi "github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
-	"github.com/docker/go-units"
 	"github.com/projecteru2/core/cluster"
 	"github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
@@ -36,7 +35,8 @@ const (
 	fieldNodeName        = "ERU_NODE_NAME"
 	fieldStoreIdentifier = "eru.coreid"
 
-	defaultNIC = "eth0"
+	defaultNIC       = "eth0"
+	attachBufferSize = 10 << 20
 )
 
 type Docker struct {
@@ -120,9 +120,8 @@ func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.R
 		return nil, nil, err
 	}
 
-	capacity, _ := units.RAMInBytes("10M")
-	outr, outw := utils.NewBufPipe(capacity)
-	errr, errw := utils.NewBufPipe(capacity)
+	outr, outw := utils.NewBufPipe(attachBufferSize)
+	errr, errw := utils.NewBufPipe(attachBufferSize)
 
 	go func() {
 		defer func() {
