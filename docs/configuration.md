@@ -33,9 +33,11 @@ docker:
   endpoint: unix:///var/run/docker.sock
 ```
 
-`endpoint` is the local Docker API, either a unix socket path or a `tcp://host:port` address. The agent talks Docker API version 1.35.
+`endpoint` is the local Docker API, either a unix socket path or a `tcp://host:port` address. The agent negotiates the API version with the daemon on its first call, so it works against any daemon from API 1.40 up.
 
 ## `yavirt`
+
+yavirt is archived upstream; this section only matters for clusters that still run guests.
 
 ```yaml
 yavirt:

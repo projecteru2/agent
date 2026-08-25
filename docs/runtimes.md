@@ -15,7 +15,7 @@
 
 ## Docker
 
-The agent talks to the local Docker API at `docker.endpoint` using API version 1.35, so it works against any reasonably modern daemon.
+The agent talks to the local Docker API at `docker.endpoint`, negotiating the API version with the daemon on its first call. The client supports API 1.40 and up.
 
 **Which containers it manages.** Every list and every event subscription is filtered by the eru mark label, so containers that eru did not create are invisible to the agent. `check_only_mine: true` narrows that further to containers belonging to this node. There are two ways to express "belonging":
 
@@ -31,6 +31,8 @@ The label path is the faster one and is the direction this is heading; it requir
 **Resources.** cpu is `CpuQuota / CpuPeriod` when both are set, otherwise the host cpu count. Memory is the larger of the container's memory limit and reservation, falling back to host total memory when neither is set.
 
 ## Yavirt
+
+[yavirt](https://github.com/projecteru2/yavirt) and its client library are archived upstream. The runtime stays in the agent for clusters that still run guests, and gets no new features.
 
 The agent talks to yavirt over gRPC at `yavirt.endpoint`.
 

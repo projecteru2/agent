@@ -14,7 +14,7 @@ Eru's per-node agent. It watches the workloads a node runs — Docker containers
 - **Log forwarding** — attaches to every running workload and ships each line as a JSON record to `tcp://`, `udp://` or `journal://` targets, sharded over several targets by workload id.
 - **Live log tailing** — `GET /log/?app=<name>` streams the logs of one application straight off the node.
 - **Prometheus metrics** — per-workload cpu, memory, per-nic network and per-device block io gauges on `/metrics`, optionally pushed to statsd as well.
-- **Two runtimes** — Docker and [yavirt](https://github.com/projecteru2/yavirt), selected by config; plus a mock runtime and store for development.
+- **Two runtimes** — Docker, plus [yavirt](https://github.com/projecteru2/yavirt) for virtual machines, kept for clusters that still run guests now that yavirt is archived; a mock runtime and store cover development.
 
 ## Quick start
 
@@ -41,8 +41,9 @@ See [installation](docs/installation.md) for the systemd unit and [configuration
 
 - [core](https://github.com/projecteru2/core) — the scheduler this agent reports to
 - [cli](https://github.com/projecteru2/cli) — command line client for core
-- [yavirt](https://github.com/projecteru2/yavirt) — the virtual machine runtime
 - [resource-extend](https://github.com/projecteru2/resource-extend) — extra resource plugins for core
+- [quickstart](https://github.com/projecteru2/quickstart) — Ansible playbook that stands up a cluster, this agent included
+- [footstone](https://github.com/projecteru2/footstone) — the build and lambda images Eru runs code in
 
 ## Development
 
