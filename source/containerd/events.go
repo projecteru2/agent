@@ -2,6 +2,7 @@ package containerd
 
 import (
 	"context"
+	"fmt"
 
 	apievents "github.com/containerd/containerd/api/events"
 	"github.com/containerd/containerd/v2/core/events"
@@ -14,12 +15,15 @@ import (
 
 const eventType = "container"
 
-// containerd ors its filters, so the agent subscribes with one term per topic it reacts to
-var eventFilters = []string{
-	`topic=="/tasks/start"`,
-	`topic=="/tasks/exit"`,
-	`topic=="/containers/delete"`,
-	`topic=="/containers/update"`,
+var eventTopics = []string{"/tasks/start", "/tasks/exit", "/containers/delete", "/containers/update"}
+
+// eventFilters ors one term per topic, anding the namespace onto each: the exchange carries every namespace.
+func eventFilters(namespace string) []string {
+	filters := make([]string, 0, len(eventTopics))
+	for _, topic := range eventTopics {
+		filters = append(filters, fmt.Sprintf("topic==%q,namespace==%q", topic, namespace))
+	}
+	return filters
 }
 
 // relay turns the daemon's event stream into the workload events the manager handles.

@@ -67,6 +67,15 @@ func TestTranslateIgnoresWhatIsNotTheWorkload(t *testing.T) {
 	assert.Nil(t, translate(t.Context(), &events.Envelope{Topic: "/tasks/start", Event: unknownEvent{}}))
 }
 
+func TestEventFiltersScopeEveryTopicToTheNamespace(t *testing.T) {
+	assert.Equal(t, []string{
+		`topic=="/tasks/start",namespace=="eru"`,
+		`topic=="/tasks/exit",namespace=="eru"`,
+		`topic=="/containers/delete",namespace=="eru"`,
+		`topic=="/containers/update",namespace=="eru"`,
+	}, eventFilters("eru"))
+}
+
 func TestRelayForwardsEveryTranslatedEvent(t *testing.T) {
 	envelopes := make(chan *events.Envelope, 2)
 	envelopes <- envelope(t, &apievents.TaskOOM{ContainerID: "myapp_web_EAXPcM"})

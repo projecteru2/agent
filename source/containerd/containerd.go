@@ -82,7 +82,7 @@ func (c *Containerd) Get(ctx context.Context, ID string) (*source.Workload, erro
 }
 
 func (c *Containerd) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage, <-chan error) {
-	envelopes, errs := c.client.Subscribe(ctx, eventFilters...)
+	envelopes, errs := c.client.Subscribe(ctx, eventFilters(c.config.Runtimes.Containerd.Namespace)...)
 	return relay(ctx, envelopes, errs)
 }
 
