@@ -52,6 +52,30 @@ func TestCollectRetriesAfterAFailedSample(t *testing.T) {
 	assert.Eventually(t, func() bool { return sampling(w.ID) }, sampleTimeout, samplePoll)
 }
 
+func TestNetStatsSkipTheHostLookupForAVMBeforeItsFirstStart(t *testing.T) {
+	c := &Collector{procRoot: "testdata/proc"}
+	w := &source.Workload{ID: "not-started-yet", HostIface: "tapXBBR7U22-0", HostIfaceMirrored: true}
+
+	assert.Nil(t, c.netStats(t.Context(), w))
+}
+
+func TestNetStatsSurviveANamespaceThatIsGone(t *testing.T) {
+	c := &Collector{procRoot: "testdata/proc"}
+	w := &source.Workload{ID: "netns-gone", NetnsPID: 4321}
+
+	assert.Nil(t, c.netStats(t.Context(), w))
+}
+
+func TestSampleKeepsTheCgroupGaugesWhenTheNetnsIsGone(t *testing.T) {
+	c := &Collector{procRoot: "testdata/proc"}
+	w := &source.Workload{ID: "netns-gone", CgroupPath: "testdata/cgroup", NetnsPID: 4321}
+
+	got, err := c.sample(t.Context(), w)
+	require.NoError(t, err)
+	assert.Nil(t, got.net)
+	assert.NotZero(t, got.mem.Current)
+}
+
 func TestCollectorCachesTheNodeCPUTimes(t *testing.T) {
 	c := &Collector{config: &types.Config{}, procRoot: "testdata/proc"}
 
