@@ -30,6 +30,8 @@ Multi-arch images are published to Docker Hub and ghcr on every tag, and a `sha`
 
 ```bash
 docker run -d --name eru-agent --net host --privileged --restart always \
+  --cgroupns=host \
+  -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
   -v /sys:/sys:ro \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /proc/:/hostProc/ \
@@ -37,7 +39,7 @@ docker run -d --name eru-agent --net host --privileged --restart always \
   projecteru2/agent /usr/bin/eru-agent
 ```
 
-The image sets `AGENT_IN_DOCKER=1`. With that variable set the agent reads host process state from `/hostProc` instead of `/proc`, which is why `/proc` has to be bind mounted. `--net host` is required so the agent can reach the workload ports it health checks.
+The image sets `AGENT_IN_DOCKER=1`. With that variable set the agent reads host process state from `/hostProc` instead of `/proc`, which is why `/proc` has to be bind mounted. `--cgroupns=host` and the `/sys/fs/cgroup` mount are what let it read a workload's cgroup for metrics; without them every workload reports none. `--net host` is required so the agent can reach the workload ports it health checks.
 
 ## systemd
 

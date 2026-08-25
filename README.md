@@ -14,7 +14,7 @@ Eru's per-node agent. It watches the workloads a node runs — Docker containers
 - **Log forwarding** — ships each line as a JSON record to `tcp://`, `udp://` or `journal://` targets, sharded over several targets by workload id: attached per container, or read from the node's journal with a persisted cursor for everything else.
 - **Live log tailing** — `GET /log/?app=<name>` streams the logs of one application straight off the node.
 - **Prometheus metrics** — per-workload cpu, memory, per-nic network and per-device block io gauges on `/metrics`, optionally pushed to statsd as well. Sampled straight from cgroup v2 files, so a tick makes no call to any daemon.
-- **Runtimes per node** — a node declares the runtimes it hosts: Docker containers, systemd process pods, or both; the heartbeat needs every one of them alive. A mock runtime and store cover development.
+- **Runtimes per node** — a node declares the runtimes it hosts under a required `runtimes:` section: Docker containers, systemd process pods, or both; the heartbeat needs every one of them alive. The old `runtime:` and `docker:` keys are gone, with no compatibility shim. A mock runtime and store cover development.
 
 ## Quick start
 
@@ -28,6 +28,8 @@ Or from the published image, on a node that runs Docker:
 
 ```bash
 docker run -d --name eru-agent --net host --privileged --restart always \
+  --cgroupns=host \
+  -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
   -v /sys:/sys:ro \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /proc/:/hostProc/ \

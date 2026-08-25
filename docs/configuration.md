@@ -31,6 +31,8 @@ auth:
 
 Which runtimes this node hosts. Name only the ones it actually runs: **every runtime listed here must be reachable**, otherwise the node heartbeat stops and core expires the node. The agent refuses to start with the section empty.
 
+This section is required and replaces the old top-level `runtime:` and `docker:` keys. There is no compatibility shim: a config that still carries those keys is parsed with them **ignored**, leaves `runtimes` empty and fails startup. Rewrite them.
+
 ```yaml
 runtimes:
   docker:
@@ -45,6 +47,16 @@ runtimes:
 | `mocks` | none — the scripted runtime the test suite runs against; pair it with `store: mocks` to bring the agent up with neither a runtime nor a core | scripted |
 
 A node listing several runtimes reports the union of their workloads, and merges their event streams into one; a failure in any of them tears the subscription down and the agent resubscribes to all of them.
+
+### Running the agent in a container
+
+Metrics are read out of the workload's own cgroup, which the agent has to be able to see. A containerized agent therefore needs its runtime's cgroup namespace and a mount of the host hierarchy:
+
+```
+--cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:ro
+```
+
+Without `--cgroupns=host` the agent resolves `/proc/<pid>/cgroup` inside its own namespace and finds nothing at those paths, so every workload reports no metrics. `AGENT_IN_DOCKER` plus a `/proc` bind mount at `/hostProc` covers the process side; this covers the cgroup side.
 
 ## `healthcheck`
 
