@@ -49,7 +49,7 @@ func TestReadRendersAVMWorkload(t *testing.T) {
 	require.NoError(t, err)
 
 	w := f.Workload(true)
-	assert.Equal(t, "/sys/fs/cgroup/cocoon.slice/cocoon-"+vmWorkload+".scope", w.CgroupPath)
+	assert.Equal(t, "/sys/fs/cgroup/cocoon.slice/vm-"+cocoonVMID+".scope", w.CgroupPath)
 	assert.Equal(t, "tap-"+vmWorkload, w.HostIface)
 	assert.Zero(t, w.NetnsPID)
 	assert.Equal(t, "10.0.0.9", w.LocalIP)

@@ -12,7 +12,7 @@
   "healthcheck": {"tcp_ports": ["22"], "http_port": "80", "http_url": "/healthz", "http_code": 200},
   "publish": ["22"],
   "networks": {"eru-cni": "10.0.0.9"},
-  "cgroup": "/sys/fs/cgroup/cocoon.slice/cocoon-3c4d5e6f708192a3b4c5d6e7f8091a2b.scope",
+  "cgroup": "/sys/fs/cgroup/cocoon.slice/vm-01k3n8qz7m4vx9pbc2ry6dth5w.scope",
   "netns_pid": 0,
   "iface": "tap-3c4d5e6f708192a3b4c5d6e7f8091a2b",
   "log": {"console_socket": "/var/lib/cocoon/run/ch/01k3n8qz7m4vx9pbc2ry6dth5w/console.sock"}
