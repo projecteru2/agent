@@ -74,7 +74,7 @@ func newSource(ctx context.Context, config *types.Config, nodeIP, storeIdentifie
 		sources = append(sources, src)
 	}
 	if config.Runtimes.Cocoon != nil {
-		src, err := cocoon.New(ctx, config)
+		src, err := cocoon.GetClient(ctx, config)
 		if err != nil {
 			return nil, err
 		}
