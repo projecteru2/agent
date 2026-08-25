@@ -19,7 +19,6 @@ type netStat struct {
 	DropOut     uint64
 }
 
-// netStatsFromProc reads every interface of the netns pid lives in.
 func netStatsFromProc(procRoot string, pid int) ([]netStat, error) {
 	lines, err := readLines(filepath.Join(procRoot, strconv.Itoa(pid), "net", "dev"))
 	if err != nil {
@@ -54,7 +53,6 @@ func netStatsFromProc(procRoot string, pid int) ([]netStat, error) {
 	return stats, nil
 }
 
-// netStatsFromIface reads the counters of one host interface from sysfs.
 func netStatsFromIface(sysRoot, iface string) ([]netStat, error) {
 	dir := filepath.Join(sysRoot, iface, "statistics")
 	stat := netStat{Name: iface}

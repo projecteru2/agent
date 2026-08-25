@@ -105,7 +105,7 @@ func (j *Journal) read(ctx context.Context, handle func(*Entry)) error {
 	for scanner.Scan() {
 		record := &journalRecord{}
 		if err := json.Unmarshal(scanner.Bytes(), record); err != nil {
-			logger.Errorf(ctx, err, "failed to decode a journal record")
+			logger.Error(ctx, err, "failed to decode a journal record")
 			continue
 		}
 		handle(record.entry())

@@ -18,6 +18,8 @@ import (
 const (
 	labelNIC = "nic"
 	labelDev = "dev"
+
+	metricMemMaxUsage = "mem_max_usage"
 )
 
 var (
@@ -32,7 +34,7 @@ var (
 		{"cpu_container_sys_usage", "cpu sys usage in container view.", "", "cpu_container_sys_usage"},
 		{"cpu_container_user_usage", "cpu user usage in container view.", "", "cpu_container_user_usage"},
 		{"mem_usage", "memory usage.", "", "mem_usage"},
-		{"mem_max_usage", "memory max usage.", "", "mem_max_usage"},
+		{metricMemMaxUsage, "memory max usage.", "", metricMemMaxUsage},
 		{"mem_rss", "memory rss.", "", "mem_rss"},
 		{"mem_percent", "memory percent.", "", "mem_percent"},
 		{"mem_rss_percent", "memory rss percent.", "", "mem_rss_percent"},
@@ -153,7 +155,7 @@ func (m *MetricsClient) CPUContainerUserUsage(i float64) { m.set("cpu_container_
 
 func (m *MetricsClient) MemUsage(i float64) { m.set("mem_usage", i) }
 
-func (m *MetricsClient) MemMaxUsage(i float64) { m.set("mem_max_usage", i) }
+func (m *MetricsClient) MemMaxUsage(i float64) { m.set(metricMemMaxUsage, i) }
 
 func (m *MetricsClient) MemRss(i float64) { m.set("mem_rss", i) }
 

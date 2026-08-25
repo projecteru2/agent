@@ -40,7 +40,7 @@ func (s *sample) unsupported() []string {
 	if s.mem.HasPeak {
 		return nil
 	}
-	return []string{"mem_max_usage"}
+	return []string{metricMemMaxUsage}
 }
 
 // Collector samples the cgroup and netns counters of the workloads a source yields.

@@ -57,7 +57,6 @@ func (m *Manager) checkOneWorkload(ctx context.Context, w *source.Workload) bool
 	return status.Healthy
 }
 
-// workloadStatus probes the workload and maps what the source knows onto the status core stores.
 func (m *Manager) workloadStatus(ctx context.Context, w *source.Workload) (*types.WorkloadStatus, error) {
 	labels, err := json.Marshal(w.Meta.Labels)
 	if err != nil {
