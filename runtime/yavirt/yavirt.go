@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/projecteru2/core/cluster"
@@ -114,7 +113,7 @@ func (y *Yavirt) GetStatus(ctx context.Context, ID string, checkHealth bool) (*t
 	status := &types.WorkloadStatus{
 		ID:        guest.ID,
 		Running:   guest.Running,
-		Healthy:   guest.Running && guest.HealthCheck == nil,
+		Healthy:   guest.Running,
 		Networks:  guest.Networks,
 		Extension: bytes,
 		Nodename:  y.config.HostName,
@@ -152,10 +151,6 @@ func (y *Yavirt) IsDaemonRunning(ctx context.Context) bool {
 	return true
 }
 
-func (y *Yavirt) Name() string {
-	return "yavirt"
-}
-
 func (y *Yavirt) needSkip(ID string) bool {
 	return slices.ContainsFunc(y.skipRegexp, func(reg *regexp.Regexp) bool { return reg.MatchString(ID) })
 }
@@ -188,23 +183,10 @@ func (y *Yavirt) detectWorkload(ctx context.Context, ID string) (*Guest, error) 
 	}
 
 	return &Guest{
-		ID:            guest.ID,
-		Status:        guest.Status,
-		TransitStatus: guest.TransitStatus,
-		CreateTime:    guest.CreateTime,
-		TransitTime:   guest.TransitTime,
-		UpdateTime:    guest.UpdateTime,
-		CPU:           guest.CPU,
-		Mem:           guest.Mem,
-		Storage:       guest.Storage,
-		ImageID:       guest.ImageID,
-		ImageName:     guest.ImageName,
-		ImageUser:     guest.ImageUser,
-		Networks:      guest.Networks,
-		Labels:        guest.Labels,
-		IPs:           guest.IPs,
-		Hostname:      guest.Hostname,
-		Running:       guest.Running,
-		once:          sync.Once{},
+		ID:       guest.ID,
+		Networks: guest.Networks,
+		Labels:   guest.Labels,
+		IPs:      guest.IPs,
+		Running:  guest.Running,
 	}, nil
 }

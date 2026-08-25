@@ -14,12 +14,11 @@ import (
 	"github.com/projecteru2/agent/types"
 )
 
-const Discard = "__discard__"
+const (
+	Discard = "__discard__"
 
-var (
-	KeepaliveInterval = time.Second * 30
-
-	CloseWaitInterval = time.Second * 5
+	keepaliveInterval = time.Second * 30
+	closeWaitInterval = time.Second * 5
 )
 
 type Writer struct {
@@ -33,10 +32,7 @@ type Writer struct {
 
 func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, err error) {
 	if addr == Discard {
-		return &Writer{
-			stdout: stdout,
-			enc:    NewStreamEncoder(discard{}),
-		}, nil
+		return &Writer{stdout: stdout}, nil
 	}
 	logger := log.WithFunc("logs.NewWriter")
 
@@ -110,24 +106,8 @@ func (w *Writer) withRLock(f func()) {
 	f()
 }
 
-func (w *Writer) createUDPEncoder() (Encoder, error) {
-	udpAddr, err := net.ResolveUDPAddr("udp", w.addr)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := net.DialUDP("udp", nil, udpAddr)
-	if err != nil {
-		return nil, err
-	}
-	return NewStreamEncoder(conn), nil
-}
-
-func (w *Writer) createTCPEncoder() (Encoder, error) {
-	tcpAddr, err := net.ResolveTCPAddr("tcp", w.addr)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+func (w *Writer) createStreamEncoder(network string) (Encoder, error) {
+	conn, err := net.Dial(network, w.addr)
 	if err != nil {
 		return nil, err
 	}
@@ -136,10 +116,8 @@ func (w *Writer) createTCPEncoder() (Encoder, error) {
 
 func (w *Writer) createEncoder(ctx context.Context) (enc Encoder, err error) {
 	switch w.scheme {
-	case "udp":
-		enc, err = w.createUDPEncoder()
-	case "tcp":
-		enc, err = w.createTCPEncoder()
+	case "udp", "tcp":
+		enc, err = w.createStreamEncoder(w.scheme)
 	case "journal":
 		enc, err = CreateJournalEncoder()
 	default:
@@ -173,15 +151,15 @@ func (w *Writer) reconnect(ctx context.Context) {
 }
 
 func (w *Writer) keepalive(ctx context.Context) {
-	timer := time.NewTimer(KeepaliveInterval)
+	timer := time.NewTimer(keepaliveInterval)
 	for {
 		select {
 		case <-timer.C:
 			w.reconnect(ctx)
-			timer.Reset(KeepaliveInterval)
+			timer.Reset(keepaliveInterval)
 		case <-ctx.Done():
 			// give the pending writes a chance to drain before closing
-			time.Sleep(CloseWaitInterval)
+			time.Sleep(closeWaitInterval)
 			if err := w.close(ctx); err != nil {
 				log.WithFunc("logs.keepalive").Errorf(ctx, err, "failed to close writer %s", w.addr)
 			}

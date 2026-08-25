@@ -29,8 +29,6 @@ type Manager struct {
 	startingWorkloads  map[string]*utils.RetryTask
 
 	logBroadcaster *logBroadcaster
-
-	storeIdentifier string
 }
 
 func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
@@ -49,8 +47,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		logBroadcaster:    newLogBroadcaster(),
 		startingWorkloads: map[string]*utils.RetryTask{},
 	}
-	m.storeIdentifier = m.store.GetIdentifier(ctx)
-	m.baseFilter = newBaseFilter(config, m.storeIdentifier)
+	m.baseFilter = newBaseFilter(config, m.store.GetIdentifier(ctx))
 	return m, nil
 }
 

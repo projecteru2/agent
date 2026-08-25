@@ -251,10 +251,6 @@ func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
 	return true
 }
 
-func (d *Docker) Name() string {
-	return "docker"
-}
-
 func (d *Docker) getFilterArgs(filters map[string]string) engineapi.Filters {
 	f := make(engineapi.Filters)
 

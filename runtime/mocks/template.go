@@ -180,7 +180,6 @@ func FromTemplate() runtime.Runtime {
 		n.withLock(func() { running = n.daemonRunning })
 		return running
 	})
-	n.On("Name").Return("NERV")
 
 	return n
 }

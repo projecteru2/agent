@@ -86,7 +86,7 @@ func TestNewWriters(t *testing.T) {
 			assert.NoError(t, err)
 		}(addr, expectedErr)
 	}
-	time.Sleep(CloseWaitInterval + 2*time.Second)
+	time.Sleep(closeWaitInterval + 2*time.Second)
 }
 
 func TestReconnect(t *testing.T) {
