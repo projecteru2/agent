@@ -12,6 +12,7 @@ import (
 	corestore "github.com/projecteru2/agent/store/core"
 	storemocks "github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
+	"github.com/projecteru2/agent/utils"
 )
 
 // Clients holds the shared per-process clients every manager runs on.
@@ -27,11 +28,16 @@ func NewClients(ctx context.Context, config *types.Config) (*Clients, error) {
 		return nil, err
 	}
 
-	if _, err = st.GetNode(ctx, config.HostName); err != nil {
+	node, err := st.GetNode(ctx, config.HostName)
+	if err != nil {
 		return nil, err
 	}
+	nodeIP := utils.GetIP(node.Endpoint)
+	if nodeIP == "" {
+		nodeIP = common.LocalIP
+	}
 
-	src, err := newSource(ctx, config, st.GetIdentifier(ctx))
+	src, err := newSource(ctx, config, nodeIP, st.GetIdentifier(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -49,11 +55,11 @@ func newStore(ctx context.Context, config *types.Config) (store.Store, error) {
 	}
 }
 
-func newSource(ctx context.Context, config *types.Config, storeIdentifier string) (source.Source, error) {
+func newSource(ctx context.Context, config *types.Config, nodeIP, storeIdentifier string) (source.Source, error) {
 	var sources []source.Source
 
 	if config.Runtimes.Containerd != nil {
-		src, err := containerd.GetClient(ctx, config, storeIdentifier)
+		src, err := containerd.GetClient(ctx, config, nodeIP, storeIdentifier)
 		if err != nil {
 			return nil, err
 		}

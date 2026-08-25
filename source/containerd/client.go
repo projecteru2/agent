@@ -14,7 +14,7 @@ var (
 )
 
 // GetClient returns the process-wide containerd source, creating it on first call.
-func GetClient(ctx context.Context, config *types.Config, storeIdentifier string) (*Containerd, error) {
-	once.Do(func() { client, clientErr = New(ctx, config, storeIdentifier) })
+func GetClient(ctx context.Context, config *types.Config, nodeIP, storeIdentifier string) (*Containerd, error) {
+	once.Do(func() { client, clientErr = New(ctx, config, nodeIP, storeIdentifier) })
 	return client, clientErr
 }

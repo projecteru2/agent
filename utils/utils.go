@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -115,4 +116,13 @@ func WithTimeout(ctx context.Context, timeout time.Duration, f func(ctx2 context
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	f(ctx)
+}
+
+// GetIP returns the host of a node endpoint, which is the only address a node record carries.
+func GetIP(endpoint string) string {
+	u, err := url.Parse(endpoint)
+	if err != nil {
+		return ""
+	}
+	return u.Hostname()
 }

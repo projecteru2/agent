@@ -15,8 +15,11 @@ import (
 	"github.com/projecteru2/agent/source"
 )
 
-func TestWorkloadFromLabelsAndEnv(t *testing.T) {
-	w, err := workload(t.Context(), "myapp_web_EAXPcM", eruLabels(t), []string{"ERU_POD=prod", "ERU_NODE_NAME=node-1", "APP_NAME=myapp"})
+func TestWorkloadFromLabelsAndSpec(t *testing.T) {
+	c := &Containerd{nodeIP: "10.0.0.1"}
+	s := spec{env: []string{"ERU_POD=prod", "ERU_NODE_NAME=node-1", "APP_NAME=myapp"}}
+
+	w, err := c.workload(t.Context(), "myapp_web_EAXPcM", eruLabels(t), s)
 	require.NoError(t, err)
 
 	assert.Equal(t, "myapp_web_EAXPcM", w.ID)
@@ -36,17 +39,41 @@ func TestWorkloadFromLabelsAndEnv(t *testing.T) {
 	}, w.Meta)
 }
 
-func TestWorkloadOnTheHostNetworkProbesLocalhost(t *testing.T) {
-	w, err := workload(t.Context(), "myapp_web_EAXPcM", map[string]string{cluster.ERUMark: "1"}, nil)
+func TestWorkloadOnTheHostNetworkReportsTheNodeIP(t *testing.T) {
+	c := &Containerd{nodeIP: "10.0.0.1"}
+
+	w, err := c.workload(t.Context(), "myapp_web_EAXPcM", map[string]string{cluster.ERUMark: "1"}, spec{hostNetwork: true})
 	require.NoError(t, err)
 
+	assert.Equal(t, map[string]string{"host": "10.0.0.1"}, w.Meta.Networks)
 	assert.Equal(t, common.LocalIP, w.LocalIP)
-	assert.Empty(t, w.Meta.Networks)
 	assert.Nil(t, w.Meta.HealthCheck)
 }
 
+func TestWorkloadWithANetworkNamespaceButNoAddressYet(t *testing.T) {
+	c := &Containerd{nodeIP: "10.0.0.1"}
+
+	w, err := c.workload(t.Context(), "myapp_web_EAXPcM", map[string]string{cluster.ERUMark: "1"}, spec{})
+	require.NoError(t, err)
+
+	assert.Empty(t, w.Meta.Networks)
+	assert.Equal(t, common.LocalIP, w.LocalIP)
+}
+
+func TestWorkloadKeepsTheCNIAddressOfAHostNetworkSpec(t *testing.T) {
+	c := &Containerd{nodeIP: "10.0.0.1"}
+
+	w, err := c.workload(t.Context(), "myapp_web_EAXPcM", eruLabels(t), spec{hostNetwork: true})
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]string{"eru-cni": "10.0.0.5"}, w.Meta.Networks)
+	assert.Equal(t, "10.0.0.5", w.LocalIP)
+}
+
 func TestWorkloadRejectsAnIDThatIsNotAWorkloadName(t *testing.T) {
-	_, err := workload(t.Context(), "web_EAXPcM", map[string]string{cluster.ERUMark: "1"}, nil)
+	c := &Containerd{nodeIP: "10.0.0.1"}
+
+	_, err := c.workload(t.Context(), "web_EAXPcM", map[string]string{cluster.ERUMark: "1"}, spec{})
 	assert.ErrorContains(t, err, "invalid workload name")
 }
 
@@ -61,25 +88,41 @@ func TestNetworksReadsOnlyTheHookLabels(t *testing.T) {
 	assert.Equal(t, map[string]string{"eru-cni": "10.0.0.5", "second": "10.0.1.5"}, nets)
 }
 
-func TestSpecEnv(t *testing.T) {
-	spec, err := typeurl.MarshalAny(&specs.Spec{Process: &specs.Process{Env: []string{"ERU_POD=prod"}}})
+func TestReadSpecOfAContainerWithItsOwnNetwork(t *testing.T) {
+	raw, err := typeurl.MarshalAny(&specs.Spec{
+		Process: &specs.Process{Env: []string{"ERU_POD=prod"}},
+		Linux:   &specs.Linux{Namespaces: []specs.LinuxNamespace{{Type: specs.MountNamespace}, {Type: specs.NetworkNamespace}}},
+	})
 	require.NoError(t, err)
 
-	env, err := specEnv(spec)
+	s, err := readSpec(raw)
 	require.NoError(t, err)
-	assert.Equal(t, []string{"ERU_POD=prod"}, env)
+	assert.Equal(t, []string{"ERU_POD=prod"}, s.env)
+	assert.False(t, s.hostNetwork)
 }
 
-func TestSpecEnvOfAContainerWithoutAProcess(t *testing.T) {
-	env, err := specEnv(nil)
+func TestReadSpecOfAContainerSharingTheNodeNetwork(t *testing.T) {
+	raw, err := typeurl.MarshalAny(&specs.Spec{
+		Linux: &specs.Linux{Namespaces: []specs.LinuxNamespace{{Type: specs.MountNamespace}}},
+	})
 	require.NoError(t, err)
-	assert.Nil(t, env)
 
-	spec, err := typeurl.MarshalAny(&specs.Spec{})
+	s, err := readSpec(raw)
 	require.NoError(t, err)
-	env, err = specEnv(spec)
+	assert.Nil(t, s.env)
+	assert.True(t, s.hostNetwork)
+}
+
+func TestReadSpecOfAContainerWithoutOne(t *testing.T) {
+	s, err := readSpec(nil)
 	require.NoError(t, err)
-	assert.Nil(t, env)
+	assert.Equal(t, spec{}, s)
+
+	raw, err := typeurl.MarshalAny(&specs.Spec{})
+	require.NoError(t, err)
+	s, err = readSpec(raw)
+	require.NoError(t, err)
+	assert.Equal(t, spec{}, s)
 }
 
 func eruLabels(t *testing.T) map[string]string {

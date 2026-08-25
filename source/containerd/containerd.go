@@ -23,10 +23,11 @@ type Containerd struct {
 	client *containerd.Client
 	config *types.Config
 
+	nodeIP string
 	filter string
 }
 
-func New(ctx context.Context, config *types.Config, storeIdentifier string) (*Containerd, error) {
+func New(ctx context.Context, config *types.Config, nodeIP, storeIdentifier string) (*Containerd, error) {
 	runtime := config.Runtimes.Containerd
 	logger := log.WithFunc("containerd.New").WithField("socket", runtime.Socket)
 	logger.Infof(ctx, "containerd source starting in namespace %s", runtime.Namespace)
@@ -36,7 +37,7 @@ func New(ctx context.Context, config *types.Config, storeIdentifier string) (*Co
 		logger.Error(ctx, err, "failed to dial containerd")
 		return nil, err
 	}
-	return &Containerd{client: client, config: config, filter: newFilter(config, storeIdentifier)}, nil
+	return &Containerd{client: client, config: config, nodeIP: nodeIP, filter: newFilter(config, storeIdentifier)}, nil
 }
 
 func (c *Containerd) List(ctx context.Context) ([]*source.Workload, error) {
@@ -110,11 +111,11 @@ func (c *Containerd) inspect(ctx context.Context, container containerd.Container
 		return nil, common.ErrInvalidContainer
 	}
 
-	env, err := specEnv(info.Spec)
+	s, err := readSpec(info.Spec)
 	if err != nil {
 		return nil, err
 	}
-	w, err := workload(ctx, info.ID, info.Labels, env)
+	w, err := c.workload(ctx, info.ID, info.Labels, s)
 	if err != nil {
 		return nil, err
 	}

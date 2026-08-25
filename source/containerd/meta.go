@@ -3,6 +3,7 @@ package containerd
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 
 	"github.com/containerd/typeurl/v2"
@@ -18,18 +19,52 @@ import (
 const (
 	fieldPodName  = "ERU_POD"
 	fieldNodeName = "ERU_NODE_NAME"
+
+	hostNetwork = "host"
 )
 
-// workload maps the labels and environment core wrote at create time onto one workload.
-func workload(ctx context.Context, ID string, labels map[string]string, env []string) (*source.Workload, error) {
+// spec is what the container's runtime spec says about how core configured it.
+type spec struct {
+	env         []string
+	hostNetwork bool
+}
+
+func readSpec(raw typeurl.Any) (spec, error) {
+	s := spec{}
+	if raw == nil {
+		return s, nil
+	}
+	// containerd stores the runtime spec as json, so the typeurl value is the spec itself
+	oci := &specs.Spec{}
+	if err := json.Unmarshal(raw.GetValue(), oci); err != nil {
+		return s, err
+	}
+	if oci.Process != nil {
+		s.env = oci.Process.Env
+	}
+	// a container that shares the node's network has no network namespace of its own in the spec
+	s.hostNetwork = oci.Linux != nil && !slices.ContainsFunc(oci.Linux.Namespaces, func(ns specs.LinuxNamespace) bool {
+		return ns.Type == specs.NetworkNamespace
+	})
+	return s, nil
+}
+
+// workload maps the labels and runtime spec core wrote at create time onto one workload.
+func (c *Containerd) workload(ctx context.Context, ID string, labels map[string]string, s spec) (*source.Workload, error) {
 	appname, entrypoint, ident, err := utils.GetAppInfo(ID)
 	if err != nil {
 		return nil, err
 	}
 
-	vars := normalizeEnv(env)
+	vars := normalizeEnv(s.env)
 	meta := coreutils.DecodeMetaInLabel(ctx, labels)
 	nets := networks(labels)
+
+	localIP := source.LocalIP(nets)
+	if len(nets) == 0 && s.hostNetwork {
+		// core's engines all report the node's own address for a host network workload
+		nets, localIP = map[string]string{hostNetwork: c.nodeIP}, common.LocalIP
+	}
 
 	return &source.Workload{
 		ID: ID,
@@ -46,23 +81,8 @@ func workload(ctx context.Context, ID string, labels map[string]string, env []st
 			Networks:    nets,
 		},
 		Log:     source.Log{JournalIdentifier: common.JournalIdentifier},
-		LocalIP: source.LocalIP(nets),
+		LocalIP: localIP,
 	}, nil
-}
-
-func specEnv(spec typeurl.Any) ([]string, error) {
-	if spec == nil {
-		return nil, nil
-	}
-	// containerd stores the runtime spec as json, so the typeurl value is the spec itself
-	s := &specs.Spec{}
-	if err := json.Unmarshal(spec.GetValue(), s); err != nil {
-		return nil, err
-	}
-	if s.Process == nil {
-		return nil, nil
-	}
-	return s.Process.Env, nil
 }
 
 // networks reads the addresses the oci hook wrote back after it ran cni.

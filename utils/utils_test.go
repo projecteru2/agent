@@ -85,6 +85,12 @@ func TestGetMaxAttemptsByTTL(t *testing.T) {
 	assert.Equal(t, GetMaxAttemptsByTTL(8), 4)
 }
 
+func TestGetIP(t *testing.T) {
+	assert.Equal(t, "10.0.0.1", GetIP("containerd://10.0.0.1:2376"))
+	assert.Equal(t, "10.0.0.1", GetIP("containerd://eru@10.0.0.1:2376"))
+	assert.Equal(t, "", GetIP("invalid-string"))
+}
+
 func TestProcRoot(t *testing.T) {
 	assert.Equal(t, "/proc", ProcRoot())
 }
