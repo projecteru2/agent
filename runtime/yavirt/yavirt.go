@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"regexp"
+	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/projecteru2/core/cluster"
@@ -40,7 +40,7 @@ func New(ctx context.Context, config *types.Config) (*Yavirt, error) {
 	for _, expr := range y.config.Yavirt.SkipGuestReportRegexps {
 		reg, err := regexp.Compile(expr)
 		if err != nil {
-			log.WithFunc("runtime.yavirt.New").Errorf(ctx, err, "failed to compile regexp %v", expr)
+			log.WithFunc("yavirt.New").Errorf(ctx, err, "failed to compile regexp %v", expr)
 			return nil, err
 		}
 		y.skipRegexp = append(y.skipRegexp, reg)
@@ -60,7 +60,7 @@ func (y *Yavirt) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 		ids, err = y.client.GetGuestIDList(ctx, yavirttypes.GetGuestIDListReq{Filters: filters})
 	})
 	if err != nil && !strings.Contains(err.Error(), "key not exists") {
-		log.WithFunc("ListWorkloadIDs").Error(ctx, err, "failed to get workload ids")
+		log.WithFunc("yavirt.ListWorkloadIDs").Error(ctx, err, "failed to get workload ids")
 		return nil, err
 	}
 	return ids, nil
@@ -97,7 +97,7 @@ func (y *Yavirt) Events(ctx context.Context, filters map[string]string) (<-chan 
 }
 
 func (y *Yavirt) GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error) {
-	logger := log.WithFunc("GetStatus").WithField("ID", ID)
+	logger := log.WithFunc("yavirt.GetStatus").WithField("ID", ID)
 	guest, err := y.detectWorkload(ctx, ID)
 	if err != nil {
 		logger.Error(ctx, err, "failed to get guest status")
@@ -113,7 +113,7 @@ func (y *Yavirt) GetStatus(ctx context.Context, ID string, checkHealth bool) (*t
 	status := &types.WorkloadStatus{
 		ID:        guest.ID,
 		Running:   guest.Running,
-		Healthy:   guest.Running && guest.HealthCheck == nil,
+		Healthy:   guest.Running,
 		Networks:  guest.Networks,
 		Extension: bytes,
 		Nodename:  y.config.HostName,
@@ -145,30 +145,21 @@ func (y *Yavirt) IsDaemonRunning(ctx context.Context) bool {
 		_, err = y.client.Info(ctx)
 	})
 	if err != nil {
-		log.WithFunc("IsDaemonRunning").Error(ctx, err, "connect to yavirt daemon failed")
+		log.WithFunc("yavirt.IsDaemonRunning").Error(ctx, err, "connect to yavirt daemon failed")
 		return false
 	}
 	return true
 }
 
-func (y *Yavirt) Name() string {
-	return "yavirt"
-}
-
 func (y *Yavirt) needSkip(ID string) bool {
-	for _, reg := range y.skipRegexp {
-		if reg.MatchString(ID) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(y.skipRegexp, func(reg *regexp.Regexp) bool { return reg.MatchString(ID) })
 }
 
 func (y *Yavirt) detectWorkload(ctx context.Context, ID string) (*Guest, error) {
 	if y.needSkip(ID) {
-		return nil, common.ErrInvaildVM
+		return nil, common.ErrInvalidVM
 	}
-	logger := log.WithFunc("detectWorkload").WithField("ID", ID)
+	logger := log.WithFunc("yavirt.detectWorkload").WithField("ID", ID)
 
 	var guest yavirttypes.Guest
 	var err error
@@ -183,32 +174,19 @@ func (y *Yavirt) detectWorkload(ctx context.Context, ID string) (*Guest, error) 
 	}
 
 	if _, ok := guest.Labels[cluster.ERUMark]; !ok {
-		return nil, common.ErrInvaildVM
+		return nil, common.ErrInvalidVM
 	}
 
 	if y.config.CheckOnlyMine && y.config.HostName != guest.Hostname {
 		logger.Debugf(ctx, "guest's hostname is %s instead of %s", guest.Hostname, y.config.HostName)
-		return nil, common.ErrInvaildVM
+		return nil, common.ErrInvalidVM
 	}
 
 	return &Guest{
-		ID:            guest.ID,
-		Status:        guest.Status,
-		TransitStatus: guest.TransitStatus,
-		CreateTime:    guest.CreateTime,
-		TransitTime:   guest.TransitTime,
-		UpdateTime:    guest.UpdateTime,
-		CPU:           guest.CPU,
-		Mem:           guest.Mem,
-		Storage:       guest.Storage,
-		ImageID:       guest.ImageID,
-		ImageName:     guest.ImageName,
-		ImageUser:     guest.ImageUser,
-		Networks:      guest.Networks,
-		Labels:        guest.Labels,
-		IPs:           guest.IPs,
-		Hostname:      guest.Hostname,
-		Running:       guest.Running,
-		once:          sync.Once{},
+		ID:       guest.ID,
+		Networks: guest.Networks,
+		Labels:   guest.Labels,
+		IPs:      guest.IPs,
+		Running:  guest.Running,
 	}, nil
 }

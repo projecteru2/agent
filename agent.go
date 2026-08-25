@@ -37,7 +37,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 		zerolog.Fatal().Err(err).Send()
 	}
 
-	logger := log.WithFunc("main")
+	logger := log.WithFunc("main.serve")
 
 	config, err := initConfig(ctx, cmd)
 	if err != nil {
@@ -52,7 +52,6 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGUSR1)
 	errChan := make(chan error, 2)
-	defer close(errChan)
 
 	var wg sync.WaitGroup
 
@@ -62,7 +61,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	}
 	wg.Go(func() {
 		if runErr := workloadsManager.Run(ctx); runErr != nil {
-			logger.Error(ctx, runErr, "[agent] workload manager failed")
+			logger.Error(ctx, runErr, "workload manager failed")
 			errChan <- runErr
 		}
 	})
@@ -73,7 +72,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	}
 	wg.Go(func() {
 		if runErr := nodeManager.Run(ctx); runErr != nil {
-			logger.Error(ctx, runErr, "[agent] node manager failed")
+			logger.Error(ctx, runErr, "node manager failed")
 			errChan <- runErr
 		}
 	})
@@ -84,15 +83,15 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	go func() {
 		select {
 		case <-ctx.Done():
-			logger.Info(ctx, "[agent] Agent exiting")
+			logger.Info(ctx, "agent exiting")
 		case runErr := <-errChan:
-			logger.Error(ctx, runErr, "[agent] Got error, exiting")
+			logger.Error(ctx, runErr, "got error, exiting")
 			cancel()
 		case sig := <-signalChan:
-			logger.Infof(ctx, "[agent] Agent caught system signal %v", sig)
+			logger.Infof(ctx, "caught system signal %v", sig)
 			if sig != syscall.SIGUSR1 {
 				if exitErr := nodeManager.Exit(ctx); exitErr != nil {
-					logger.Error(ctx, exitErr, "[agent] node manager exits with err")
+					logger.Error(ctx, exitErr, "node manager exit failed")
 				}
 			}
 			cancel()
@@ -195,7 +194,7 @@ func main() {
 				Usage:   "timeout for agent to check container's health status",
 				Sources: cli.EnvVars("ERU_AGENT_HEALTH_CHECK_TIMEOUT"),
 			},
-			&cli.IntFlag{
+			&cli.Int64Flag{
 				Name:    "health-check-cache-ttl",
 				Usage:   "ttl for container's health status in local memory",
 				Sources: cli.EnvVars("ERU_AGENT_HEALTH_CHECK_CACHE_TTL"),

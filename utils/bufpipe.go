@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"sync"
 )
@@ -24,15 +25,15 @@ func (r *PipeReader) Read(data []byte) (int, error) {
 
 RETRY:
 	n, err := r.buf.Read(data)
-	if err == io.EOF && r.rerr == nil && n == 0 {
+	if errors.Is(err, io.EOF) && r.rerr == nil && n == 0 {
 		r.cond.Wait()
 		goto RETRY
 	}
-	// io.Reader requires to always handle n > 0
+	// the io.Reader contract requires n > 0 to be handled even with an error
 	if n > 0 {
 		r.length -= int64(n)
 	}
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return n, r.rerr
 	}
 	return n, err

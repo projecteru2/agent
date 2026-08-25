@@ -13,7 +13,7 @@ import (
 type EventHandlerFunc func(context.Context, *types.WorkloadEventMessage)
 
 type EventHandler struct {
-	sync.Mutex
+	mu       sync.RWMutex
 	handlers map[string]EventHandlerFunc
 }
 
@@ -22,13 +22,13 @@ func NewEventHandler() *EventHandler {
 }
 
 func (e *EventHandler) Handle(action string, h EventHandlerFunc) {
-	e.Lock()
-	defer e.Unlock()
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.handlers[action] = h
 }
 
 func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventMessage) {
-	logger := log.WithFunc("Watch")
+	logger := log.WithFunc("workload.Watch")
 	for {
 		select {
 		case ev, ok := <-c:
@@ -36,12 +36,13 @@ func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventM
 				logger.Info(ctx, "event chan closed")
 				return
 			}
-			logger.Infof(ctx, "monitor: workload id %s action %s", ev.ID, ev.Action)
-			e.Lock()
-			if h := e.handlers[ev.Action]; h != nil {
+			logger.Infof(ctx, "workload %s action %s", ev.ID, ev.Action)
+			e.mu.RLock()
+			h := e.handlers[ev.Action]
+			e.mu.RUnlock()
+			if h != nil {
 				go h(ctx, ev)
 			}
-			e.Unlock()
 		case <-ctx.Done():
 			logger.Info(ctx, "context canceled, stop watching")
 			return

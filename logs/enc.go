@@ -2,7 +2,6 @@ package logs
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"sync"
 
@@ -38,12 +37,12 @@ func (e *StreamEncoder) Close() error {
 }
 
 type JournalEncoder struct {
-	sync.Mutex
+	mu sync.Mutex
 }
 
 func CreateJournalEncoder() (*JournalEncoder, error) {
 	if !journal.Enabled() {
-		return nil, common.ErrJournalDisable
+		return nil, common.ErrJournalDisabled
 	}
 	return &JournalEncoder{}, nil
 }
@@ -64,11 +63,10 @@ func (c *JournalEncoder) Encode(logline *types.Log) error {
 		"EXTRA":             string(extra),
 	}
 
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	p := fmt.Sprintf("message %s", logline.Data)
-	return journal.Send(p, journal.PriInfo, vars)
+	return journal.Send(logline.Data, journal.PriInfo, vars)
 }
 
 func (c *JournalEncoder) Close() error {

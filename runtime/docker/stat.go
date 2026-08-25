@@ -11,12 +11,12 @@ import (
 	"github.com/projecteru2/agent/utils"
 )
 
-func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //nolint
+func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) {
 	proc := "/proc"
 	if utils.IsDockerized() {
 		proc = "/hostProc"
 	}
-	logger := log.WithFunc("CollectWorkloadMetrics").WithField("ID", ID)
+	logger := log.WithFunc("docker.CollectWorkloadMetrics").WithField("ID", ID)
 
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
@@ -39,7 +39,7 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		logger.Error(ctx, err, "get diskio stats failed")
 		return
 	}
-	delta := float64(d.config.Metrics.Step)
+	step := float64(d.config.Metrics.Step)
 	timeout := time.Duration(d.config.Metrics.Step) * time.Second
 	tick := time.NewTicker(timeout)
 	defer tick.Stop()
@@ -49,8 +49,7 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 		addr = d.transfers.Get(container.ID, 0)
 	}
 
-	period := float64(d.config.Metrics.Step)
-	hostCPUCount := d.cpuCore * period
+	hostCPUCount := d.cpuCore * step
 
 	mClient := NewMetricsClient(addr, hostname, container)
 	defer logger.Infof(ctx, "container %s metric report stop", container.Name)
@@ -62,7 +61,7 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 			logger.Error(ctx, err, "can not refresh container meta")
 			return
 		}
-		containerCPUCount := newContainer.CPUNum * period
+		containerCPUCount := newContainer.CPUNum * step
 		timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 		newContainerCPUStats, newSystemCPUStats, newContainerNetStats, err := getStats(timeoutCtx, newContainer.ID, newContainer.Pid, proc)
@@ -76,9 +75,9 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 			return
 		}
 
-		deltaContainerCPUUsage := newContainerCPUStats.Usage - containerCPUStats.Usage      // CPU Usage in seconds
-		deltaContainerCPUSysUsage := newContainerCPUStats.System - containerCPUStats.System // Sys Usage in jiffies / tick
-		deltaContainerCPUUserUsage := newContainerCPUStats.User - containerCPUStats.User    // User Usage in jiffies / tick
+		deltaContainerCPUUsage := newContainerCPUStats.Usage - containerCPUStats.Usage      // seconds
+		deltaContainerCPUSysUsage := newContainerCPUStats.System - containerCPUStats.System // jiffies, not seconds
+		deltaContainerCPUUserUsage := newContainerCPUStats.User - containerCPUStats.User
 
 		deltaSystemCPUSysUsage := newSystemCPUStats.System - systemCPUStats.System
 		deltaSystemCPUUserUsage := newSystemCPUStats.User - systemCPUStats.User
@@ -116,26 +115,26 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 			mClient.MemPercent(float64(containerMemStats.MemUsageInBytes) / float64(newContainer.Memory))
 			mClient.MemRSSPercent(float64(containerMemStats.RSS) / float64(newContainer.Memory))
 		}
-		nics := map[string]net.IOCountersStat{}
+		nics := make(map[string]net.IOCountersStat, len(containerNetStats))
 		for _, nic := range containerNetStats {
 			nics[nic.Name] = nic
 		}
 		for _, nic := range newContainerNetStats {
-			if _, ok := nics[nic.Name]; !ok {
+			old, ok := nics[nic.Name]
+			if !ok {
 				continue
 			}
-			oldNICStats := nics[nic.Name]
-			mClient.BytesSent(nic.Name, float64(nic.BytesSent-oldNICStats.BytesSent)/delta)
-			mClient.BytesRecv(nic.Name, float64(nic.BytesRecv-oldNICStats.BytesRecv)/delta)
-			mClient.PacketsSent(nic.Name, float64(nic.PacketsSent-oldNICStats.PacketsSent)/delta)
-			mClient.PacketsRecv(nic.Name, float64(nic.PacketsRecv-oldNICStats.PacketsRecv)/delta)
-			mClient.ErrIn(nic.Name, float64(nic.Errin-oldNICStats.Errin)/delta)
-			mClient.ErrOut(nic.Name, float64(nic.Errout-oldNICStats.Errout)/delta)
-			mClient.DropIn(nic.Name, float64(nic.Dropin-oldNICStats.Dropin)/delta)
-			mClient.DropOut(nic.Name, float64(nic.Dropout-oldNICStats.Dropout)/delta)
+			mClient.BytesSent(nic.Name, float64(nic.BytesSent-old.BytesSent)/step)
+			mClient.BytesRecv(nic.Name, float64(nic.BytesRecv-old.BytesRecv)/step)
+			mClient.PacketsSent(nic.Name, float64(nic.PacketsSent-old.PacketsSent)/step)
+			mClient.PacketsRecv(nic.Name, float64(nic.PacketsRecv-old.PacketsRecv)/step)
+			mClient.ErrIn(nic.Name, float64(nic.Errin-old.Errin)/step)
+			mClient.ErrOut(nic.Name, float64(nic.Errout-old.Errout)/step)
+			mClient.DropIn(nic.Name, float64(nic.Dropin-old.Dropin)/step)
+			mClient.DropOut(nic.Name, float64(nic.Dropout-old.Dropout)/step)
 		}
-		logger.Debug(ctx, "start to get blkio stats for")
-		newRawBlkioStats, err := d.getBlkioStats(ctx, container.ID)
+		logger.Debug(ctx, "getting blkio stats")
+		newRawBlkioStats, err := d.getBlkioStats(timeoutCtx, container.ID)
 		if err != nil {
 			logger.Error(ctx, err, "get diskio stats failed")
 			return
@@ -145,31 +144,17 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 			logger.Error(ctx, err, "get diskio stats failed")
 			return
 		}
-		for _, entry := range newBlkioStats.IOServiceBytesReadRecursive {
-			mClient.IOServiceBytesRead(entry.Dev, float64(entry.Value))
-		}
-		for _, entry := range newBlkioStats.IOServiceBytesWriteRecursive {
-			mClient.IOServiceBytesWrite(entry.Dev, float64(entry.Value))
-		}
-		for _, entry := range newBlkioStats.IOServicedReadRecusive {
-			mClient.IOServicedRead(entry.Dev, float64(entry.Value))
-		}
-		for _, entry := range newBlkioStats.IOServicedWriteRecusive {
-			mClient.IOServicedWrite(entry.Dev, float64(entry.Value))
-		}
+		publishBlkIO(newBlkioStats.IOServiceBytesReadRecursive, 1, mClient.IOServiceBytesRead)
+		publishBlkIO(newBlkioStats.IOServiceBytesWriteRecursive, 1, mClient.IOServiceBytesWrite)
+		publishBlkIO(newBlkioStats.IOServicedReadRecursive, 1, mClient.IOServicedRead)
+		publishBlkIO(newBlkioStats.IOServicedWriteRecursive, 1, mClient.IOServicedWrite)
+
 		diffBlkioStats := getBlkIOMetricsDifference(blkioStats, newBlkioStats)
-		for _, entry := range diffBlkioStats.IOServiceBytesReadRecursive {
-			mClient.IOServiceBytesReadPerSecond(entry.Dev, float64(entry.Value)/delta)
-		}
-		for _, entry := range diffBlkioStats.IOServiceBytesWriteRecursive {
-			mClient.IOServiceBytesWritePerSecond(entry.Dev, float64(entry.Value)/delta)
-		}
-		for _, entry := range diffBlkioStats.IOServicedReadRecusive {
-			mClient.IOServicedReadPerSecond(entry.Dev, float64(entry.Value)/delta)
-		}
-		for _, entry := range diffBlkioStats.IOServicedWriteRecusive {
-			mClient.IOServicedWritePerSecond(entry.Dev, float64(entry.Value)/delta)
-		}
+		publishBlkIO(diffBlkioStats.IOServiceBytesReadRecursive, step, mClient.IOServiceBytesReadPerSecond)
+		publishBlkIO(diffBlkioStats.IOServiceBytesWriteRecursive, step, mClient.IOServiceBytesWritePerSecond)
+		publishBlkIO(diffBlkioStats.IOServicedReadRecursive, step, mClient.IOServicedReadPerSecond)
+		publishBlkIO(diffBlkioStats.IOServicedWriteRecursive, step, mClient.IOServicedWritePerSecond)
+
 		rawBlkioStats, blkioStats = newRawBlkioStats, newBlkioStats
 		containerCPUStats, systemCPUStats, containerNetStats = newContainerCPUStats, newSystemCPUStats, newContainerNetStats
 		if err := mClient.Send(ctx); err != nil {
@@ -184,5 +169,11 @@ func (d *Docker) CollectWorkloadMetrics(ctx context.Context, ID string) { //noli
 			removeMetricsClient(container.ID)
 			return
 		}
+	}
+}
+
+func publishBlkIO(entries []*BlkIOEntry, div float64, set func(dev string, value float64)) {
+	for _, entry := range entries {
+		set(entry.Dev, float64(entry.Value)/div)
 	}
 }

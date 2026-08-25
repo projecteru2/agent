@@ -30,7 +30,7 @@ func (s *subscriber) isDone() bool {
 }
 
 type logBroadcaster struct {
-	sync.RWMutex
+	mu             sync.RWMutex
 	logC           chan *types.Log
 	subscribersMap map[string]map[string]*subscriber
 }
@@ -43,8 +43,8 @@ func newLogBroadcaster() *logBroadcaster {
 }
 
 func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.ReadWriter) (string, chan error, func()) {
-	l.Lock()
-	defer l.Unlock()
+	l.mu.Lock()
+	defer l.mu.Unlock()
 
 	subscribers := l.subscribersMap[app]
 	if subscribers == nil {
@@ -62,7 +62,7 @@ func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.R
 		errChan: errChan,
 	}
 
-	corelog.Infof(ctx, "%s %s log subscribed", app, ID)
+	corelog.WithFunc("workload.subscribe").Infof(ctx, "%s %s log subscribed", app, ID)
 	return ID, errChan, func() {
 		cancel()
 		go l.unsubscribe(ctx, app, ID)
@@ -70,8 +70,8 @@ func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.R
 }
 
 func (l *logBroadcaster) unsubscribe(ctx context.Context, app, ID string) {
-	l.Lock()
-	defer l.Unlock()
+	l.mu.Lock()
+	defer l.mu.Unlock()
 
 	subscribers := l.subscribersMap[app]
 	if subscriber, ok := subscribers[ID]; ok {
@@ -79,7 +79,7 @@ func (l *logBroadcaster) unsubscribe(ctx context.Context, app, ID string) {
 	}
 	delete(subscribers, ID)
 
-	corelog.Infof(ctx, "%s %s detached", app, ID)
+	corelog.WithFunc("workload.unsubscribe").Infof(ctx, "%s %s detached", app, ID)
 
 	if len(subscribers) == 0 {
 		delete(l.subscribersMap, app)
@@ -87,8 +87,8 @@ func (l *logBroadcaster) unsubscribe(ctx context.Context, app, ID string) {
 }
 
 func (l *logBroadcaster) broadcast(ctx context.Context, log *types.Log) {
-	l.RLock()
-	defer l.RUnlock()
+	l.mu.RLock()
+	defer l.mu.RUnlock()
 
 	subscribers := l.subscribersMap[log.Name]
 	if len(subscribers) == 0 {
@@ -96,10 +96,10 @@ func (l *logBroadcaster) broadcast(ctx context.Context, log *types.Log) {
 	}
 	data, err := json.Marshal(log)
 	if err != nil {
-		corelog.Error(ctx, err)
+		corelog.WithFunc("workload.broadcast").Error(ctx, err, "failed to marshal log")
 		return
 	}
-	line := fmt.Sprintf("%X\r\n%s\r\n\r\n", len(data)+2, string(data))
+	line := fmt.Appendf(nil, "%X\r\n%s\r\n\r\n", len(data)+2, data)
 
 	// waiting here keeps the log lines ordered across subscribers
 	var wg sync.WaitGroup
@@ -108,8 +108,8 @@ func (l *logBroadcaster) broadcast(ctx context.Context, log *types.Log) {
 			if sub.isDone() {
 				return
 			}
-			if _, err := sub.buf.Write([]byte(line)); err != nil {
-				corelog.Debugf(ctx, "[broadcast] failed to write into %v, err: %v", ID, err)
+			if _, err := sub.buf.Write(line); err != nil {
+				corelog.WithFunc("workload.broadcast").WithField("ID", ID).Debug(ctx, "failed to write to subscriber")
 				sub.cancel()
 				select {
 				case sub.errChan <- err:
@@ -127,7 +127,7 @@ func (l *logBroadcaster) run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			corelog.Info(ctx, "[logBroadcaster] stops")
+			corelog.WithFunc("workload.run").Info(ctx, "log broadcaster stops")
 			return
 		case log := <-l.logC:
 			l.broadcast(ctx, log)

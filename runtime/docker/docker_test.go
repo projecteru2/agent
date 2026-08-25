@@ -1,10 +1,11 @@
 package docker
 
 import (
+	"net/netip"
 	"testing"
 
-	enginecontainer "github.com/docker/docker/api/types/container"
-	enginenetwork "github.com/docker/docker/api/types/network"
+	enginecontainer "github.com/moby/moby/api/types/container"
+	enginenetwork "github.com/moby/moby/api/types/network"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/projecteru2/agent/common"
@@ -45,11 +46,12 @@ func TestWorkloadNetworksFallsBackToTheNetnsWhenTheEndpointHasNoAddress(t *testi
 func inspectResponse(nameAddrPairs ...string) enginecontainer.InspectResponse {
 	endpoints := map[string]*enginenetwork.EndpointSettings{}
 	for i := 0; i < len(nameAddrPairs); i += 2 {
-		endpoints[nameAddrPairs[i]] = &enginenetwork.EndpointSettings{IPAddress: nameAddrPairs[i+1]}
+		addr, _ := netip.ParseAddr(nameAddrPairs[i+1])
+		endpoints[nameAddrPairs[i]] = &enginenetwork.EndpointSettings{IPAddress: addr}
 	}
 
 	return enginecontainer.InspectResponse{
-		ContainerJSONBase: &enginecontainer.ContainerJSONBase{ID: "not-a-running-workload"},
-		NetworkSettings:   &enginecontainer.NetworkSettings{Networks: endpoints},
+		ID:              "not-a-running-workload",
+		NetworkSettings: &enginecontainer.NetworkSettings{Networks: endpoints},
 	}
 }

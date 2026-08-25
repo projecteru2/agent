@@ -1,8 +1,6 @@
 package common
 
 const (
-	DockerCliVersion = "1.35"
-
 	StatusDie   = "die"
 	StatusStart = "start"
 

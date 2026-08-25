@@ -3,6 +3,7 @@ package types
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"context"
 	"fmt"
 	"os"
@@ -78,7 +79,7 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	} else {
 		hostname, err := os.Hostname()
 		if err != nil {
-			log.WithFunc("Prepare").Fatalf(ctx, err, "Get hostname failed")
+			log.WithFunc("types.Prepare").Fatalf(ctx, err, "get hostname")
 		}
 		config.HostName = hostname
 	}
@@ -86,15 +87,9 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	if endpoints := c.StringSlice("core-endpoint"); len(endpoints) > 0 {
 		config.Core = endpoints
 	}
-	if c.String("core-username") != "" {
-		config.Auth.Username = c.String("core-username")
-	}
-	if c.String("core-password") != "" {
-		config.Auth.Password = c.String("core-password")
-	}
-	if c.String("pidfile") != "" {
-		config.PidFile = c.String("pidfile")
-	}
+	config.Auth.Username = cmp.Or(c.String("core-username"), config.Auth.Username)
+	config.Auth.Password = cmp.Or(c.String("core-password"), config.Auth.Password)
+	config.PidFile = cmp.Or(c.String("pidfile"), config.PidFile)
 	if c.Int("heartbeat-interval") > 0 {
 		config.HeartbeatInterval = c.Int("heartbeat-interval")
 	}
@@ -104,21 +99,17 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	if c.Int("health-check-timeout") > 0 {
 		config.HealthCheck.Timeout = c.Int("health-check-timeout")
 	}
-	if c.Int("health-check-cache-ttl") > 0 {
+	if c.Int64("health-check-cache-ttl") > 0 {
 		config.HealthCheck.CacheTTL = c.Int64("health-check-cache-ttl")
 	}
-	if c.String("docker-endpoint") != "" {
-		config.Docker.Endpoint = c.String("docker-endpoint")
-	}
+	config.Docker.Endpoint = cmp.Or(c.String("docker-endpoint"), config.Docker.Endpoint)
 	if c.Int64("metrics-step") > 0 {
 		config.Metrics.Step = c.Int64("metrics-step")
 	}
 	if len(c.StringSlice("metrics-transfers")) > 0 {
 		config.Metrics.Transfers = c.StringSlice("metrics-transfers")
 	}
-	if c.String("api-addr") != "" {
-		config.API.Addr = c.String("api-addr")
-	}
+	config.API.Addr = cmp.Or(c.String("api-addr"), config.API.Addr)
 	if len(c.StringSlice("log-forwards")) > 0 {
 		config.Log.Forwards = c.StringSlice("log-forwards")
 	}
@@ -128,12 +119,8 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	if c.Bool("check-only-mine") {
 		config.CheckOnlyMine = true
 	}
-	if c.String("runtime") != "" {
-		config.Runtime = c.String("runtime")
-	}
-	if c.String("store") != "" {
-		config.Store = c.String("store")
-	}
+	config.Runtime = cmp.Or(c.String("runtime"), config.Runtime)
+	config.Store = cmp.Or(c.String("store"), config.Store)
 	if config.PidFile == "" {
 		config.PidFile = "./agent.pid"
 	}
@@ -151,7 +138,7 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 func (config *Config) Print(ctx context.Context) {
 	bs, err := yaml.Marshal(config.redacted())
 	if err != nil {
-		log.WithFunc("Print").Fatalf(ctx, err, "print config")
+		log.WithFunc("types.Print").Fatalf(ctx, err, "print config")
 	}
 
 	fmt.Println("---- current config ----")

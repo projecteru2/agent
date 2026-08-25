@@ -11,11 +11,11 @@ import (
 
 // CheckHTTP reports whether every backend answers with the expected status code.
 func CheckHTTP(ctx context.Context, ID string, backends []string, code int, timeout time.Duration) bool {
-	logger := log.WithFunc("CheckHTTP").WithField("ID", ID).WithField("backends", backends).WithField("code", code)
+	logger := log.WithFunc("utils.CheckHTTP").WithField("ID", ID).WithField("backends", backends).WithField("code", code)
 	for _, backend := range backends {
-		logger.Debug(ctx, "Check health via http")
+		logger.Debug(ctx, "checking health via http")
 		if !checkOneURL(ctx, backend, code, timeout) {
-			logger.Info(ctx, "Check health failed via http")
+			logger.Info(ctx, "http health check failed")
 			return false
 		}
 	}
@@ -24,12 +24,12 @@ func CheckHTTP(ctx context.Context, ID string, backends []string, code int, time
 
 // CheckTCP reports whether every backend accepts a TCP connection.
 func CheckTCP(ctx context.Context, ID string, backends []string, timeout time.Duration) bool {
-	logger := log.WithFunc("CheckTCP").WithField("ID", ID).WithField("backends", backends)
+	logger := log.WithFunc("utils.CheckTCP").WithField("ID", ID).WithField("backends", backends)
 	for _, backend := range backends {
-		logger.Debug(ctx, "Check health via tcp")
+		logger.Debug(ctx, "checking health via tcp")
 		conn, err := net.DialTimeout("tcp", backend, timeout)
 		if err != nil {
-			logger.Debug(ctx, "Check health failed via tcp")
+			logger.Debug(ctx, "tcp health check failed")
 			return false
 		}
 		_ = conn.Close()
@@ -38,18 +38,18 @@ func CheckTCP(ctx context.Context, ID string, backends []string, timeout time.Du
 }
 
 func checkOneURL(ctx context.Context, url string, expectedCode int, timeout time.Duration) bool {
-	logger := log.WithFunc("checkOneURL").WithField("url", url)
+	logger := log.WithFunc("utils.checkOneURL").WithField("url", url)
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		logger.Error(ctx, err, "Error when building request")
+		logger.Error(ctx, err, "failed to build request")
 		return false
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		logger.Error(ctx, err, "Error when checking")
+		logger.Error(ctx, err, "failed to check")
 		return false
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -57,7 +57,7 @@ func checkOneURL(ctx context.Context, url string, expectedCode int, timeout time
 		return resp.StatusCode < 500 && resp.StatusCode >= 200
 	}
 	if resp.StatusCode != expectedCode {
-		logger.Warnf(ctx, "Error when checking, expect %d, got %d", expectedCode, resp.StatusCode)
+		logger.Warnf(ctx, "unexpected status, want %d, got %d", expectedCode, resp.StatusCode)
 	}
 	return resp.StatusCode == expectedCode
 }

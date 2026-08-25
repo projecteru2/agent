@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 
@@ -20,7 +21,52 @@ const (
 var (
 	clientsMutex sync.Mutex
 	clients      = map[string]*MetricsClient{}
+
+	metricSpecs = []metricSpec{
+		{"cpu_host_usage", "cpu usage in host view.", "", "cpu_host_usage"},
+		{"cpu_host_sys_usage", "cpu sys usage in host view.", "", "cpu_host_sys_usage"},
+		{"cpu_host_user_usage", "cpu user usage in host view.", "", "cpu_host_user_usage"},
+		{"cpu_container_usage", "cpu usage in container view.", "", "cpu_container_usage"},
+		{"cpu_container_sys_usage", "cpu sys usage in container view.", "", "cpu_container_sys_usage"},
+		{"cpu_container_user_usage", "cpu user usage in container view.", "", "cpu_container_user_usage"},
+		{"mem_usage", "memory usage.", "", "mem_usage"},
+		{"mem_max_usage", "memory max usage.", "", "mem_max_usage"},
+		{"mem_rss", "memory rss.", "", "mem_rss"},
+		{"mem_percent", "memory percent.", "", "mem_percent"},
+		{"mem_rss_percent", "memory rss percent.", "", "mem_rss_percent"},
+
+		{"bytes_send", "bytes send.", labelNIC, "bytes.sent"},
+		{"bytes_recv", "bytes recv.", labelNIC, "bytes.recv"},
+		{"packets_send", "packets send.", labelNIC, "packets.sent"},
+		{"packets_recv", "packets recv.", labelNIC, "packets.recv"},
+		{"err_in", "err in.", labelNIC, "err.in"},
+		{"err_out", "err out.", labelNIC, "err.out"},
+		{"drop_in", "drop in.", labelNIC, "drop.in"},
+		{"drop_out", "drop out.", labelNIC, "drop.out"},
+
+		{"io_service_bytes_read", "number of bytes read to the disk by the group.", labelDev, "io_service_bytes_read"},
+		{"io_service_bytes_write", "number of bytes write to the disk by the group.", labelDev, "io_service_bytes_write"},
+		{"io_serviced_read", "number of read IOs to the disk by the group.", labelDev, "io_serviced_read"},
+		{"io_serviced_write", "number of write IOs to the disk by the group.", labelDev, "io_serviced_write"},
+		{"io_service_bytes_read_per_second", "number of bytes read per second to the disk by the group.", labelDev, "io_service_bytes_read_per_second"},
+		{"io_service_bytes_write_per_second", "number of bytes write per second to the disk by the group.", labelDev, "io_service_bytes_write_per_second"},
+		{"io_serviced_read_per_second", "number of read IOs per second to the disk by the group.", labelDev, "io_serviced_read_per_second"},
+		{"io_serviced_write_per_second", "number of write IOs per second to the disk by the group.", labelDev, "io_serviced_write_per_second"},
+	}
 )
+
+type metricSpec struct {
+	name   string
+	help   string
+	label  string
+	statsd string
+}
+
+type gauge struct {
+	plain  prometheus.Gauge
+	vector *prometheus.GaugeVec
+	statsd string
+}
 
 type MetricsClient struct {
 	statsd       string
@@ -28,37 +74,8 @@ type MetricsClient struct {
 	prefix       string
 	data         map[string]float64
 
-	cpuHostUsage     prometheus.Gauge
-	cpuHostSysUsage  prometheus.Gauge
-	cpuHostUserUsage prometheus.Gauge
-
-	cpuContainerUsage     prometheus.Gauge
-	cpuContainerSysUsage  prometheus.Gauge
-	cpuContainerUserUsage prometheus.Gauge
-
-	memUsage      prometheus.Gauge
-	memMaxUsage   prometheus.Gauge
-	memRss        prometheus.Gauge
-	memPercent    prometheus.Gauge
-	memRSSPercent prometheus.Gauge
-
-	bytesSent   *prometheus.GaugeVec
-	bytesRecv   *prometheus.GaugeVec
-	packetsSent *prometheus.GaugeVec
-	packetsRecv *prometheus.GaugeVec
-	errIn       *prometheus.GaugeVec
-	errOut      *prometheus.GaugeVec
-	dropIn      *prometheus.GaugeVec
-	dropOut     *prometheus.GaugeVec
-
-	ioServiceBytesRead           *prometheus.GaugeVec
-	ioServiceBytesWrite          *prometheus.GaugeVec
-	ioServicedRead               *prometheus.GaugeVec
-	ioServicedWrite              *prometheus.GaugeVec
-	ioServiceBytesReadPerSecond  *prometheus.GaugeVec
-	ioServiceBytesWritePerSecond *prometheus.GaugeVec
-	ioServicedReadPerSecond      *prometheus.GaugeVec
-	ioServicedWritePerSecond     *prometheus.GaugeVec
+	gauges     map[string]gauge
+	collectors []prometheus.Collector
 }
 
 func NewMetricsClient(statsd, hostname string, container *Container) *MetricsClient {
@@ -68,12 +85,12 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		return metricsClient
 	}
 
-	clables := []string{}
+	labelPairs := make([]string, 0, len(container.Labels))
 	for k, v := range container.Labels {
 		if strings.HasPrefix(k, cluster.ERUMark) || strings.HasPrefix(k, cluster.LabelMeta) {
 			continue
 		}
-		clables = append(clables, fmt.Sprintf("%s=%s", k, v))
+		labelPairs = append(labelPairs, fmt.Sprintf("%s=%s", k, v))
 	}
 	labels := map[string]string{
 		"containerID":  container.ID,
@@ -81,365 +98,108 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		"appname":      container.Name,
 		"entrypoint":   container.EntryPoint,
 		"orchestrator": cluster.ERUMark,
-		"labels":       strings.Join(clables, ","),
+		"labels":       strings.Join(slices.Sorted(slices.Values(labelPairs)), ","),
 	}
-	cpuHostUsage := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:        "cpu_host_usage",
-		Help:        "cpu usage in host view.",
-		ConstLabels: labels,
-	})
-	cpuHostSysUsage := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:        "cpu_host_sys_usage",
-		Help:        "cpu sys usage in host view.",
-		ConstLabels: labels,
-	})
-	cpuHostUserUsage := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:        "cpu_host_user_usage",
-		Help:        "cpu user usage in host view.",
-		ConstLabels: labels,
-	})
-	cpuContainerUsage := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:        "cpu_container_usage",
-		Help:        "cpu usage in container view.",
-		ConstLabels: labels,
-	})
-	cpuContainerSysUsage := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:        "cpu_container_sys_usage",
-		Help:        "cpu sys usage in container view.",
-		ConstLabels: labels,
-	})
-	cpuContainerUserUsage := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:        "cpu_container_user_usage",
-		Help:        "cpu user usage in container view.",
-		ConstLabels: labels,
-	})
-	memUsage := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:        "mem_usage",
-		Help:        "memory usage.",
-		ConstLabels: labels,
-	})
-	memMaxUsage := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:        "mem_max_usage",
-		Help:        "memory max usage.",
-		ConstLabels: labels,
-	})
-	memRss := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:        "mem_rss",
-		Help:        "memory rss.",
-		ConstLabels: labels,
-	})
-	memPercent := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:        "mem_percent",
-		Help:        "memory percent.",
-		ConstLabels: labels,
-	})
-	memRSSPercent := prometheus.NewGauge(prometheus.GaugeOpts{
-		Name:        "mem_rss_percent",
-		Help:        "memory rss percent.",
-		ConstLabels: labels,
-	})
-	bytesSent := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "bytes_send",
-		Help:        "bytes send.",
-		ConstLabels: labels,
-	}, []string{labelNIC})
-	bytesRecv := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "bytes_recv",
-		Help:        "bytes recv.",
-		ConstLabels: labels,
-	}, []string{labelNIC})
-	packetsSent := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "packets_send",
-		Help:        "packets send.",
-		ConstLabels: labels,
-	}, []string{labelNIC})
-	packetsRecv := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "packets_recv",
-		Help:        "packets recv.",
-		ConstLabels: labels,
-	}, []string{labelNIC})
-	errIn := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "err_in",
-		Help:        "err in.",
-		ConstLabels: labels,
-	}, []string{labelNIC})
-	errOut := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "err_out",
-		Help:        "err out.",
-		ConstLabels: labels,
-	}, []string{labelNIC})
-	dropIn := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "drop_in",
-		Help:        "drop in.",
-		ConstLabels: labels,
-	}, []string{labelNIC})
-	dropOut := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "drop_out",
-		Help:        "drop out.",
-		ConstLabels: labels,
-	}, []string{labelNIC})
-	ioServiceBytesRead := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "io_service_bytes_read",
-		Help:        "number of bytes read to the disk by the group.",
-		ConstLabels: labels,
-	}, []string{labelDev})
-	ioServiceBytesWrite := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "io_service_bytes_write",
-		Help:        "number of bytes write to the disk by the group.",
-		ConstLabels: labels,
-	}, []string{labelDev})
-	ioServicedRead := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "io_serviced_read",
-		Help:        "number of read IOs to the disk by the group.",
-		ConstLabels: labels,
-	}, []string{labelDev})
-	ioServicedWrite := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "io_serviced_write",
-		Help:        "number of write IOs to the disk by the group.",
-		ConstLabels: labels,
-	}, []string{labelDev})
-	ioServiceBytesReadPerSecond := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "io_service_bytes_read_per_second",
-		Help:        "number of bytes read per second to the disk by the group.",
-		ConstLabels: labels,
-	}, []string{labelDev})
-	ioServiceBytesWritePerSecond := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "io_service_bytes_write_per_second",
-		Help:        "number of bytes write per second to the disk by the group.",
-		ConstLabels: labels,
-	}, []string{labelDev})
-	ioServicedReadPerSecond := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "io_serviced_read_per_second",
-		Help:        "number of read IOs per second to the disk by the group.",
-		ConstLabels: labels,
-	}, []string{labelDev})
-	ioServicedWritePerSecond := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "io_serviced_write_per_second",
-		Help:        "number of write IOs per second to the disk by the group.",
-		ConstLabels: labels,
-	}, []string{labelDev})
+
 	tag := fmt.Sprintf("%s.%s", hostname, coreutils.ShortID(container.ID))
 	endpoint := fmt.Sprintf("%s.%s", container.Name, container.EntryPoint)
-	prefix := fmt.Sprintf("%s.%s.%s", cluster.ERUMark, endpoint, tag)
-
-	prometheus.MustRegister(
-		cpuHostSysUsage, cpuHostUsage, cpuHostUserUsage,
-		cpuContainerSysUsage, cpuContainerUsage, cpuContainerUserUsage,
-		memMaxUsage, memRss, memUsage, memPercent, memRSSPercent,
-		bytesRecv, bytesSent, packetsRecv, packetsSent,
-		errIn, errOut, dropIn, dropOut, ioServiceBytesRead, ioServiceBytesWrite, ioServicedRead, ioServicedWrite, ioServiceBytesReadPerSecond, ioServiceBytesWritePerSecond, ioServicedReadPerSecond, ioServicedWritePerSecond,
-	)
 
 	metricsClient := &MetricsClient{
 		statsd: statsd,
-		prefix: prefix,
+		prefix: fmt.Sprintf("%s.%s.%s", cluster.ERUMark, endpoint, tag),
 		data:   map[string]float64{},
-
-		cpuHostUsage:     cpuHostUsage,
-		cpuHostSysUsage:  cpuHostSysUsage,
-		cpuHostUserUsage: cpuHostUserUsage,
-
-		cpuContainerUsage:     cpuContainerUsage,
-		cpuContainerSysUsage:  cpuContainerSysUsage,
-		cpuContainerUserUsage: cpuContainerUserUsage,
-
-		memUsage:      memUsage,
-		memMaxUsage:   memMaxUsage,
-		memRss:        memRss,
-		memPercent:    memPercent,
-		memRSSPercent: memRSSPercent,
-
-		bytesSent:   bytesSent,
-		bytesRecv:   bytesRecv,
-		packetsSent: packetsSent,
-		packetsRecv: packetsRecv,
-		errIn:       errIn,
-		errOut:      errOut,
-		dropIn:      dropIn,
-		dropOut:     dropOut,
-
-		ioServiceBytesRead:  ioServiceBytesRead,
-		ioServiceBytesWrite: ioServiceBytesWrite,
-		ioServicedRead:      ioServicedRead,
-		ioServicedWrite:     ioServicedWrite,
-
-		ioServiceBytesReadPerSecond:  ioServiceBytesReadPerSecond,
-		ioServiceBytesWritePerSecond: ioServiceBytesWritePerSecond,
-		ioServicedReadPerSecond:      ioServicedReadPerSecond,
-		ioServicedWritePerSecond:     ioServicedWritePerSecond,
+		gauges: make(map[string]gauge, len(metricSpecs)),
 	}
+	for _, spec := range metricSpecs {
+		opts := prometheus.GaugeOpts{Name: spec.name, Help: spec.help, ConstLabels: labels}
+		g := gauge{statsd: spec.statsd}
+		if spec.label == "" {
+			g.plain = prometheus.NewGauge(opts)
+			metricsClient.collectors = append(metricsClient.collectors, g.plain)
+		} else {
+			g.vector = prometheus.NewGaugeVec(opts, []string{spec.label})
+			metricsClient.collectors = append(metricsClient.collectors, g.vector)
+		}
+		metricsClient.gauges[spec.name] = g
+	}
+	prometheus.MustRegister(metricsClient.collectors...)
+
 	clients[container.ID] = metricsClient
 	return metricsClient
 }
 
 func (m *MetricsClient) Unregister() {
-	prometheus.Unregister(m.cpuHostSysUsage)
-	prometheus.Unregister(m.cpuHostUsage)
-	prometheus.Unregister(m.cpuHostUserUsage)
-
-	prometheus.Unregister(m.cpuContainerUsage)
-	prometheus.Unregister(m.cpuContainerSysUsage)
-	prometheus.Unregister(m.cpuContainerUserUsage)
-
-	prometheus.Unregister(m.memUsage)
-	prometheus.Unregister(m.memMaxUsage)
-	prometheus.Unregister(m.memRss)
-	prometheus.Unregister(m.memPercent)
-	prometheus.Unregister(m.memRSSPercent)
-
-	prometheus.Unregister(m.bytesRecv)
-	prometheus.Unregister(m.bytesSent)
-	prometheus.Unregister(m.packetsRecv)
-	prometheus.Unregister(m.packetsSent)
-	prometheus.Unregister(m.errIn)
-	prometheus.Unregister(m.errOut)
-	prometheus.Unregister(m.dropIn)
-	prometheus.Unregister(m.dropOut)
-
-	prometheus.Unregister(m.ioServiceBytesRead)
-	prometheus.Unregister(m.ioServiceBytesWrite)
-	prometheus.Unregister(m.ioServicedRead)
-	prometheus.Unregister(m.ioServicedWrite)
-
-	prometheus.Unregister(m.ioServiceBytesReadPerSecond)
-	prometheus.Unregister(m.ioServiceBytesWritePerSecond)
-	prometheus.Unregister(m.ioServicedReadPerSecond)
-	prometheus.Unregister(m.ioServicedWritePerSecond)
+	for _, collector := range m.collectors {
+		prometheus.Unregister(collector)
+	}
 }
 
-func (m *MetricsClient) CPUHostUsage(i float64) {
-	m.data["cpu_host_usage"] = i
-	m.cpuHostUsage.Set(i)
-}
+func (m *MetricsClient) CPUHostUsage(i float64) { m.set("cpu_host_usage", i) }
 
-func (m *MetricsClient) CPUHostSysUsage(i float64) {
-	m.data["cpu_host_sys_usage"] = i
-	m.cpuHostSysUsage.Set(i)
-}
+func (m *MetricsClient) CPUHostSysUsage(i float64) { m.set("cpu_host_sys_usage", i) }
 
-func (m *MetricsClient) CPUHostUserUsage(i float64) {
-	m.data["cpu_host_user_usage"] = i
-	m.cpuHostUserUsage.Set(i)
-}
+func (m *MetricsClient) CPUHostUserUsage(i float64) { m.set("cpu_host_user_usage", i) }
 
-func (m *MetricsClient) CPUContainerUsage(i float64) {
-	m.data["cpu_container_usage"] = i
-	m.cpuContainerUsage.Set(i)
-}
+func (m *MetricsClient) CPUContainerUsage(i float64) { m.set("cpu_container_usage", i) }
 
-func (m *MetricsClient) CPUContainerSysUsage(i float64) {
-	m.data["cpu_container_sys_usage"] = i
-	m.cpuContainerSysUsage.Set(i)
-}
+func (m *MetricsClient) CPUContainerSysUsage(i float64) { m.set("cpu_container_sys_usage", i) }
 
-func (m *MetricsClient) CPUContainerUserUsage(i float64) {
-	m.data["cpu_container_user_usage"] = i
-	m.cpuContainerUserUsage.Set(i)
-}
+func (m *MetricsClient) CPUContainerUserUsage(i float64) { m.set("cpu_container_user_usage", i) }
 
-func (m *MetricsClient) MemUsage(i float64) {
-	m.data["mem_usage"] = i
-	m.memUsage.Set(i)
-}
+func (m *MetricsClient) MemUsage(i float64) { m.set("mem_usage", i) }
 
-func (m *MetricsClient) MemMaxUsage(i float64) {
-	m.data["mem_max_usage"] = i
-	m.memMaxUsage.Set(i)
-}
+func (m *MetricsClient) MemMaxUsage(i float64) { m.set("mem_max_usage", i) }
 
-func (m *MetricsClient) MemRss(i float64) {
-	m.data["mem_rss"] = i
-	m.memRss.Set(i)
-}
+func (m *MetricsClient) MemRss(i float64) { m.set("mem_rss", i) }
 
-func (m *MetricsClient) MemPercent(i float64) {
-	m.data["mem_percent"] = i
-	m.memPercent.Set(i)
-}
+func (m *MetricsClient) MemPercent(i float64) { m.set("mem_percent", i) }
 
-func (m *MetricsClient) MemRSSPercent(i float64) {
-	m.data["mem_rss_percent"] = i
-	m.memRSSPercent.Set(i)
-}
+func (m *MetricsClient) MemRSSPercent(i float64) { m.set("mem_rss_percent", i) }
 
-func (m *MetricsClient) BytesSent(nic string, i float64) {
-	m.data[nic+".bytes.sent"] = i
-	m.bytesSent.WithLabelValues(nic).Set(i)
-}
+func (m *MetricsClient) BytesSent(nic string, i float64) { m.setVec("bytes_send", nic, i) }
 
-func (m *MetricsClient) BytesRecv(nic string, i float64) {
-	m.data[nic+".bytes.recv"] = i
-	m.bytesRecv.WithLabelValues(nic).Set(i)
-}
+func (m *MetricsClient) BytesRecv(nic string, i float64) { m.setVec("bytes_recv", nic, i) }
 
-func (m *MetricsClient) PacketsSent(nic string, i float64) {
-	m.data[nic+".packets.sent"] = i
-	m.packetsSent.WithLabelValues(nic).Set(i)
-}
+func (m *MetricsClient) PacketsSent(nic string, i float64) { m.setVec("packets_send", nic, i) }
 
-func (m *MetricsClient) PacketsRecv(nic string, i float64) {
-	m.data[nic+".packets.recv"] = i
-	m.packetsRecv.WithLabelValues(nic).Set(i)
-}
+func (m *MetricsClient) PacketsRecv(nic string, i float64) { m.setVec("packets_recv", nic, i) }
 
-func (m *MetricsClient) ErrIn(nic string, i float64) {
-	m.data[nic+".err.in"] = i
-	m.errIn.WithLabelValues(nic).Set(i)
-}
+func (m *MetricsClient) ErrIn(nic string, i float64) { m.setVec("err_in", nic, i) }
 
-func (m *MetricsClient) ErrOut(nic string, i float64) {
-	m.data[nic+".err.out"] = i
-	m.errOut.WithLabelValues(nic).Set(i)
-}
+func (m *MetricsClient) ErrOut(nic string, i float64) { m.setVec("err_out", nic, i) }
 
-func (m *MetricsClient) DropIn(nic string, i float64) {
-	m.data[nic+".drop.in"] = i
-	m.dropIn.WithLabelValues(nic).Set(i)
-}
+func (m *MetricsClient) DropIn(nic string, i float64) { m.setVec("drop_in", nic, i) }
 
-func (m *MetricsClient) DropOut(nic string, i float64) {
-	m.data[nic+".drop.out"] = i
-	m.dropOut.WithLabelValues(nic).Set(i)
-}
+func (m *MetricsClient) DropOut(nic string, i float64) { m.setVec("drop_out", nic, i) }
 
 func (m *MetricsClient) IOServiceBytesRead(dev string, i float64) {
-	m.data[dev+".io_service_bytes_read"] = i
-	m.ioServiceBytesRead.WithLabelValues(dev).Set(i)
+	m.setVec("io_service_bytes_read", dev, i)
 }
 
 func (m *MetricsClient) IOServiceBytesWrite(dev string, i float64) {
-	m.data[dev+".io_service_bytes_write"] = i
-	m.ioServiceBytesWrite.WithLabelValues(dev).Set(i)
+	m.setVec("io_service_bytes_write", dev, i)
 }
 
-func (m *MetricsClient) IOServicedRead(dev string, i float64) {
-	m.data[dev+".io_serviced_read"] = i
-	m.ioServicedRead.WithLabelValues(dev).Set(i)
-}
+func (m *MetricsClient) IOServicedRead(dev string, i float64) { m.setVec("io_serviced_read", dev, i) }
 
 func (m *MetricsClient) IOServicedWrite(dev string, i float64) {
-	m.data[dev+".io_serviced_write"] = i
-	m.ioServicedWrite.WithLabelValues(dev).Set(i)
+	m.setVec("io_serviced_write", dev, i)
 }
 
 func (m *MetricsClient) IOServiceBytesReadPerSecond(dev string, i float64) {
-	m.data[dev+".io_service_bytes_read_per_second"] = i
-	m.ioServiceBytesReadPerSecond.WithLabelValues(dev).Set(i)
+	m.setVec("io_service_bytes_read_per_second", dev, i)
 }
 
 func (m *MetricsClient) IOServiceBytesWritePerSecond(dev string, i float64) {
-	m.data[dev+".io_service_bytes_write_per_second"] = i
-	m.ioServiceBytesWritePerSecond.WithLabelValues(dev).Set(i)
+	m.setVec("io_service_bytes_write_per_second", dev, i)
 }
 
 func (m *MetricsClient) IOServicedReadPerSecond(dev string, i float64) {
-	m.data[dev+".io_serviced_read_per_second"] = i
-	m.ioServicedReadPerSecond.WithLabelValues(dev).Set(i)
+	m.setVec("io_serviced_read_per_second", dev, i)
 }
 
 func (m *MetricsClient) IOServicedWritePerSecond(dev string, i float64) {
-	m.data[dev+".io_serviced_write_per_second"] = i
-	m.ioServicedWritePerSecond.WithLabelValues(dev).Set(i)
+	m.setVec("io_serviced_write_per_second", dev, i)
 }
 
 func (m *MetricsClient) Send(ctx context.Context) error {
@@ -457,6 +217,22 @@ func (m *MetricsClient) Send(ctx context.Context) error {
 	return nil
 }
 
+func (m *MetricsClient) set(name string, value float64) {
+	g := m.gauges[name]
+	if m.statsd != "" {
+		m.data[g.statsd] = value
+	}
+	g.plain.Set(value)
+}
+
+func (m *MetricsClient) setVec(name, label string, value float64) {
+	g := m.gauges[name]
+	if m.statsd != "" {
+		m.data[label+"."+g.statsd] = value
+	}
+	g.vector.WithLabelValues(label).Set(value)
+}
+
 func (m *MetricsClient) checkConn(ctx context.Context) error {
 	if m.statsdClient != nil {
 		return nil
@@ -464,7 +240,7 @@ func (m *MetricsClient) checkConn(ctx context.Context) error {
 	// statsd speaks UDP only, so a client never has to be renewed
 	var err error
 	if m.statsdClient, err = coreutils.NewStatsd(m.statsd); err != nil {
-		log.WithFunc("checkConn").Error(ctx, err, "[statsd] Connect statsd failed")
+		log.WithFunc("docker.checkConn").Error(ctx, err, "failed to connect statsd")
 		return err
 	}
 	return nil

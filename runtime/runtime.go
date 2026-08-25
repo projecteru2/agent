@@ -16,5 +16,4 @@ type Runtime interface {
 	GetWorkloadName(ctx context.Context, ID string) (string, error)
 	LogFieldsExtra(ctx context.Context, ID string) (map[string]string, error)
 	IsDaemonRunning(ctx context.Context) bool
-	Name() string
 }

@@ -42,7 +42,7 @@ func (m *MockStore) init() {
 }
 
 func NewFakeStore() store.Store {
-	logger := log.WithFunc("fakestore")
+	logger := log.WithFunc("mocks.NewFakeStore")
 	m := &MockStore{}
 	m.init()
 	m.On("GetNode", mock.Anything, mock.Anything).Return(func(ctx context.Context, nodename string) *types.Node {

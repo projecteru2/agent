@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	enginecontainer "github.com/docker/docker/api/types/container"
+	enginecontainer "github.com/moby/moby/api/types/container"
 	"github.com/projecteru2/core/log"
 	coretypes "github.com/projecteru2/core/types"
 
@@ -12,14 +12,10 @@ import (
 )
 
 func normalizeEnv(env []string) map[string]string {
-	em := make(map[string]string)
+	em := make(map[string]string, len(env))
 	for _, e := range env {
-		ps := strings.SplitN(e, "=", 2)
-		if len(ps) == 2 {
-			em[ps[0]] = ps[1]
-		} else {
-			em[ps[0]] = ""
-		}
+		name, value, _ := strings.Cut(e, "=")
+		em[name] = value
 	}
 	return em
 }
@@ -52,11 +48,11 @@ func generateContainerMeta(ctx context.Context, c enginecontainer.InspectRespons
 		container.Healthy = meta.HealthCheck == nil
 	}
 
-	log.WithFunc("generateContainerMeta").Debugf(ctx, "Generate container meta %v %v", container.Name, container.EntryPoint)
+	log.WithFunc("docker.generateContainerMeta").Debugf(ctx, "generated meta for %s %s", container.Name, container.EntryPoint)
 	return container, nil
 }
 
-func calcuateCPUNum(container *Container, containerJSON enginecontainer.InspectResponse, hostCPUNum float64) *Container {
+func calculateCPUNum(container *Container, containerJSON enginecontainer.InspectResponse, hostCPUNum float64) *Container {
 	cpuNum := hostCPUNum
 	if containerJSON.HostConfig.CPUPeriod != 0 && containerJSON.HostConfig.CPUQuota != 0 {
 		cpuNum = float64(containerJSON.HostConfig.CPUQuota) / float64(containerJSON.HostConfig.CPUPeriod)

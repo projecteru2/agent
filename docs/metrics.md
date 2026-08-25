@@ -64,6 +64,15 @@ Device path resolution walks `/dev` looking for the device node with the matchin
 
 Setting `metrics.transfers` additionally pushes every sampled value to statsd over UDP. Each workload is pinned to one transfer by hashing its id, so several statsd endpoints share the load.
 
-The statsd key is `ERU.<appname>.<entrypoint>.<hostname>.<short container id>.<metric>`, with dots in the hostname replaced by dashes. The metric suffix matches the Prometheus gauge name, and the nic and dev variants are prefixed with the interface or device instead of being labelled.
+The statsd key is `ERU.<appname>.<entrypoint>.<hostname>.<short container id>.<metric>`, with dots in the hostname replaced by dashes. The `nic` and `dev` variants carry the interface or device as a key prefix instead of a label, so `bytes_send` on `eth0` becomes `<prefix>.eth0.bytes.sent`.
+
+The metric part of the key matches the Prometheus gauge name for every gauge except the eight network ones, which keep their historical dotted spelling:
+
+| Gauge | statsd suffix |
+|---|---|
+| `bytes_send`, `bytes_recv` | `<nic>.bytes.sent`, `<nic>.bytes.recv` |
+| `packets_send`, `packets_recv` | `<nic>.packets.sent`, `<nic>.packets.recv` |
+| `err_in`, `err_out` | `<nic>.err.in`, `<nic>.err.out` |
+| `drop_in`, `drop_out` | `<nic>.drop.in`, `<nic>.drop.out` |
 
 The connection is UDP only, so a statsd endpoint that goes away is never reconnected and its samples are simply lost.
