@@ -9,8 +9,8 @@ import (
 	"io"
 	"maps"
 	"os"
-	"path/filepath"
 	"slices"
+	"time"
 
 	containerd "github.com/containerd/containerd/v2/client"
 	cni "github.com/containerd/go-cni"
@@ -28,12 +28,15 @@ const (
 	statusStopped   = "stopped"
 
 	annotationNamespace = "eru.namespace"
+
+	timeout = time.Minute
 )
 
 type options struct {
 	network string
 	confDir string
 	binDir  string
+	socket  string
 }
 
 // Command returns the cni hook mode core places in a container's spec, as createRuntime and poststop.
@@ -57,12 +60,22 @@ func Command() *cli.Command {
 				Usage: "cni plugin directory",
 				Value: defaultBinDir,
 			},
+			&cli.StringFlag{
+				Name:  "socket",
+				Usage: "local containerd grpc socket, where the address is written back",
+				Value: common.ContainerdSocket,
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
+			// the hook runs inside runc's create, which waits for it however long an ipam plugin takes
+			ctx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
+
 			return run(ctx, os.Stdin, options{
 				network: cmd.String("network"),
 				confDir: cmd.String("conf-dir"),
 				binDir:  cmd.String("bin-dir"),
+				socket:  cmd.String("socket"),
 			})
 		},
 	}
@@ -85,10 +98,9 @@ func run(ctx context.Context, reader io.Reader, opts options) error {
 	if err != nil {
 		return err
 	}
-	return publish(ctx, s, opts.network, addressOf(result))
+	return publish(ctx, s, opts, addressOf(result))
 }
 
-// state is the part of the oci container state the runtime writes to a hook's stdin.
 type state struct {
 	ID          string            `json:"id"`
 	Pid         int               `json:"pid"`
@@ -124,54 +136,42 @@ func readState(reader io.Reader) (*state, error) {
 	return s, nil
 }
 
+// newCNI loads the configuration that names itself network, so the label the agent reads back matches the flag.
 func newCNI(opts options) (cni.CNI, error) {
-	conf, err := confList(opts.confDir, opts.network)
+	conf, err := libcni.LoadNetworkConf(opts.confDir, opts.network)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load the cni network %s from %s: %w", opts.network, opts.confDir, err)
 	}
 	return cni.New(
 		cni.WithPluginConfDir(opts.confDir),
 		cni.WithPluginDir([]string{opts.binDir}),
-		cni.WithConfListBytes(conf),
+		cni.WithConfListBytes(conf.Bytes),
 	)
 }
 
-// confList returns the conflist that names itself network, so the label the agent reads back matches the flag.
-func confList(dir, network string) ([]byte, error) {
-	files, err := filepath.Glob(filepath.Join(dir, "*.conflist"))
-	if err != nil {
-		return nil, err
-	}
-	for _, file := range files {
-		list, err := libcni.ConfListFromFile(file)
-		if err != nil {
-			continue
-		}
-		if list.Name == network {
-			return list.Bytes, nil
-		}
-	}
-	return nil, fmt.Errorf("no cni network named %s in %s", network, dir)
-}
-
+// addressOf prefers the ipv4 core publishes, and falls back to ipv6 on a single stack network.
 func addressOf(result *cni.Result) string {
+	fallback := ""
 	for _, name := range slices.Sorted(maps.Keys(result.Interfaces)) {
 		for _, config := range result.Interfaces[name].IPConfigs {
 			if ipv4 := config.IP.To4(); ipv4 != nil {
 				return ipv4.String()
 			}
+			if fallback == "" && config.IP != nil {
+				fallback = config.IP.String()
+			}
 		}
 	}
-	return ""
+	return fallback
 }
 
 // publish writes the address back as a container label, which is where core and the agent read it.
-func publish(ctx context.Context, s *state, network, address string) error {
+func publish(ctx context.Context, s *state, opts options, address string) error {
 	if address == "" {
-		return fmt.Errorf("cni gave %s no ipv4 address on %s", s.ID, network)
+		return fmt.Errorf("cni gave %s no address on %s", s.ID, opts.network)
 	}
 
-	client, err := containerd.New(common.ContainerdSocket, containerd.WithDefaultNamespace(s.namespace()))
+	client, err := containerd.New(opts.socket, containerd.WithDefaultNamespace(s.namespace()))
 	if err != nil {
 		return err
 	}
@@ -181,6 +181,6 @@ func publish(ctx context.Context, s *state, network, address string) error {
 	if err != nil {
 		return err
 	}
-	_, err = container.SetLabels(ctx, map[string]string{common.NetworkLabelPrefix + network: address})
+	_, err = container.SetLabels(ctx, map[string]string{common.NetworkLabelPrefix + opts.network: address})
 	return err
 }

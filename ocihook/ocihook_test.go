@@ -77,23 +77,38 @@ func TestReadStateRejectsBadInput(t *testing.T) {
 	assert.ErrorContains(t, err, "no container id")
 }
 
-func TestConfListPicksTheNetworkByName(t *testing.T) {
+func TestNewCNIPicksTheNetworkByName(t *testing.T) {
 	dir := t.TempDir()
 	writeConfList(t, dir, "10-other.conflist", "other")
 	writeConfList(t, dir, "20-eru-cni.conflist", "eru-cni")
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "30-broken.conflist"), []byte("not json"), 0o600))
 
-	conf, err := confList(dir, "eru-cni")
+	network, err := newCNI(options{network: "eru-cni", confDir: dir, binDir: t.TempDir()})
 	require.NoError(t, err)
-	assert.Contains(t, string(conf), `"name": "eru-cni"`)
+	assert.Equal(t, []string{"eru-cni"}, loadedNetworks(network))
 }
 
-func TestConfListWithoutTheNetwork(t *testing.T) {
+func TestNewCNIUpconvertsASinglePluginConf(t *testing.T) {
+	tests := []string{"10-eru-cni.conf", "10-eru-cni.json"}
+
+	for _, file := range tests {
+		t.Run(file, func(t *testing.T) {
+			dir := t.TempDir()
+			conf := `{"cniVersion": "1.0.0", "name": "eru-cni", "type": "bridge"}`
+			require.NoError(t, os.WriteFile(filepath.Join(dir, file), []byte(conf), 0o600))
+
+			network, err := newCNI(options{network: "eru-cni", confDir: dir, binDir: t.TempDir()})
+			require.NoError(t, err)
+			assert.Equal(t, []string{"eru-cni"}, loadedNetworks(network))
+		})
+	}
+}
+
+func TestNewCNIWithoutTheNetwork(t *testing.T) {
 	dir := t.TempDir()
 	writeConfList(t, dir, "10-other.conflist", "other")
 
-	_, err := confList(dir, "eru-cni")
-	assert.ErrorContains(t, err, "no cni network named eru-cni")
+	_, err := newCNI(options{network: "eru-cni", confDir: dir, binDir: t.TempDir()})
+	assert.ErrorContains(t, err, "load the cni network eru-cni")
 }
 
 func TestAddressOfTakesTheFirstIPv4(t *testing.T) {
@@ -108,8 +123,24 @@ func TestAddressOfTakesTheFirstIPv4(t *testing.T) {
 	assert.Equal(t, "10.0.0.5", addressOf(result))
 }
 
+func TestAddressOfAnIPv6OnlyNetwork(t *testing.T) {
+	result := &cni.Result{Interfaces: map[string]*cni.Config{
+		"eth0": {IPConfigs: []*cni.IPConfig{{IP: net.ParseIP("fd00::5")}}},
+	}}
+
+	assert.Equal(t, "fd00::5", addressOf(result))
+}
+
 func TestAddressOfAResultWithoutAnAddress(t *testing.T) {
 	assert.Empty(t, addressOf(&cni.Result{Interfaces: map[string]*cni.Config{"eth0": {}}}))
+}
+
+func loadedNetworks(network cni.CNI) []string {
+	var names []string
+	for _, loaded := range network.GetConfig().Networks {
+		names = append(names, loaded.Config.Name)
+	}
+	return names
 }
 
 func writeConfList(t *testing.T, dir, file, name string) {
