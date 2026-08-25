@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/docker/docker v28.5.2+incompatible
-	github.com/projecteru2/core v0.0.0-20260825041031-3869faffc16d
+	github.com/projecteru2/core v0.0.0-20260825060526-92ab9f486c50
 	github.com/projecteru2/libyavirt v0.0.0-20231128023216-96fef06a6ca4
 	github.com/prometheus/client_golang v1.24.1
 	github.com/rs/zerolog v1.35.1
@@ -19,7 +19,6 @@ require (
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
-	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
@@ -38,9 +37,7 @@ require (
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/jinzhu/configor v1.2.2 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
