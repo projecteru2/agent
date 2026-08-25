@@ -3,7 +3,6 @@
 package utils
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,8 +10,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
-
-const settleTimeout = 500 * time.Millisecond
 
 func TestDirWatcherReportsCreationAndRemoval(t *testing.T) {
 	dir := t.TempDir()
@@ -68,37 +65,6 @@ func TestNewDirWatcherFailsOnAMissingDir(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestFileWatcherWakesOnWritesToItsFileOnly(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "console.log")
-	require.NoError(t, os.WriteFile(path, nil, 0o600))
-	wakes := startFileWatch(t, path)
-
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "other.log"), []byte("noise\n"), 0o600))
-	requireNoWake(t, wakes)
-
-	require.NoError(t, appendLine(path, "boot\n"))
-	requireWake(t, wakes)
-}
-
-func TestFileWatcherWakesWhenItsFileIsReplaced(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "console.log")
-	require.NoError(t, os.WriteFile(path, []byte("old\n"), 0o600))
-	wakes := startFileWatch(t, path)
-
-	require.NoError(t, os.Remove(path))
-	requireWake(t, wakes)
-
-	require.NoError(t, os.WriteFile(path, []byte("new\n"), 0o600))
-	requireWake(t, wakes)
-}
-
-func TestNewFileWatcherFailsOnAMissingDir(t *testing.T) {
-	_, err := NewFileWatcher(filepath.Join(t.TempDir(), "absent", "console.log"))
-	require.Error(t, err)
-}
-
 type watchEvent struct {
 	name    string
 	created bool
@@ -118,27 +84,6 @@ func startDirWatch(t *testing.T, dir string) <-chan watchEvent {
 	return events
 }
 
-func startFileWatch(t *testing.T, path string) <-chan struct{} {
-	t.Helper()
-	watcher, err := NewFileWatcher(path)
-	require.NoError(t, err)
-
-	wakes := make(chan struct{}, 16)
-	go func() {
-		_ = watcher.Run(t.Context(), func() { wakes <- struct{}{} })
-	}()
-	return wakes
-}
-
-func appendLine(path, line string) error {
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0o600)
-	if err != nil {
-		return err
-	}
-	_, err = f.WriteString(line)
-	return errors.Join(err, f.Close())
-}
-
 func requireEvent(t *testing.T, events <-chan watchEvent, want watchEvent) {
 	t.Helper()
 	select {
@@ -146,23 +91,5 @@ func requireEvent(t *testing.T, events <-chan watchEvent, want watchEvent) {
 		require.Equal(t, want, got)
 	case <-time.After(5 * time.Second):
 		t.Fatalf("timed out waiting for %+v", want)
-	}
-}
-
-func requireWake(t *testing.T, wakes <-chan struct{}) {
-	t.Helper()
-	select {
-	case <-wakes:
-	case <-time.After(5 * time.Second):
-		t.Fatal("timed out waiting for a wake")
-	}
-}
-
-func requireNoWake(t *testing.T, wakes <-chan struct{}) {
-	t.Helper()
-	select {
-	case <-wakes:
-		t.Fatal("woke on a change to another file")
-	case <-time.After(settleTimeout):
 	}
 }

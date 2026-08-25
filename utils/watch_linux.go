@@ -6,7 +6,6 @@ import (
 	"context"
 	"iter"
 	"os"
-	"path/filepath"
 	"strings"
 	"unsafe"
 
@@ -14,8 +13,7 @@ import (
 )
 
 const (
-	dirWatchMask  = unix.IN_CREATE | unix.IN_MOVED_TO | unix.IN_DELETE | unix.IN_MOVED_FROM
-	fileWatchMask = dirWatchMask | unix.IN_MODIFY
+	dirWatchMask = unix.IN_CREATE | unix.IN_MOVED_TO | unix.IN_DELETE | unix.IN_MOVED_FROM
 
 	watchBufferSize = 64 << 10
 )
@@ -39,33 +37,6 @@ func (d *DirWatcher) Run(ctx context.Context, notify func(name string, created b
 	return d.w.run(ctx, func(buf []byte) {
 		for name, created := range inotifyEvents(buf) {
 			notify(name, created)
-		}
-	})
-}
-
-// FileWatcher wakes its caller whenever one file is written, replaced or removed.
-type FileWatcher struct {
-	w    *inotify
-	name string
-}
-
-// NewFileWatcher watches the file's directory, so the watch outlives the file being rotated away.
-func NewFileWatcher(path string) (*FileWatcher, error) {
-	w, err := newInotify(filepath.Dir(path), fileWatchMask)
-	if err != nil {
-		return nil, err
-	}
-	return &FileWatcher{w: w, name: filepath.Base(path)}, nil
-}
-
-// Run calls wake once per batch of changes to the file, until ctx is done.
-func (f *FileWatcher) Run(ctx context.Context, wake func()) error {
-	return f.w.run(ctx, func(buf []byte) {
-		for name := range inotifyEvents(buf) {
-			if name == f.name {
-				wake()
-				return
-			}
 		}
 	})
 }
