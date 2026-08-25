@@ -219,13 +219,17 @@ func (m *MetricsClient) Send(ctx context.Context) error {
 
 func (m *MetricsClient) set(name string, value float64) {
 	g := m.gauges[name]
-	m.data[g.statsd] = value
+	if m.statsd != "" {
+		m.data[g.statsd] = value
+	}
 	g.plain.Set(value)
 }
 
 func (m *MetricsClient) setVec(name, label string, value float64) {
 	g := m.gauges[name]
-	m.data[label+"."+g.statsd] = value
+	if m.statsd != "" {
+		m.data[label+"."+g.statsd] = value
+	}
 	g.vector.WithLabelValues(label).Set(value)
 }
 

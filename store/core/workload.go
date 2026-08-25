@@ -2,9 +2,8 @@ package core
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
-	"math/big"
+	"math/rand/v2"
 	"time"
 
 	pb "github.com/projecteru2/core/rpc/gen"
@@ -55,8 +54,6 @@ func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadSta
 }
 
 func getCacheTTL(ttl int64) time.Duration {
-	n, _ := rand.Int(rand.Reader, big.NewInt(ttl))
-	delta := n.Int64() / 4
-	ttl = ttl - ttl/8 + delta
-	return time.Duration(ttl) * time.Second
+	delta := rand.Int64N(max(ttl, 1)) / 4 //nolint:gosec // cache ttl jitter needs no csprng
+	return time.Duration(ttl-ttl/8+delta) * time.Second
 }

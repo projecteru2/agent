@@ -99,7 +99,7 @@ func (l *logBroadcaster) broadcast(ctx context.Context, log *types.Log) {
 		corelog.WithFunc("workload.broadcast").Error(ctx, err, "failed to marshal log")
 		return
 	}
-	line := fmt.Sprintf("%X\r\n%s\r\n\r\n", len(data)+2, string(data))
+	line := fmt.Appendf(nil, "%X\r\n%s\r\n\r\n", len(data)+2, data)
 
 	// waiting here keeps the log lines ordered across subscribers
 	var wg sync.WaitGroup
@@ -108,7 +108,7 @@ func (l *logBroadcaster) broadcast(ctx context.Context, log *types.Log) {
 			if sub.isDone() {
 				return
 			}
-			if _, err := sub.buf.Write([]byte(line)); err != nil {
+			if _, err := sub.buf.Write(line); err != nil {
 				corelog.WithFunc("workload.broadcast").WithField("ID", ID).Debug(ctx, "failed to write to subscriber")
 				sub.cancel()
 				select {
