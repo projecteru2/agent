@@ -6,7 +6,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/moby/moby/api v1.55.0
 	github.com/moby/moby/client v0.5.1
-	github.com/projecteru2/core v0.0.0-20260825064033-3609293686bd
+	github.com/projecteru2/core v0.0.0-20260825075516-7465c31f0a51
 	github.com/projecteru2/libyavirt v0.0.0-20231128023216-96fef06a6ca4
 	github.com/prometheus/client_golang v1.24.1
 	github.com/rs/zerolog v1.35.1
