@@ -44,15 +44,15 @@ func TestWatchDaemonReportsTransitions(t *testing.T) {
 	assert.Equal(t, event{vmWorkload, common.StatusDie}, next(t, events))
 }
 
-func TestWatchDaemonReportsALiveVMOnly(t *testing.T) {
+func TestWatchDaemonReportsARunningVMBeforeItsGuestIsVerified(t *testing.T) {
 	socket := startDaemon(t, stream(
 		fmt.Sprintf(changeFrame, "MODIFIED", vmWorkload, "running", false),
-		fmt.Sprintf(changeFrame, "ADDED", otherWorkload, "running", true),
+		fmt.Sprintf(changeFrame, "ADDED", otherWorkload, "stopped", true),
 	))
 
 	events := watch(t, newCocoon(t, socket, t.TempDir()))
-	assert.Equal(t, event{vmWorkload, common.StatusDie}, next(t, events))
-	assert.Equal(t, event{otherWorkload, common.StatusStart}, next(t, events))
+	assert.Equal(t, event{vmWorkload, common.StatusStart}, next(t, events))
+	assert.Equal(t, event{otherWorkload, common.StatusDie}, next(t, events))
 }
 
 func TestWatchDaemonIgnoresAForeignVM(t *testing.T) {
@@ -88,10 +88,10 @@ func TestWatchDaemonIgnoresADeleteItNeverSaw(t *testing.T) {
 	assert.Equal(t, event{otherWorkload, common.StatusStart}, next(t, events))
 }
 
-func TestListUsesTheDaemonLiveness(t *testing.T) {
+func TestListUsesTheDaemonState(t *testing.T) {
 	dir := t.TempDir()
 	writeMeta(t, dir, vmWorkload, scope(t, ""))
-	socket := startDaemon(t, vms(fmt.Sprintf(`{"vms":[{"name":%q,"state":"running","live":true}]}`, vmWorkload)))
+	socket := startDaemon(t, vms(fmt.Sprintf(`{"vms":[{"name":%q,"state":"running","live":false}]}`, vmWorkload)))
 
 	workloads, err := newCocoon(t, socket, dir).List(t.Context())
 	require.NoError(t, err)

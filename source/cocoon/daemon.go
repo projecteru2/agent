@@ -35,11 +35,10 @@ const (
 type vmStatus struct {
 	Name  string `json:"name"`
 	State string `json:"state"`
-	Live  bool   `json:"live"`
 }
 
 func (s vmStatus) running() bool {
-	return s.State == stateRunning && s.Live
+	return s.State == stateRunning
 }
 
 type vmsResponse struct {
