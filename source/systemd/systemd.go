@@ -241,7 +241,6 @@ func (s *Systemd) relist(ctx context.Context, emit emitFunc) error {
 	return nil
 }
 
-// emitChange reports an action for a unit only when it is not the one already reported for it.
 func (s *Systemd) emitChange(emit emitFunc, ID, action string) {
 	if s.report(unitOf(ID), action) {
 		emit(ID, action)
@@ -299,7 +298,6 @@ func (s *Systemd) withNetns(ctx context.Context, w *source.Workload) *source.Wor
 	return w
 }
 
-// actionFor maps a settled ActiveState onto an event; activating and deactivating report nothing.
 func actionFor(state any) (string, bool) {
 	switch state {
 	case stateActive:
