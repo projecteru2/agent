@@ -2,19 +2,20 @@
 
 `runtimes` lists what a node hosts. Each one implements the same `Source` interface — list the workloads, stream their events, answer whether its daemon is alive — but they do not all yield every fact a collector can use.
 
-| Capability | `containerd` | `systemd` | `mocks` |
-|---|---|---|---|
-| List workloads | yes | yes | yes |
-| Event stream | daemon events | inotify + D-Bus | scripted |
-| Daemon liveness ping | yes | yes | scripted |
-| Cgroup path, so per-workload metrics | yes | yes | no |
-| Health check address | yes | yes | scripted |
+| Capability | `containerd` | `systemd` | `cocoon` | `mocks` |
+|---|---|---|---|---|
+| List workloads | yes | yes | yes | yes |
+| Event stream | daemon events | inotify + D-Bus | inotify + daemon SSE | scripted |
+| Daemon liveness ping | yes | yes | when a daemon runs | scripted |
+| Where its logs come from | journald | journald | console file | scripted |
+| Cgroup path, so per-workload metrics | yes | yes | yes | no |
+| Health check address | yes | yes | yes | scripted |
 
 `mocks` needs no runtime at all and is what the test suite runs against; pair it with `store: mocks` to bring the agent up with no core either.
 
 A node may list several runtimes. The agent then reports the union of their workloads and merges their event streams; one runtime failing tears the subscription down and the agent resubscribes to all of them. The node heartbeat needs every listed runtime alive, so a node whose containerd died stops looking alive even if its systemd units are fine.
 
-Every source's logs are read from the node's journal; see [architecture](architecture.md). Health checks and metrics are not a source's business either: the source yields the workload's probe address, cgroup directory and netns pid, and the collectors do the rest, identically for every runtime.
+A source's logs are read from the node's journal, or tailed from the console file its metadata names; see [architecture](architecture.md). Health checks and metrics are not a source's business either: the source yields the workload's probe address, cgroup directory and netns pid, and the collectors do the rest, identically for every runtime.
 
 ## Containerd
 
@@ -38,7 +39,7 @@ A container whose spec carries no network namespace of its own shares the node's
 
 Process pods are transient `systemd-run` units named `eru-<workload id>.service`, created by core over ssh. There is no daemon holding their metadata, so core writes it next to the workload as `<meta_dir>/<workload id>.json` in the same ssh session, and deletes it when it removes the workload.
 
-**Discovery.** The agent watches `meta_dir` with inotify. A file appearing is a new workload, its removal a gone one. The directory is on tmpfs, so it empties on reboot along with the transient units; an agent that starts before it exists reports no process workloads and picks them up when core creates the first one.
+**Discovery.** The agent watches `meta_dir` with inotify. A file appearing is a new workload, its removal a gone one. Only the files whose `kind` is `process` are this source's; the rest belong to another runtime sharing the directory. The directory is on tmpfs, so it empties on reboot along with the transient units; an agent that starts before it exists reports no process workloads and picks them up when core creates the first one.
 
 **Running.** A D-Bus subscription on the system bus turns every `ActiveState` change of a workload unit into a start or a die. Listing costs one `ListUnitsByPatterns` call for the whole node, not one call per workload.
 
@@ -49,6 +50,20 @@ A unit counts as a workload only when it is named `eru-<workload id>.service` wi
 **Networks.** A process pod on the host network has no counters of its own, so the agent reports none for it and health checks it against `127.0.0.1`. A pod with its own CNI address is health checked against that address, and its network counters come from the namespace of the unit's `MainPID`.
 
 **Logs.** Transient units write to the journal natively. The agent matches them on one term, `SYSLOG_IDENTIFIER=eru`, so core starts every unit with `-p SyslogIdentifier=eru`; a unit without it is invisible to log forwarding, though its status, health checks and metrics are unaffected. See [architecture](architecture.md) for the reader.
+
+## Cocoon
+
+VM pods are Cloud Hypervisor or Firecracker guests that the `cocoon` CLI created over ssh. Like a process pod they carry no runtime metadata, so core writes `<meta_dir>/<workload id>.json` in the same ssh session and removes it when it removes the VM. Both runtimes share the directory and the inotify watch on it; a meta file names the runtime it belongs to under `kind`, so the systemd source claims `process` files and the cocoon source claims `vm` files and neither sees the other's.
+
+**Discovery.** Same as a process pod: a file appearing is a new VM, its removal a gone one.
+
+**Running.** `cocoon daemon` supervises the VMs on the node and serves a read-only API on `runtimes.cocoon.socket`. The agent opens `GET /v1/events` once and turns every change into a start or a die; `GET /v1/vms` answers the same question for a listing. A VM counts as running when the daemon reports it both in state `running` and live, and VMs are matched to workloads by the name core created them under, so a VM an operator created outside eru is ignored.
+
+**Without the daemon.** It is optional. When nothing answers on the socket the agent falls back to the VM's own cgroup scope: a `cgroup.procs` with a pid in it is a running VM, read on the health tick like every other file the collectors read. The node stays up in that case — only a daemon that answers and reports itself unhealthy takes the node down, because that is the case where its liveness is stale rather than absent.
+
+**Networks.** A VM's traffic crosses a host-side tap device, which the meta file names, so the counters come from `/sys/class/net/<tap>/statistics` rather than from a network namespace. Health checks go against the CNI address in the same file.
+
+**Logs.** A VM writes to its serial console file, not to the journal — Linux guests their console output, Windows guests SAC. The agent tails the path the meta file names with one goroutine per VM, watching the file's directory with inotify so the watch outlives a rotation, and starting at the end of the file so a restart does not replay the whole boot.
 
 ## Health checks
 

@@ -12,10 +12,11 @@ The binary is also the two helper modes containerd runs on the node: `eru-agent 
 |---|---|
 | `manager` | Builds the store and source both managers share |
 | `manager/node` | Node status heartbeat and shutdown |
-| `manager/workload` | Workload discovery, health checks, journal log forwarding and broadcast |
-| `source` | The `Source` interface every runtime implements, and the `Workload` it yields |
-| `source/containerd`, `source/systemd` | The runtime backends, plus `source.Multi` for a node that hosts several |
-| `collector` | Runtime-agnostic hot paths: cgroup v2 metrics, network counters, health probes |
+| `manager/workload` | Workload discovery, health checks, log forwarding and broadcast |
+| `source` | The `Source` interface every runtime implements, the `Workload` it yields, and the dedup that keeps a repeated state from becoming a second event |
+| `source/containerd`, `source/systemd`, `source/cocoon` | The runtime backends, plus `source.Multi` for a node that hosts several |
+| `source/meta` | The metadata file core writes over ssh, shared by the runtimes it describes |
+| `collector` | Runtime-agnostic hot paths: cgroup v2 metrics, network counters, health probes, journal reader and console tailer |
 | `logshim` | The `eru-agent log-shim` mode: containerd's binary logger, one process per task |
 | `ocihook` | The `eru-agent oci-hook` mode: cni attach and detach from the container's own oci spec |
 | `store` | The `Store` interface the managers report through |
@@ -55,9 +56,12 @@ If the stream errors the manager waits `global_connection_timeout` and resubscri
 
 **Metrics.** Each running workload gets one sampling goroutine, started when the workload is first seen running and cancelled on its die event. The sampler reads the workload's cgroup v2 files and its netns counters directly, so a tick costs a handful of small file reads and no call to any daemon. See [metrics](metrics.md).
 
-**Logs.** Every workload's output reaches the agent through the node's journal. The agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` child process for the whole node, and routes each record to a workload by its `ERU_ID` field or by the unit that emitted it. One term, not two: journald ors terms with `+`, but `-u` is an option rather than a term, so `-u 'eru-*' + SYSLOG_IDENTIFIER=eru` is rejected. Everything eru runs therefore carries the same identifier — process units get `SyslogIdentifier=eru` from core's `systemd-run`, containers get it from `eru-agent log-shim`, which containerd execs once per task. One reader per node replaces one attach per workload, and a cursor persisted under `state_dir` means an agent restart resumes where it stopped instead of losing the lines in between. journald's format is only readable through libsystemd, so the system tool is the reader; the agent logs that requirement at debug level on startup.
+**Logs.** A workload's output reaches the agent one of two ways, and the source decides which.
 
-Each line becomes the same JSON record:
+- **Console file** — a VM writes to its serial console. One goroutine per VM tails the file, armed with an inotify watch on the file's directory before the file is opened, so nothing written in between is missed and the watch outlives a rotation. The reader starts at the end of the file, holds a partial line until the write that finishes it, and follows the file across a rotation or a truncation by comparing the inode and the offset.
+- **Journal** — every other runtime logs to journald. The agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` child process for the whole node, and routes each record to a workload by its `ERU_ID` field or by the unit that emitted it. One term, not two: journald ors terms with `+`, but `-u` is an option rather than a term, so `-u 'eru-*' + SYSLOG_IDENTIFIER=eru` is rejected. Everything eru runs therefore carries the same identifier — process units get `SyslogIdentifier=eru` from core's `systemd-run`, containers get it from `eru-agent log-shim`, which containerd execs once per task. One reader per node replaces one attach per workload, and a cursor persisted under `state_dir` means an agent restart resumes where it stopped instead of losing the lines in between. journald's format is only readable through libsystemd, so the system tool is the reader; the agent logs that requirement at debug level on startup.
+
+Either way, each line becomes the same JSON record:
 
 ```json
 {

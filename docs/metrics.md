@@ -1,6 +1,6 @@
 # Metrics
 
-The agent exports per-workload metrics for every source that yields a cgroup directory, which is every runtime it supports.
+The agent exports per-workload metrics for every source that yields a cgroup directory, which is every runtime it supports: a container's cgroup, a process pod's unit slice, or a VM's cocoon scope. The sampler is the same code for all three.
 
 Collection starts when the agent first sees a workload running and stops when that workload dies, at which point its gauges are unregistered and the workload disappears from `/metrics`.
 
@@ -51,7 +51,7 @@ Per-second rates, with an extra `nic` label naming the interface.
 
 `bytes_send`, `bytes_recv`, `packets_send`, `packets_recv`, `err_in`, `err_out`, `drop_in`, `drop_out`
 
-Counters are read from `/proc/<pid>/net/dev` of the workload's network namespace, which is why the container image needs `/proc` bind mounted at `/hostProc`. A workload the source reports on a host interface instead is read from `/sys/class/net/<iface>/statistics/` — one interface, no namespace.
+Counters are read from `/proc/<pid>/net/dev` of the workload's network namespace, which is why the container image needs `/proc` bind mounted at `/hostProc`. A workload the source reports on a host interface instead — a VM behind its tap device, for one — is read from `/sys/class/net/<iface>/statistics/`: one interface, no namespace.
 
 ### Block IO
 
