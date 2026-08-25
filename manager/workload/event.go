@@ -6,6 +6,7 @@ import (
 
 	"github.com/projecteru2/core/log"
 
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 )
 
@@ -13,22 +14,13 @@ import (
 type EventHandlerFunc func(context.Context, *types.WorkloadEventMessage)
 
 type EventHandler struct {
-	mu       sync.RWMutex
-	handlers map[string]EventHandlerFunc
-	queue    *serialQueue
+	start EventHandlerFunc
+	die   EventHandlerFunc
+	queue *serialQueue
 }
 
-func NewEventHandler() *EventHandler {
-	return &EventHandler{
-		handlers: map[string]EventHandlerFunc{},
-		queue:    newSerialQueue(),
-	}
-}
-
-func (e *EventHandler) Handle(action string, h EventHandlerFunc) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.handlers[action] = h
+func NewEventHandler(start, die EventHandlerFunc) *EventHandler {
+	return &EventHandler{start: start, die: die, queue: newSerialQueue()}
 }
 
 func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventMessage) {
@@ -41,12 +33,12 @@ func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventM
 				return
 			}
 			logger.Infof(ctx, "workload %s action %s", ev.ID, ev.Action)
-			e.mu.RLock()
-			h := e.handlers[ev.Action]
-			e.mu.RUnlock()
-			if h != nil {
-				// one workload's events are applied in order, so a die cannot land after the next start
-				e.queue.Go(ev.ID, func() { h(ctx, ev) })
+			// one workload's events are applied in order, so a die cannot land after the next start
+			switch ev.Action {
+			case common.StatusStart:
+				e.queue.Go(ev.ID, func() { e.start(ctx, ev) })
+			case common.StatusDie:
+				e.queue.Go(ev.ID, func() { e.die(ctx, ev) })
 			}
 		case <-ctx.Done():
 			logger.Info(ctx, "context canceled, stop watching")

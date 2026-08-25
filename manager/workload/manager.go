@@ -42,6 +42,7 @@ type Manager struct {
 	logTargets map[string]*logTarget
 
 	logBroadcaster *logBroadcaster
+	events         *EventHandler
 }
 
 func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
@@ -51,7 +52,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		return nil, err
 	}
 
-	return &Manager{
+	m := &Manager{
 		config:            config,
 		store:             clients.Store,
 		source:            clients.Source,
@@ -63,7 +64,9 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		startingWorkloads: map[string]*utils.RetryTask{},
 		collecting:        map[string]*collectTask{},
 		logTargets:        map[string]*logTarget{},
-	}, nil
+	}
+	m.events = NewEventHandler(m.handleWorkloadStart, m.handleWorkloadDie)
+	return m, nil
 }
 
 func (m *Manager) Run(ctx context.Context) error {
