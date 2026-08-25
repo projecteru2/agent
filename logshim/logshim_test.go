@@ -2,11 +2,11 @@ package logshim
 
 import (
 	"errors"
+	"io"
 	"strings"
 	"sync"
 	"testing"
 
-	"github.com/containerd/containerd/v2/core/runtime/v2/logging"
 	"github.com/coreos/go-systemd/v22/journal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,13 +16,14 @@ import (
 
 func TestRunJournalsOneEntryPerLine(t *testing.T) {
 	sender := &fakeJournal{}
-	config := &logging.Config{
-		ID:     "myapp_web_EAXPcM",
-		Stdout: strings.NewReader("first\r\nsecond\nno trailing newline"),
-		Stderr: strings.NewReader("boom\n"),
+	task := task{
+		id:     "myapp_web_EAXPcM",
+		stdout: strings.NewReader("first\r\nsecond\nno trailing newline"),
+		stderr: strings.NewReader("boom\n"),
+		ready:  &fakePipe{},
 	}
 
-	require.NoError(t, run(sender.send, config, ready(nil)))
+	require.NoError(t, run(sender.send, task))
 
 	assert.Equal(t, []string{"first", "second", "no trailing newline"}, sender.messages(streamStdout))
 	assert.Equal(t, []string{"boom"}, sender.messages(streamStderr))
@@ -35,34 +36,58 @@ func TestRunJournalsOneEntryPerLine(t *testing.T) {
 	assert.Equal(t, journal.PriErr, sender.priorityOf("boom"))
 }
 
+func TestRunSignalsReadinessBeforeItReads(t *testing.T) {
+	sender := &fakeJournal{}
+	ready := &fakePipe{}
+
+	require.NoError(t, run(sender.send, task{id: "myapp_web_EAXPcM", stdout: empty(), stderr: empty(), ready: ready}))
+
+	assert.Equal(t, []byte{0}, ready.written)
+	assert.True(t, ready.closed)
+}
+
+func TestRunSplitsALineLongerThanTheBuffer(t *testing.T) {
+	sender := &fakeJournal{}
+	// a progress bar redraws with \r and never terminates a line, so the reader must cut it up itself
+	blob := strings.Repeat("x", lineMax+lineMax/2)
+	task := task{id: "myapp_web_EAXPcM", stdout: strings.NewReader(blob), stderr: empty(), ready: &fakePipe{}}
+
+	require.NoError(t, run(sender.send, task))
+
+	messages := sender.messages(streamStdout)
+	require.Len(t, messages, 2)
+	assert.Len(t, messages[0], lineMax)
+	assert.Len(t, messages[1], lineMax/2)
+}
+
 func TestRunJournalsNothingForAnEmptyStream(t *testing.T) {
 	sender := &fakeJournal{}
-	config := &logging.Config{ID: "myapp_web_EAXPcM", Stdout: strings.NewReader(""), Stderr: strings.NewReader("")}
 
-	require.NoError(t, run(sender.send, config, ready(nil)))
+	require.NoError(t, run(sender.send, task{id: "myapp_web_EAXPcM", stdout: empty(), stderr: empty(), ready: &fakePipe{}}))
 	assert.Empty(t, sender.records)
 }
 
 func TestRunDropsWhatTheJournalRefuses(t *testing.T) {
 	full := errors.New("journal socket is full")
 	sender := &fakeJournal{err: full}
-	config := &logging.Config{
-		ID:     "myapp_web_EAXPcM",
-		Stdout: strings.NewReader("first\nsecond\n"),
-		Stderr: strings.NewReader("boom\n"),
+	task := task{
+		id:     "myapp_web_EAXPcM",
+		stdout: strings.NewReader("first\nsecond\n"),
+		stderr: strings.NewReader("boom\n"),
+		ready:  &fakePipe{},
 	}
 
-	err := run(sender.send, config, ready(nil))
+	err := run(sender.send, task)
 	assert.ErrorIs(t, err, full)
 	assert.ErrorContains(t, err, "dropped 3 lines of myapp_web_EAXPcM")
 }
 
 func TestRunStopsWhenItCannotSignalReadiness(t *testing.T) {
-	notReady := errors.New("the shim closed the wait pipe")
+	broken := errors.New("the shim closed the wait pipe")
 	sender := &fakeJournal{}
-	config := &logging.Config{ID: "myapp_web_EAXPcM", Stdout: strings.NewReader("first\n"), Stderr: strings.NewReader("")}
+	task := task{id: "myapp_web_EAXPcM", stdout: strings.NewReader("first\n"), stderr: empty(), ready: &fakePipe{err: broken}}
 
-	assert.ErrorIs(t, run(sender.send, config, ready(notReady)), notReady)
+	assert.ErrorIs(t, run(sender.send, task), broken)
 	assert.Empty(t, sender.records)
 }
 
@@ -118,6 +143,25 @@ func (f *fakeJournal) find(message string) record {
 	return record{}
 }
 
-func ready(err error) func() error {
-	return func() error { return err }
+type fakePipe struct {
+	written []byte
+	closed  bool
+	err     error
+}
+
+func (f *fakePipe) Write(p []byte) (int, error) {
+	if f.err != nil {
+		return 0, f.err
+	}
+	f.written = append(f.written, p...)
+	return len(p), nil
+}
+
+func (f *fakePipe) Close() error {
+	f.closed = true
+	return nil
+}
+
+func empty() io.Reader {
+	return strings.NewReader("")
 }

@@ -32,7 +32,7 @@ A container whose spec carries no network namespace of its own shares the node's
 
 **Metrics.** The cgroup directory comes from `/proc/<pid>/cgroup` of the task's pid, so it is found whatever cgroup driver containerd uses, and it must be a unified cgroup v2 hierarchy.
 
-**Logs.** containerd keeps no logs. Core creates every task with `cio.LogURI` pointing at `eru-agent log-shim`, which writes each line to the journal under `SYSLOG_IDENTIFIER=eru` with the container id in `ERU_ID`; the agent's journal reader picks them up from there. See [architecture](architecture.md).
+**Logs.** containerd keeps no logs. Core creates every task with `cio.LogURI` set to `binary:///usr/local/bin/eru-agent?log-shim`, which writes each line to the journal under `SYSLOG_IDENTIFIER=eru` with the container id in `ERU_ID`; the agent's journal reader picks them up from there. See [architecture](architecture.md).
 
 ## Systemd
 
