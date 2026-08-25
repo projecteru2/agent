@@ -165,7 +165,7 @@ func (c *Collector) host() (hostCPU, error) {
 func (c *Collector) netStats(w *source.Workload) ([]netStat, error) {
 	switch {
 	case w.NetnsPID > 0:
-		return netStatsFromProc(c.procRoot, w.NetnsPID)
+		return netStatsFromProc(c.procRoot, w.NetnsPID, w.HostIface, w.HostIfaceMirrored)
 	case w.HostIface != "":
 		return netStatsFromIface(sysNetRoot, w.HostIface, w.HostIfaceMirrored)
 	default:

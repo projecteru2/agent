@@ -1,0 +1,4 @@
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo:      64       2    0    0    0     0          0         0       64       2    0    0    0     0       0          0
+tapXBBR7U22-0:    5000      50    1    2    0     0          0         0     7000      70    3    4    0     0       0          0

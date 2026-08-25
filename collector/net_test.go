@@ -7,8 +7,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const vmTap = "tapXBBR7U22-0"
+
 func TestNetStatsFromProc(t *testing.T) {
-	stats, err := netStatsFromProc("testdata/proc", 1234)
+	stats, err := netStatsFromProc("testdata/proc", 1234, "", false)
 	require.NoError(t, err)
 	require.Len(t, stats, 2)
 
@@ -27,8 +29,44 @@ func TestNetStatsFromProc(t *testing.T) {
 }
 
 func TestNetStatsFromProcFailsForAWorkloadThatIsGone(t *testing.T) {
-	_, err := netStatsFromProc("testdata/proc", 4321)
+	_, err := netStatsFromProc("testdata/proc", 4321, "", false)
 	assert.Error(t, err)
+}
+
+func TestNetStatsFromProcNarrowsToTheWorkloadsIface(t *testing.T) {
+	stats, err := netStatsFromProc("testdata/proc", 2345, vmTap, false)
+	require.NoError(t, err)
+	require.Len(t, stats, 1)
+
+	assert.Equal(t, netStat{
+		Name:        vmTap,
+		BytesRecv:   5000,
+		PacketsRecv: 50,
+		ErrIn:       1,
+		DropIn:      2,
+		BytesSent:   7000,
+		PacketsSent: 70,
+		ErrOut:      3,
+		DropOut:     4,
+	}, stats[0])
+}
+
+func TestNetStatsFromProcMirrorsAVMTapInItsNetns(t *testing.T) {
+	stats, err := netStatsFromProc("testdata/proc", 2345, vmTap, true)
+	require.NoError(t, err)
+	require.Len(t, stats, 1)
+
+	assert.Equal(t, netStat{
+		Name:        vmTap,
+		BytesRecv:   7000,
+		PacketsRecv: 70,
+		ErrIn:       3,
+		DropIn:      4,
+		BytesSent:   5000,
+		PacketsSent: 50,
+		ErrOut:      1,
+		DropOut:     2,
+	}, stats[0])
 }
 
 func TestNetStatsFromIface(t *testing.T) {

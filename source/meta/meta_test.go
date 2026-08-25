@@ -53,7 +53,7 @@ func TestReadRendersAVMWorkload(t *testing.T) {
 	assert.Equal(t, "/sys/fs/cgroup/cocoon.slice/vm-"+cocoonVMID+".scope", w.CgroupPath)
 	assert.Equal(t, cocoonTap, w.HostIface)
 	assert.True(t, w.HostIfaceMirrored)
-	assert.Zero(t, w.NetnsPID)
+	assert.Equal(t, 41207, w.NetnsPID)
 	assert.Equal(t, "10.0.0.9", w.LocalIP)
 	assert.Equal(t, "/var/lib/cocoon/run/cloudhypervisor/"+cocoonVMID+"/console.sock", w.Log.ConsoleSocket)
 	assert.Empty(t, w.Log.JournalUnit)

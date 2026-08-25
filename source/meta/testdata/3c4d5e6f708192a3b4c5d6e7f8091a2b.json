@@ -13,7 +13,7 @@
   "publish": ["22"],
   "networks": {"eru-cni": "10.0.0.9"},
   "cgroup": "/sys/fs/cgroup/cocoon.slice/vm-XMD6Y5GKRNMYZVDGDKPL4PGQV2.scope",
-  "netns_pid": 0,
+  "netns_pid": 41207,
   "iface": "tapXMD6Y5GK-0",
   "log": {"console_socket": "/var/lib/cocoon/run/cloudhypervisor/XMD6Y5GKRNMYZVDGDKPL4PGQV2/console.sock"}
 }

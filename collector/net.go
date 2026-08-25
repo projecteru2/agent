@@ -26,7 +26,7 @@ func (s *netStat) mirror() {
 	s.DropIn, s.DropOut = s.DropOut, s.DropIn
 }
 
-func netStatsFromProc(procRoot string, pid int) ([]netStat, error) {
+func netStatsFromProc(procRoot string, pid int, iface string, mirrored bool) ([]netStat, error) {
 	lines, err := readLines(filepath.Join(procRoot, strconv.Itoa(pid), "net", "dev"))
 	if err != nil {
 		return nil, err
@@ -45,7 +45,7 @@ func netStatsFromProc(procRoot string, pid int) ([]netStat, error) {
 		if len(fields) < 12 {
 			continue
 		}
-		stats = append(stats, netStat{
+		stat := netStat{
 			Name:        strings.TrimSpace(name),
 			BytesRecv:   parseUint(fields[0]),
 			PacketsRecv: parseUint(fields[1]),
@@ -55,7 +55,14 @@ func netStatsFromProc(procRoot string, pid int) ([]netStat, error) {
 			PacketsSent: parseUint(fields[9]),
 			ErrOut:      parseUint(fields[10]),
 			DropOut:     parseUint(fields[11]),
-		})
+		}
+		if iface != "" && stat.Name != iface {
+			continue
+		}
+		if mirrored {
+			stat.mirror()
+		}
+		stats = append(stats, stat)
 	}
 	return stats, nil
 }
