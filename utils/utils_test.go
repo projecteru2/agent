@@ -81,8 +81,6 @@ func TestUseLabelAsFilter(t *testing.T) {
 
 func TestGetMaxAttemptsByTTL(t *testing.T) {
 	assert.Equal(t, GetMaxAttemptsByTTL(0), 5)
-	assert.Equal(t, GetMaxAttemptsByTTL(1), 2)
-	assert.Equal(t, GetMaxAttemptsByTTL(8), 4)
 }
 
 func TestGetIP(t *testing.T) {

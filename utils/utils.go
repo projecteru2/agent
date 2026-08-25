@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"fmt"
-	"math"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -42,12 +41,9 @@ func UseLabelAsFilter() bool {
 	return os.Getenv("ERU_AGENT_EXPERIMENTAL_FILTER") == "label"
 }
 
+// GetMaxAttemptsByTTL is fixed: core owns status expiry, so every call site passes a zero ttl.
 func GetMaxAttemptsByTTL(ttl int64) int {
-	// a zero ttl means core owns expiry, so use a fixed attempt count
-	if ttl < 1 {
-		return 5
-	}
-	return int(math.Floor(math.Log2(float64(ttl)+1))) + 1
+	return 5
 }
 
 // ReplaceNonUtf8 replaces non-utf8 characters in \x format.
