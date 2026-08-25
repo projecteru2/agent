@@ -14,11 +14,11 @@ import (
 	"github.com/projecteru2/agent/common"
 )
 
-func TestReadStateOfACreatedContainerIsAnAdd(t *testing.T) {
+func TestReadStateAtCreateRuntimeIsAnAdd(t *testing.T) {
 	s, err := readState(strings.NewReader(`{
 		"ociVersion": "1.0.2",
 		"id": "myapp_web_EAXPcM",
-		"status": "created",
+		"status": "creating",
 		"pid": 4242,
 		"bundle": "/run/containerd/io.containerd.runtime.v2.task/eru/myapp_web_EAXPcM",
 		"annotations": {"eru.namespace": "staging"}
@@ -31,24 +31,19 @@ func TestReadStateOfACreatedContainerIsAnAdd(t *testing.T) {
 	assert.Equal(t, "staging", s.namespace())
 }
 
-func TestReadStateOfAnythingElseIsADelete(t *testing.T) {
+func TestReadStateAtPoststopIsADelete(t *testing.T) {
 	tests := []struct {
 		name  string
 		state string
 		netns string
 	}{
 		{
-			name:  "a stopped container still has a pid",
-			state: `{"id": "myapp_web_EAXPcM", "status": "stopped", "pid": 4242}`,
-			netns: "/proc/4242/ns/net",
-		},
-		{
-			name:  "poststop runs once the process is gone",
+			name:  "runc reports the container stopped once the process is gone",
 			state: `{"id": "myapp_web_EAXPcM", "status": "stopped", "pid": 0}`,
 		},
 		{
-			name:  "a running container is past the createRuntime stage",
-			state: `{"id": "myapp_web_EAXPcM", "status": "running", "pid": 4242}`,
+			name:  "a stopped container whose pid the runtime still reports",
+			state: `{"id": "myapp_web_EAXPcM", "status": "stopped", "pid": 4242}`,
 			netns: "/proc/4242/ns/net",
 		},
 	}
@@ -60,6 +55,16 @@ func TestReadStateOfAnythingElseIsADelete(t *testing.T) {
 			assert.False(t, s.adding())
 			assert.Equal(t, tt.netns, s.netns())
 			assert.Equal(t, common.ContainerdNamespace, s.namespace())
+		})
+	}
+}
+
+func TestReadStateOfALiveContainerIsAnAdd(t *testing.T) {
+	for _, status := range []string{"creating", "created", "running"} {
+		t.Run(status, func(t *testing.T) {
+			s, err := readState(strings.NewReader(`{"id": "myapp_web_EAXPcM", "status": "` + status + `", "pid": 4242}`))
+			require.NoError(t, err)
+			assert.True(t, s.adding())
 		})
 	}
 }

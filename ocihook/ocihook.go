@@ -25,7 +25,7 @@ const (
 	defaultBinDir  = "/opt/cni/bin"
 
 	netnsPathFormat = "/proc/%d/ns/net"
-	statusCreated   = "created"
+	statusStopped   = "stopped"
 
 	annotationNamespace = "eru.namespace"
 )
@@ -96,9 +96,9 @@ type state struct {
 	Annotations map[string]string `json:"annotations"`
 }
 
-// adding reports whether this is the createRuntime stage: the hook is called with the same argv at poststop.
+// adding reports whether the hook runs at createRuntime, where runc reports "creating" and a live pid.
 func (s *state) adding() bool {
-	return s.Pid > 0 && s.Status == statusCreated
+	return s.Pid > 0 && s.Status != statusStopped
 }
 
 // netns is empty once the process is gone, which is what cni expects of a delete.
