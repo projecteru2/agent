@@ -20,7 +20,7 @@ Every source's logs are read from the node's journal; see [architecture](archite
 
 The agent talks to the local containerd over `runtimes.containerd.socket`, in the namespace `runtimes.containerd.namespace`. There is no daemon in front of it: eru's core creates the container, the task and the OCI hooks itself.
 
-**Which containers it manages.** Lists are filtered by the eru mark label, so containers eru did not create are invisible. `check_only_mine: true` narrows that to this node, either by comparing the container's `ERU_NODE_NAME` to the hostname or, with `ERU_AGENT_EXPERIMENTAL_FILTER=label`, by adding `eru.nodename` and `eru.coreid` to the daemon-side filter.
+**Which containers it manages.** Lists are filtered by the eru mark label, so containers eru did not create are invisible. `check_only_mine: true` narrows that to this node by the `eru.nodename` label core wrote at create time. Only where the comparison happens changes: by default the agent makes it itself on every container it lists, and with `ERU_AGENT_EXPERIMENTAL_FILTER=label` it adds `eru.nodename` and `eru.coreid` to the filter so the daemon does it instead.
 
 **Workload identity.** A containerd container id is the eru workload name, the three part `app_entrypoint_ident` form. Containers whose id does not parse are skipped. Pod and node names come from the `ERU_POD` and `ERU_NODE_NAME` variables of the runtime spec.
 

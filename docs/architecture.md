@@ -12,7 +12,7 @@ The binary is also the two helper modes containerd runs on the node: `eru-agent 
 |---|---|
 | `manager` | Builds the store and source both managers share |
 | `manager/node` | Node status heartbeat and shutdown |
-| `manager/workload` | Workload discovery, health checks, log attach and broadcast |
+| `manager/workload` | Workload discovery, health checks, journal log forwarding and broadcast |
 | `source` | The `Source` interface every runtime implements, and the `Workload` it yields |
 | `source/containerd`, `source/systemd` | The runtime backends, plus `source.Multi` for a node that hosts several |
 | `collector` | Runtime-agnostic hot paths: cgroup v2 metrics, network counters, health probes |
