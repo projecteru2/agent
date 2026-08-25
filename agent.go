@@ -8,7 +8,6 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/jinzhu/configor"
 	"github.com/projecteru2/core/log"
 	coretypes "github.com/projecteru2/core/types"
 	zerolog "github.com/rs/zerolog/log"
@@ -23,9 +22,8 @@ import (
 )
 
 func initConfig(ctx context.Context, cmd *cli.Command) (*types.Config, error) {
-	config := &types.Config{}
-
-	if err := configor.Load(config, cmd.String("config")); err != nil {
+	config, err := utils.LoadConfig(cmd.String("config"))
+	if err != nil {
 		return nil, err
 	}
 
