@@ -40,7 +40,9 @@ Process pods are transient `systemd-run` units named `eru-<workload id>.service`
 
 **Discovery.** The agent watches `meta_dir` with inotify. A file appearing is a new workload, its removal a gone one. The directory is on tmpfs, so it empties on reboot along with the transient units; an agent that starts before it exists reports no process workloads and picks them up when core creates the first one.
 
-**Running.** A D-Bus subscription on the system bus turns every `ActiveState` change of an `eru-*.service` into a start or a die. Listing costs one `ListUnitsByPatterns` call for the whole node, not one call per workload.
+**Running.** A D-Bus subscription on the system bus turns every `ActiveState` change of a workload unit into a start or a die. Listing costs one `ListUnitsByPatterns` call for the whole node, not one call per workload.
+
+A unit counts as a workload only when it is named `eru-<workload id>.service` with the id 32 lowercase hex characters. The bus can match a glob only, so `eru-agent.service` on every node and `eru-core.service` on a core host come back from the same query and are dropped by name — otherwise the agent would report itself as a workload and chase a meta file that does not exist. A meta file whose `id` is not a workload id is rejected for the same reason, so the directory and the units cannot disagree.
 
 **Networks.** A process pod on the host network has no counters of its own, so the agent reports none for it and health checks it against `127.0.0.1`. A pod with its own CNI address is health checked against that address, and its network counters come from the namespace of the unit's `MainPID`.
 

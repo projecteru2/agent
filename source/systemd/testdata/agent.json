@@ -1,0 +1,7 @@
+{
+  "id": "agent",
+  "appname": "eru",
+  "entrypoint": "agent",
+  "cgroup": "/sys/fs/cgroup/system.slice/eru-agent.service",
+  "log": {"journal_unit": "eru-agent.service"}
+}

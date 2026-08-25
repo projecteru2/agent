@@ -1,9 +1,0 @@
-{
-  "id": "hostnet",
-  "kind": "process",
-  "appname": "myapp",
-  "entrypoint": "worker",
-  "ident": "QQQQQQ",
-  "cgroup": "/sys/fs/cgroup/eru.slice/eru-hostnet.service",
-  "log": {"journal_unit": "eru-hostnet.service"}
-}

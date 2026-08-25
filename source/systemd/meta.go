@@ -6,6 +6,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -15,7 +16,19 @@ import (
 	"github.com/projecteru2/agent/source"
 )
 
-const metaSuffix = ".json"
+const (
+	metaSuffix = ".json"
+
+	workloadIDPattern = "[0-9a-f]{32}"
+)
+
+var (
+	// workloadUnit matches a workload's transient unit and nothing else eru puts on a node under the
+	// same prefix, in particular not the agent's own eru-agent.service or a core host's eru-core.service.
+	workloadUnit = regexp.MustCompile("^" + unitPrefix + "(" + workloadIDPattern + ")" + regexp.QuoteMeta(unitSuffix) + "$")
+
+	workloadID = regexp.MustCompile("^" + workloadIDPattern + "$")
+)
 
 type logSource struct {
 	JournalUnit       string `json:"journal_unit"`
@@ -70,6 +83,9 @@ func readMeta(dir, ID string) (*meta, error) {
 	if err := json.Unmarshal(data, m); err != nil {
 		return nil, err
 	}
+	if !workloadID.MatchString(m.ID) {
+		return nil, fmt.Errorf("meta file of %s carries %q, which is not a workload id", ID, m.ID)
+	}
 	if m.Log == (logSource{}) {
 		return nil, fmt.Errorf("meta file of %s says nothing about where its logs are", ID)
 	}
@@ -123,9 +139,9 @@ func workloadIDFromFile(name string) (string, bool) {
 }
 
 func workloadIDFromUnit(name string) (string, bool) {
-	trimmed, ok := strings.CutSuffix(name, unitSuffix)
-	if !ok {
+	match := workloadUnit.FindStringSubmatch(name)
+	if match == nil {
 		return "", false
 	}
-	return strings.CutPrefix(trimmed, unitPrefix)
+	return match[1], true
 }
