@@ -12,6 +12,7 @@ import (
 
 	"github.com/projecteru2/core/log"
 
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/source/meta"
 	"github.com/projecteru2/agent/types"
@@ -127,9 +128,13 @@ func (c *Cocoon) Alive(ctx context.Context) bool {
 func (c *Cocoon) watchDaemon(ctx context.Context, emit source.EmitFunc) {
 	logger := log.WithFunc("cocoon.watchDaemon")
 	for {
-		err := c.daemon.events(ctx, func(ID string, running bool) {
+		err := c.daemon.events(ctx, func(ID string, running, gone bool) {
 			// the daemon supervises every vm on the node, so only a name eru created is worth an event
 			if !meta.IsID(ID) {
+				return
+			}
+			if gone {
+				c.forget(emit, ID)
 				return
 			}
 			c.reporter.Report(emit, ID, source.ActionOf(running))
@@ -145,6 +150,13 @@ func (c *Cocoon) watchDaemon(ctx context.Context, emit source.EmitFunc) {
 		case <-time.After(c.config.GlobalConnectionTimeout):
 		}
 	}
+}
+
+func (c *Cocoon) forget(emit source.EmitFunc, ID string) {
+	if c.reporter.Known(ID) {
+		c.reporter.Report(emit, ID, common.StatusDie)
+	}
+	c.reporter.Forget(ID)
 }
 
 func (c *Cocoon) liveness(ctx context.Context) map[string]bool {

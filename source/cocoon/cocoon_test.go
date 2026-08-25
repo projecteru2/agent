@@ -27,6 +27,7 @@ const (
 	changeFrame = "event: change\ndata: {\"type\":%q,\"vm\":{\"name\":%q,\"state\":%q,\"live\":%t}}\n\n"
 
 	eventTimeout = 5 * time.Second
+	pollInterval = 10 * time.Millisecond
 )
 
 func TestWatchDaemonReportsTransitions(t *testing.T) {
@@ -61,6 +62,29 @@ func TestWatchDaemonIgnoresAForeignVM(t *testing.T) {
 
 	events := watch(t, newCocoon(t, socket, t.TempDir()))
 	assert.Equal(t, event{vmWorkload, common.StatusStart}, next(t, events))
+}
+
+func TestWatchDaemonBuriesADeletedVMOnce(t *testing.T) {
+	socket := startDaemon(t, stream(
+		fmt.Sprintf(changeFrame, "ADDED", vmWorkload, "running", true),
+		fmt.Sprintf(changeFrame, "DELETED", vmWorkload, "stopped", false),
+	))
+	c := newCocoon(t, socket, t.TempDir())
+	events := watch(t, c)
+
+	assert.Equal(t, event{vmWorkload, common.StatusStart}, next(t, events))
+	assert.Equal(t, event{vmWorkload, common.StatusDie}, next(t, events))
+	assert.Eventually(t, func() bool { return !c.reporter.Known(vmWorkload) }, eventTimeout, pollInterval)
+}
+
+func TestWatchDaemonIgnoresADeleteItNeverSaw(t *testing.T) {
+	socket := startDaemon(t, stream(
+		fmt.Sprintf(changeFrame, "DELETED", vmWorkload, "stopped", false),
+		fmt.Sprintf(changeFrame, "ADDED", otherWorkload, "running", true),
+	))
+
+	events := watch(t, newCocoon(t, socket, t.TempDir()))
+	assert.Equal(t, event{otherWorkload, common.StatusStart}, next(t, events))
 }
 
 func TestListUsesTheDaemonLiveness(t *testing.T) {
@@ -143,7 +167,7 @@ func newCocoon(t *testing.T, socket, metaDir string) *Cocoon {
 
 func startDaemon(t *testing.T, handler http.Handler) string {
 	t.Helper()
-	socket := filepath.Join(t.TempDir(), "d")
+	socket := filepath.Join(shortDir(t), "d")
 	ln, err := net.Listen("unix", socket)
 	require.NoError(t, err)
 
@@ -155,7 +179,15 @@ func startDaemon(t *testing.T, handler http.Handler) string {
 
 func absentSocket(t *testing.T) string {
 	t.Helper()
-	return filepath.Join(t.TempDir(), "absent.sock")
+	return filepath.Join(shortDir(t), "absent.sock")
+}
+
+func shortDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "eru")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return dir
 }
 
 func stream(frames ...string) http.Handler {

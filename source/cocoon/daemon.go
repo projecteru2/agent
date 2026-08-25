@@ -105,7 +105,7 @@ func (d *daemon) vms(ctx context.Context) (map[string]bool, error) {
 }
 
 // events streams the daemon's changes after its opening snapshot; it replays nothing, so the snapshot is the resync.
-func (d *daemon) events(ctx context.Context, handle func(ID string, running bool)) error {
+func (d *daemon) events(ctx context.Context, handle func(ID string, running, gone bool)) error {
 	resp, err := d.get(ctx, eventsPath)
 	if err != nil {
 		return err
@@ -149,7 +149,7 @@ func (d *daemon) get(ctx context.Context, path string) (*http.Response, error) {
 	return resp, nil
 }
 
-func dispatch(event string, data []byte, handle func(ID string, running bool)) error {
+func dispatch(event string, data []byte, handle func(ID string, running, gone bool)) error {
 	switch event {
 	case syncEvent:
 		body := vmsResponse{}
@@ -157,14 +157,14 @@ func dispatch(event string, data []byte, handle func(ID string, running bool)) e
 			return err
 		}
 		for _, vm := range body.VMs {
-			handle(vm.Name, vm.running())
+			handle(vm.Name, vm.running(), false)
 		}
 	case changeEvent:
 		msg := changeMessage{}
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return err
 		}
-		handle(msg.Status.Name, msg.Kind != changeDeleted && msg.Status.running())
+		handle(msg.Status.Name, msg.Status.running(), msg.Kind == changeDeleted)
 	}
 	return nil
 }
