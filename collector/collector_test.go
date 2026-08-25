@@ -43,12 +43,28 @@ func TestCollectRetriesAfterAFailedSample(t *testing.T) {
 
 	c := New(t.Context(), &types.Config{Metrics: types.MetricsConfig{Step: sampleStep}})
 	c.procRoot = "testdata/proc"
-	go c.Collect(t.Context(), w)
+	go c.Collect(t.Context(), w, noRefresh)
 	t.Cleanup(func() { removeMetricsClient(w.ID) })
 
 	assert.Never(t, func() bool { return sampling(w.ID) }, sampleSettle, samplePoll)
 
 	restoreCgroupFile(t, dir, "memory.current")
+	assert.Eventually(t, func() bool { return sampling(w.ID) }, sampleTimeout, samplePoll)
+}
+
+func TestCollectAdoptsTheMetadataItReReadsAfterAFailure(t *testing.T) {
+	w := &source.Workload{
+		ID:         "moved-to-a-new-scope",
+		Meta:       source.Meta{Appname: "app", Entrypoint: "web"},
+		CgroupPath: cgroupWithout(t, "memory.current"),
+	}
+	fresh := &source.Workload{ID: w.ID, Meta: w.Meta, CgroupPath: cgroupWithout(t, "")}
+
+	c := New(t.Context(), &types.Config{Metrics: types.MetricsConfig{Step: sampleStep}})
+	c.procRoot = "testdata/proc"
+	go c.Collect(t.Context(), w, func() *source.Workload { return fresh })
+	t.Cleanup(func() { removeMetricsClient(w.ID) })
+
 	assert.Eventually(t, func() bool { return sampling(w.ID) }, sampleTimeout, samplePoll)
 }
 
@@ -87,6 +103,10 @@ func TestCollectorCachesTheNodeCPUTimes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, first, second)
 	assert.Equal(t, at, c.hostAt)
+}
+
+func noRefresh() *source.Workload {
+	return nil
 }
 
 func sampling(ID string) bool {

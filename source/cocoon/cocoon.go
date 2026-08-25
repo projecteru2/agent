@@ -24,7 +24,10 @@ const (
 	procsFile = "cgroup.procs"
 )
 
-var _ source.Source = (*Cocoon)(nil)
+var (
+	_ source.Source    = (*Cocoon)(nil)
+	_ source.Refresher = (*Cocoon)(nil)
+)
 
 // Cocoon is the vm runtime: metadata from the meta dir, liveness from the cocoon daemon.
 type Cocoon struct {
@@ -75,6 +78,14 @@ func (c *Cocoon) Get(ctx context.Context, ID string) (*source.Workload, error) {
 		return nil, err
 	}
 	return workload(f, c.liveness(ctx)), nil
+}
+
+func (c *Cocoon) Refresh(ID string) (*source.Workload, error) {
+	f, err := c.dir.Read(ID)
+	if err != nil {
+		return nil, err
+	}
+	return workload(f, nil), nil
 }
 
 func (c *Cocoon) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage, <-chan error) {

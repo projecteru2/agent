@@ -122,8 +122,21 @@ func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {
 	m.collecting[w.ID] = task
 	go func() {
 		defer close(task.done)
-		m.collector.Collect(sampleCtx, w)
+		m.collector.Collect(sampleCtx, w, func() *source.Workload { return m.refreshed(ctx, w.ID) })
 	}()
+}
+
+func (m *Manager) refreshed(ctx context.Context, ID string) *source.Workload {
+	refresher, ok := m.source.(source.Refresher)
+	if !ok {
+		return nil
+	}
+	w, err := refresher.Refresh(ID)
+	if err != nil {
+		log.WithFunc("workload.refreshed").WithField("ID", ID).Debugf(ctx, "cannot re-read the metadata: %v", err)
+		return nil
+	}
+	return w
 }
 
 // stopCollecting waits for the sampler out: it unregisters the gauges another sampler would re-register.

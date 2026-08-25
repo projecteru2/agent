@@ -22,6 +22,10 @@ type Source interface {
 	Alive(ctx context.Context) bool
 }
 
+type Refresher interface {
+	Refresh(ID string) (*Workload, error)
+}
+
 // Meta is the workload metadata core wrote when it created the workload.
 type Meta struct {
 	Appname     string

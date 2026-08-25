@@ -22,6 +22,8 @@ const (
 	hostCacheTTL = time.Second
 )
 
+type refreshFunc func() *source.Workload
+
 type device struct {
 	major uint64
 	minor uint64
@@ -82,7 +84,7 @@ func New(ctx context.Context, config *types.Config) *Collector {
 }
 
 // Collect samples one workload every metrics step until ctx is canceled; a step that fails is retried on the next one.
-func (c *Collector) Collect(ctx context.Context, w *source.Workload) {
+func (c *Collector) Collect(ctx context.Context, w *source.Workload, refresh refreshFunc) {
 	logger := log.WithFunc("collector.Collect").WithField("ID", w.ID)
 	if w.CgroupPath == "" {
 		logger.Debug(ctx, "workload has no cgroup, not sampling it")
@@ -107,6 +109,9 @@ func (c *Collector) Collect(ctx context.Context, w *source.Workload) {
 			if !broken {
 				logger.Error(ctx, err, "failed to sample, retrying every step until it works")
 				broken = true
+			}
+			if fresh := refresh(); fresh != nil {
+				w = fresh
 			}
 			prev = nil
 			return
