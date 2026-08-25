@@ -1,6 +1,6 @@
 # agent
 
-Eru's per-node agent. It watches the workloads a node runs — containerd containers and systemd process pods — health checks them, forwards their logs, exports their metrics and reports node and workload status back to [eru-core](https://github.com/projecteru2/core).
+Eru's per-node agent. It watches the workloads a node runs — containerd containers, systemd process pods and cocoon VMs — health checks them, forwards their logs, exports their metrics and reports node and workload status back to [eru-core](https://github.com/projecteru2/core).
 
 **Documentation: [projecteru2.github.io/agent](https://projecteru2.github.io/agent/)** (source in [`docs/`](docs/))
 
@@ -11,10 +11,10 @@ Eru's per-node agent. It watches the workloads a node runs — containerd contai
 
 - **Node heartbeat** — reports the node alive to core on an interval, with a ttl three times the interval so one lost report does not evict the node; a clean shutdown removes the status, a `SIGUSR1` restart keeps it.
 - **Workload health checks** — TCP and HTTP probes declared per workload, run on every runtime event and on a periodic sweep, with the result published through core.
-- **Log forwarding** — ships each line as a JSON record to `tcp://`, `udp://` or `journal://` targets, sharded over several targets by workload id, read from the node's journal with a persisted cursor. Container output reaches the journal through `eru-agent log-shim`, containerd's binary logger.
+- **Log forwarding** — ships each line as a JSON record to `tcp://`, `udp://` or `journal://` targets, sharded over several targets by workload id, read from the node's journal with a persisted cursor, or read straight off a VM's serial console. Container output reaches the journal through `eru-agent log-shim`, containerd's binary logger; console output is written there by the agent itself, so every workload kind has the same history.
 - **Live log tailing** — `GET /log/?app=<name>` streams the logs of one application straight off the node.
 - **Prometheus metrics** — per-workload cpu, memory, per-nic network and per-device block io gauges on `/metrics`, optionally pushed to statsd as well. Sampled straight from cgroup v2 files, so a tick makes no call to any daemon.
-- **Runtimes per node** — a node declares the runtimes it hosts under a required `runtimes:` section: containerd containers, systemd process pods, or both; the heartbeat needs every one of them alive. The old `runtime:` and `docker:` keys are gone, with no compatibility shim. A mock runtime and store cover development.
+- **Runtimes per node** — a node declares the runtimes it hosts under a required `runtimes:` section: containerd containers, systemd process pods, cocoon VMs, or several at once; the heartbeat needs every one of them alive. The old `runtime:` and `docker:` keys are gone, with no compatibility shim. A mock runtime and store cover development.
 - **Node-side helper modes** — the same binary is containerd's task logger (`eru-agent log-shim`) and its CNI hook (`eru-agent oci-hook`), so a container node needs no eru daemon beyond the agent.
 
 ## Quick start

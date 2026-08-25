@@ -1,5 +1,6 @@
 {
   "id": "2b3c4d5e6f708192a3b4c5d6e7f8091a",
+  "kind": "process",
   "appname": "myapp",
   "entrypoint": "worker",
   "cgroup": "/sys/fs/cgroup/eru.slice/eru-2b3c4d5e6f708192a3b4c5d6e7f8091a.service"

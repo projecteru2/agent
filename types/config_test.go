@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
 	"gopkg.in/yaml.v3"
+
+	"github.com/projecteru2/agent/common"
 )
 
 func TestGetHealthCheckStatusTTL(t *testing.T) {
@@ -45,6 +47,18 @@ func TestPrepareCoreEndpoints(t *testing.T) {
 			require.Equal(t, tt.want, config.Core)
 		})
 	}
+}
+
+func TestPrepareDefaultsTheRuntimeEndpoints(t *testing.T) {
+	config := &Config{
+		Core:     []string{"127.0.0.1:5001"},
+		Runtimes: RuntimesConfig{Containerd: &ContainerdConfig{}, Cocoon: &CocoonConfig{}},
+	}
+
+	require.NoError(t, runPrepare(t.Context(), config, []string{"eru-agent"}))
+	require.Equal(t, common.ContainerdSocket, config.Runtimes.Containerd.Socket)
+	require.Equal(t, common.ContainerdNamespace, config.Runtimes.Containerd.Namespace)
+	require.Equal(t, common.CocoonSocket, config.Runtimes.Cocoon.Socket)
 }
 
 func TestPrintRedactsThePassword(t *testing.T) {

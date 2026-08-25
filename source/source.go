@@ -22,6 +22,10 @@ type Source interface {
 	Alive(ctx context.Context) bool
 }
 
+type Refresher interface {
+	Refresh(ID string) (*Workload, error)
+}
+
 // Meta is the workload metadata core wrote when it created the workload.
 type Meta struct {
 	Appname     string
@@ -36,11 +40,11 @@ type Meta struct {
 	Networks    map[string]string
 }
 
-// Log locates a workload's output: a journal unit, a journal identifier field or a file.
+// Log locates a workload's output: a journal unit, a journal identifier field or a vm console.
 type Log struct {
 	JournalUnit       string
 	JournalIdentifier string
-	File              string
+	ConsoleSocket     string
 }
 
 // Workload is everything a source knows about one workload.
@@ -49,9 +53,10 @@ type Workload struct {
 	Meta Meta
 	Log  Log
 
-	CgroupPath string
-	NetnsPID   int
-	HostIface  string
+	CgroupPath        string
+	NetnsPID          int
+	HostIface         string
+	HostIfaceMirrored bool
 
 	LocalIP string
 	Running bool

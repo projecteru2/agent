@@ -19,7 +19,14 @@ type netStat struct {
 	DropOut     uint64
 }
 
-func netStatsFromProc(procRoot string, pid int) ([]netStat, error) {
+func (s *netStat) mirror() {
+	s.BytesRecv, s.BytesSent = s.BytesSent, s.BytesRecv
+	s.PacketsRecv, s.PacketsSent = s.PacketsSent, s.PacketsRecv
+	s.ErrIn, s.ErrOut = s.ErrOut, s.ErrIn
+	s.DropIn, s.DropOut = s.DropOut, s.DropIn
+}
+
+func netStatsFromProc(procRoot string, pid int, iface string, mirrored bool) ([]netStat, error) {
 	lines, err := readLines(filepath.Join(procRoot, strconv.Itoa(pid), "net", "dev"))
 	if err != nil {
 		return nil, err
@@ -38,7 +45,7 @@ func netStatsFromProc(procRoot string, pid int) ([]netStat, error) {
 		if len(fields) < 12 {
 			continue
 		}
-		stats = append(stats, netStat{
+		stat := netStat{
 			Name:        strings.TrimSpace(name),
 			BytesRecv:   parseUint(fields[0]),
 			PacketsRecv: parseUint(fields[1]),
@@ -48,12 +55,19 @@ func netStatsFromProc(procRoot string, pid int) ([]netStat, error) {
 			PacketsSent: parseUint(fields[9]),
 			ErrOut:      parseUint(fields[10]),
 			DropOut:     parseUint(fields[11]),
-		})
+		}
+		if iface != "" && stat.Name != iface {
+			continue
+		}
+		if mirrored {
+			stat.mirror()
+		}
+		stats = append(stats, stat)
 	}
 	return stats, nil
 }
 
-func netStatsFromIface(sysRoot, iface string) ([]netStat, error) {
+func netStatsFromIface(sysRoot, iface string, mirrored bool) ([]netStat, error) {
 	dir := filepath.Join(sysRoot, iface, "statistics")
 	stat := netStat{Name: iface}
 	for _, counter := range []struct {
@@ -74,6 +88,9 @@ func netStatsFromIface(sysRoot, iface string) ([]netStat, error) {
 			return nil, err
 		}
 		*counter.field = value
+	}
+	if mirrored {
+		stat.mirror()
 	}
 	return []netStat{stat}, nil
 }

@@ -94,6 +94,22 @@ func (m *Multi) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage,
 	return eventChan, errChan
 }
 
+func (m *Multi) Refresh(ID string) (*Workload, error) {
+	refusals := []error{ErrUnknownWorkload}
+	for _, src := range m.sources {
+		refresher, ok := src.(Refresher)
+		if !ok {
+			continue
+		}
+		w, err := refresher.Refresh(ID)
+		if err == nil {
+			return w, nil
+		}
+		refusals = append(refusals, err)
+	}
+	return nil, errors.Join(refusals...)
+}
+
 // Alive reports whether every runtime the node hosts is up.
 func (m *Multi) Alive(ctx context.Context) bool {
 	return !slices.ContainsFunc(m.sources, func(src Source) bool { return !src.Alive(ctx) })

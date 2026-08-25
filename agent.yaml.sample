@@ -35,6 +35,15 @@ store: grpc
 # runtimes.systemd has no options: a process pod is described by its meta file,
 # and the units are read over the system D-Bus.
 #
+# runtimes.cocoon.socket is the read-only API socket of the cocoon daemon, which
+# tells eru-agent which VMs are live. It defaults to /run/cocoond.sock. A VM pod
+# is described by its meta file, like a process pod. The daemon is optional:
+# without one, eru-agent reads the VM's own cgroup scope on the health tick
+# instead, and the node stays up. That fallback is a poll, not a subscription,
+# so on a node with no daemon a VM that exits unexpectedly is noticed on the
+# next tick and healthcheck.interval below bounds how long eru-core goes on
+# believing it runs. Run the daemon if you want exits reported as they happen.
+#
 # runtimes.mocks is the scripted runtime the test suite runs against; pair it
 # with store: mocks to bring the agent up with neither a runtime nor a core.
 runtimes:
@@ -42,11 +51,14 @@ runtimes:
     socket: /run/containerd/containerd.sock
     namespace: eru
   systemd: {}
+  cocoon:
+    socket: /run/cocoond.sock
 
 # meta_dir is where eru-core writes the metadata of the workloads it creates
-# over ssh, one <workload id>.json per workload. eru-agent watches the
-# directory with inotify: a file appearing is a new workload, its removal a
-# gone one. The directory lives on tmpfs and is created by the node role.
+# over ssh, one <workload id>.json per workload, each naming the runtime it
+# belongs to under "kind". eru-agent watches the directory with inotify: a file
+# appearing is a new workload, its removal a gone one. The directory lives on
+# tmpfs and is created by the node role.
 # The default value is /run/eru/workloads.
 meta_dir: /run/eru/workloads
 

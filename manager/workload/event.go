@@ -70,9 +70,9 @@ func (q *serialQueue) Go(key string, task func()) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
-	running := len(q.pending[key]) > 0
-	q.pending[key] = append(q.pending[key], task)
-	if !running {
+	queued, draining := q.pending[key]
+	q.pending[key] = append(queued, task)
+	if !draining {
 		go q.drain(key)
 	}
 }
@@ -86,13 +86,9 @@ func (q *serialQueue) drain(key string) {
 			q.mu.Unlock()
 			return
 		}
-		task := queued[0]
+		q.pending[key] = queued[1:]
 		q.mu.Unlock()
 
-		task()
-
-		q.mu.Lock()
-		q.pending[key] = q.pending[key][1:]
-		q.mu.Unlock()
+		queued[0]()
 	}
 }

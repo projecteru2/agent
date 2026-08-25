@@ -1,0 +1,19 @@
+{
+  "id": "3c4d5e6f708192a3b4c5d6e7f8091a2b",
+  "kind": "vm",
+  "name": "myvm_web_BXQPcM",
+  "appname": "myvm",
+  "entrypoint": "web",
+  "ident": "BXQPcM",
+  "podname": "prod",
+  "nodename": "node-1",
+  "coreid": "core-1",
+  "labels": {"eru.vm": "1"},
+  "healthcheck": {"tcp_ports": ["22"], "http_port": "80", "http_url": "/healthz", "http_code": 200},
+  "publish": ["22"],
+  "networks": {"eru-cni": "10.0.0.9"},
+  "cgroup": "/sys/fs/cgroup/cocoon.slice/vm-XMD6Y5GKRNMYZVDGDKPL4PGQV2.scope",
+  "netns_pid": 41207,
+  "iface": "tapXMD6Y5GK-0",
+  "log": {"console_socket": "/var/lib/cocoon/run/cloudhypervisor/XMD6Y5GKRNMYZVDGDKPL4PGQV2/console.sock"}
+}

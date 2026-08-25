@@ -22,6 +22,8 @@ const (
 	hostCacheTTL = time.Second
 )
 
+type refreshFunc func() *source.Workload
+
 type device struct {
 	major uint64
 	minor uint64
@@ -81,25 +83,13 @@ func New(ctx context.Context, config *types.Config) *Collector {
 	return c
 }
 
-// Collect samples one workload every metrics step until ctx is canceled or the cgroup goes away.
-func (c *Collector) Collect(ctx context.Context, w *source.Workload) {
+// Collect samples one workload every metrics step until ctx is canceled; a step that fails is retried on the next one.
+func (c *Collector) Collect(ctx context.Context, w *source.Workload, refresh refreshFunc) {
 	logger := log.WithFunc("collector.Collect").WithField("ID", w.ID)
 	if w.CgroupPath == "" {
 		logger.Debug(ctx, "workload has no cgroup, not sampling it")
 		return
 	}
-
-	prev, err := c.sample(w)
-	if err != nil {
-		logger.Error(ctx, err, "failed to read the first sample")
-		return
-	}
-
-	addr := ""
-	if c.transfers.Len() > 0 {
-		addr = c.transfers.Get(w.ID, 0)
-	}
-	client := NewMetricsClient(addr, c.hostname, w, prev.unsupported())
 	defer removeMetricsClient(w.ID)
 
 	tick := time.NewTicker(time.Duration(c.config.Metrics.Step) * time.Second)
@@ -108,23 +98,54 @@ func (c *Collector) Collect(ctx context.Context, w *source.Workload) {
 	logger.Infof(ctx, "workload %s metric report start", w.Meta.Appname)
 	defer logger.Infof(ctx, "workload %s metric report stop", w.Meta.Appname)
 
+	var (
+		client *MetricsClient
+		prev   *sample
+		broken bool
+	)
+	step := func() {
+		next, err := c.sample(ctx, w)
+		if err != nil {
+			if !broken {
+				logger.Error(ctx, err, "failed to sample, retrying every step until it works")
+				broken = true
+			}
+			if fresh := refresh(); fresh != nil {
+				w = fresh
+			}
+			prev = nil
+			return
+		}
+		broken = false
+		if client == nil {
+			client = c.clientFor(w, next)
+		}
+		if prev != nil {
+			c.publish(ctx, client, prev, next)
+		}
+		prev = next
+	}
+
+	step()
 	for {
 		select {
 		case <-tick.C:
-			next, err := c.sample(w)
-			if err != nil {
-				logger.Error(ctx, err, "failed to sample")
-				return
-			}
-			c.publish(ctx, client, prev, next)
-			prev = next
+			step()
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (c *Collector) sample(w *source.Workload) (*sample, error) {
+func (c *Collector) clientFor(w *source.Workload, first *sample) *MetricsClient {
+	addr := ""
+	if c.transfers.Len() > 0 {
+		addr = c.transfers.Get(w.ID, 0)
+	}
+	return NewMetricsClient(addr, c.hostname, w, first.unsupported())
+}
+
+func (c *Collector) sample(ctx context.Context, w *source.Workload) (*sample, error) {
 	cg := &cgroup{path: w.CgroupPath}
 	cpu, err := cg.cpu()
 	if err != nil {
@@ -138,15 +159,11 @@ func (c *Collector) sample(w *source.Workload) (*sample, error) {
 	if err != nil {
 		return nil, err
 	}
-	net, err := c.netStats(w)
-	if err != nil {
-		return nil, err
-	}
 	host, err := c.host()
 	if err != nil {
 		return nil, err
 	}
-	return &sample{cpu: cpu, mem: mem, io: io, net: net, host: host}, nil
+	return &sample{cpu: cpu, mem: mem, io: io, net: c.netStats(ctx, w), host: host}, nil
 }
 
 // host reads /proc/stat at most once per cache ttl: it is the same file for every workload here.
@@ -162,15 +179,24 @@ func (c *Collector) host() (hostCPU, error) {
 	return c.hostTimes, c.hostErr
 }
 
-func (c *Collector) netStats(w *source.Workload) ([]netStat, error) {
+func (c *Collector) netStats(ctx context.Context, w *source.Workload) []netStat {
+	var stats []netStat
+	var err error
 	switch {
 	case w.NetnsPID > 0:
-		return netStatsFromProc(c.procRoot, w.NetnsPID)
+		stats, err = netStatsFromProc(c.procRoot, w.NetnsPID, w.HostIface, w.HostIfaceMirrored)
+	case w.HostIfaceMirrored:
+		return nil
 	case w.HostIface != "":
-		return netStatsFromIface(sysNetRoot, w.HostIface)
+		stats, err = netStatsFromIface(sysNetRoot, w.HostIface, w.HostIfaceMirrored)
 	default:
-		return nil, nil
+		return nil
 	}
+	if err != nil {
+		log.WithFunc("collector.netStats").WithField("ID", w.ID).Debugf(ctx, "no network counters this step: %v", err)
+		return nil
+	}
+	return stats
 }
 
 func (c *Collector) publish(ctx context.Context, client *MetricsClient, prev, next *sample) {

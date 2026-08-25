@@ -1,8 +1,10 @@
 # Metrics
 
-The agent exports per-workload metrics for every source that yields a cgroup directory, which is every runtime it supports.
+The agent exports per-workload metrics for every source that yields a cgroup directory, which is every runtime it supports: a container's cgroup, a process pod's unit slice, or a VM's cocoon scope. The sampler is the same code for all three.
 
 Collection starts when the agent first sees a workload running and stops when that workload dies, at which point its gauges are unregistered and the workload disappears from `/metrics`.
+
+A step that cannot read the cgroup — a controller the slice has not delegated yet, a scope that does not exist yet, a VM that has not booted and so has no netns to read counters from — is logged once and retried on the next step instead of ending the sampler, so a workload begins reporting as soon as the files appear. The first step after such a gap publishes gauges but no rates: a rate across an interval of unknown length is not a rate.
 
 Every sample is read straight off the node — cgroup v2 files plus the network counters of the workload's namespace. A tick makes no call to any daemon, so the cost is the same whether the node runs one workload or a hundred daemons' worth. A **unified cgroup v2 hierarchy is required**; on a cgroup v1 node the agent warns and exports nothing per workload.
 
@@ -51,7 +53,7 @@ Per-second rates, with an extra `nic` label naming the interface.
 
 `bytes_send`, `bytes_recv`, `packets_send`, `packets_recv`, `err_in`, `err_out`, `drop_in`, `drop_out`
 
-Counters are read from `/proc/<pid>/net/dev` of the workload's network namespace, which is why the container image needs `/proc` bind mounted at `/hostProc`. A workload the source reports on a host interface instead is read from `/sys/class/net/<iface>/statistics/` — one interface, no namespace.
+Counters are read from `/proc/<pid>/net/dev` of the workload's network namespace, which is why the container image needs `/proc` bind mounted at `/hostProc`. A workload the source reports on a host interface instead — a VM behind its tap device, for one — is read from `/sys/class/net/<iface>/statistics/`: one interface, no namespace.
 
 ### Block IO
 

@@ -35,6 +35,19 @@ func (m *Manager) forwardJournal(ctx context.Context) {
 	}
 }
 
+// forwardConsole reads a vm's serial console, which journald only holds once this reader has written it there.
+func (m *Manager) forwardConsole(ctx context.Context, w *source.Workload) {
+	// a restarted vm gets a new console, so the path is read back per attempt rather than held from here
+	console := collector.NewConsole(w.ID, w.Meta.Appname, func() (string, error) {
+		fresh := m.refreshed(ctx, w.ID)
+		if fresh == nil {
+			return "", source.ErrUnknownWorkload
+		}
+		return fresh.Log.ConsoleSocket, nil
+	})
+	console.Read(ctx, func(entry *collector.Entry) { m.forward(ctx, entry) })
+}
+
 func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 	logger := log.WithFunc("workload.startForwarding").WithField("ID", w.ID)
 
@@ -56,6 +69,11 @@ func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 	target := &logTarget{workload: w, writer: writer, extra: w.LogFields(), cancel: cancel}
 	for _, key := range logKeys(w) {
 		m.logTargets[key] = target
+	}
+	if w.Log.ConsoleSocket != "" {
+		go m.forwardConsole(ctx, w)
+		logger.Infof(ctx, "forwarding %s logs from the console at %s", w.Meta.Appname, w.Log.ConsoleSocket)
+		return
 	}
 	logger.Infof(ctx, "forwarding %s logs from the journal", w.Meta.Appname)
 }
@@ -93,7 +111,8 @@ func (m *Manager) forward(ctx context.Context, entry *collector.Entry) {
 	}
 	m.logBroadcaster.logC <- l
 	if err := target.writer.Write(ctx, l); err != nil {
-		log.WithFunc("workload.forward").WithField("ID", w.ID).Errorf(ctx, err, "%s workload %s write failed", w.Meta.Appname, w.Meta.Entrypoint)
+		logger := log.WithFunc("workload.forward").WithField("ID", w.ID)
+		logger.Errorf(ctx, err, "%s workload %s write failed", w.Meta.Appname, w.Meta.Entrypoint)
 	}
 }
 

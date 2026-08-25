@@ -39,12 +39,15 @@ runtimes:
     socket: /run/containerd/containerd.sock
     namespace: eru
   systemd: {}
+  cocoon:
+    socket: /run/cocoond.sock
 ```
 
 | Runtime | Keys | Liveness check |
 |---|---|---|
 | `containerd` | `socket` — the local containerd gRPC socket, defaults to `/run/containerd/containerd.sock`; `namespace` — the containerd namespace eru's containers live in, defaults to `eru` | health service check |
 | `systemd` | none — a process pod is described by its meta file in `meta_dir`, and its unit is read over the system D-Bus | D-Bus unit listing |
+| `cocoon` | `socket` — the cocoon daemon's read-only API socket; defaults to `/run/cocoond.sock`. A VM pod is described by its meta file in `meta_dir`, and the daemon answers which VMs are live | `meta_dir` is readable. The daemon is optional, so one that is installed but not answering is a warning rather than a dead node |
 | `mocks` | none — the scripted runtime the test suite runs against; pair it with `store: mocks` to bring the agent up with neither a runtime nor a core | scripted |
 
 A node listing several runtimes reports the union of their workloads, and merges their event streams into one; a failure in any of them tears the subscription down and the agent resubscribes to all of them.
@@ -87,7 +90,7 @@ log:
 
 `forwards` is a list of targets. Supported schemes are `tcp://`, `udp://` and `journal://`; a target with any other scheme is accepted and silently discards, with a warning at startup. Each workload is pinned to one target by hashing its id, so several targets share the load without duplicating lines. A target that is down is retried every 30 seconds in the background while its lines are dropped.
 
-Every runtime logs to journald, and the agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` for the whole node, resuming from the cursor it saved under `state_dir`. That path needs `journalctl` on the node, and needs every eru workload to log under the `eru` syslog identifier: process units get it from core's `systemd-run`, containers from `eru-agent log-shim`.
+A VM's output is its serial console, so the agent reads the console its meta file names, one goroutine per VM, forwarding each line and writing it to journald so the history is there too. Every other runtime logs to journald natively, and the agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` for the whole node, resuming from the cursor it saved under `state_dir`. That path needs `journalctl` on the node, and needs every eru workload to log under the `eru` syslog identifier: process units get it from core's `systemd-run`, containers from `eru-agent log-shim`.
 
 `stdout: true` additionally writes every forwarded line to the agent's own log.
 

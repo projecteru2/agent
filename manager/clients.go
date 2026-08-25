@@ -5,6 +5,7 @@ import (
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/source"
+	"github.com/projecteru2/agent/source/cocoon"
 	"github.com/projecteru2/agent/source/containerd"
 	sourcemocks "github.com/projecteru2/agent/source/mocks"
 	"github.com/projecteru2/agent/source/systemd"
@@ -67,6 +68,13 @@ func newSource(ctx context.Context, config *types.Config, nodeIP, storeIdentifie
 	}
 	if config.Runtimes.Systemd != nil {
 		src, err := systemd.GetClient(ctx, config)
+		if err != nil {
+			return nil, err
+		}
+		sources = append(sources, src)
+	}
+	if config.Runtimes.Cocoon != nil {
+		src, err := cocoon.GetClient(ctx, config)
 		if err != nil {
 			return nil, err
 		}
