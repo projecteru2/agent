@@ -176,7 +176,6 @@ func workload(f *meta.File, live map[string]bool) *source.Workload {
 	return f.Workload(running)
 }
 
-// scopeAlive reports whether the vm's cgroup scope still holds a process.
 func scopeAlive(scope string) bool {
 	procs, err := os.ReadFile(filepath.Join(scope, procsFile)) //nolint:gosec // the scope path comes from the meta file core wrote
 	return err == nil && len(bytes.TrimSpace(procs)) > 0
