@@ -2,7 +2,6 @@ package logs
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"sync"
 
@@ -67,8 +66,7 @@ func (c *JournalEncoder) Encode(logline *types.Log) error {
 	c.Lock()
 	defer c.Unlock()
 
-	p := fmt.Sprintf("message %s", logline.Data)
-	return journal.Send(p, journal.PriInfo, vars)
+	return journal.Send(logline.Data, journal.PriInfo, vars)
 }
 
 func (c *JournalEncoder) Close() error {
