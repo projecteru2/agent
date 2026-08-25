@@ -15,6 +15,7 @@ Everything runtime-specific lives in a **source**: it lists the workloads the no
 | `source/docker`, `source/containerd`, `source/systemd` | The runtime backends, plus `source.Multi` for a node that hosts several |
 | `collector` | Runtime-agnostic hot paths: cgroup v2 metrics, network counters, health probes |
 | `logshim` | The `eru-agent log-shim` mode: containerd's binary logger, one process per task |
+| `ocihook` | The `eru-agent oci-hook` mode: cni attach and detach from the container's own oci spec |
 | `store` | The `Store` interface the managers report through |
 | `store/core` | gRPC client pool talking to `eru-core` |
 | `logs` | Log record encoders and the reconnecting forwarder |

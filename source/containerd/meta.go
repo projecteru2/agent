@@ -18,8 +18,6 @@ import (
 const (
 	fieldPodName  = "ERU_POD"
 	fieldNodeName = "ERU_NODE_NAME"
-
-	networkLabelPrefix = "eru.network."
 )
 
 // workload maps the labels and environment core wrote at create time onto one workload.
@@ -71,7 +69,7 @@ func specEnv(spec typeurl.Any) ([]string, error) {
 func networks(labels map[string]string) map[string]string {
 	nets := map[string]string{}
 	for key, addr := range labels {
-		if name, ok := strings.CutPrefix(key, networkLabelPrefix); ok {
+		if name, ok := strings.CutPrefix(key, common.NetworkLabelPrefix); ok {
 			nets[name] = addr
 		}
 	}

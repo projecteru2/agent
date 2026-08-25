@@ -13,15 +13,12 @@ import (
 	coretypes "github.com/projecteru2/core/types"
 	"github.com/urfave/cli/v3"
 	"gopkg.in/yaml.v3"
+
+	"github.com/projecteru2/agent/common"
 )
 
-// Prepare applies these defaults: the walker cannot default a pointer the file allocates.
-const (
-	defaultDockerEndpoint = "unix:///var/run/docker.sock"
-
-	defaultContainerdSocket    = "/run/containerd/containerd.sock"
-	defaultContainerdNamespace = "eru"
-)
+// Prepare applies this default: the walker cannot default a pointer the file allocates.
+const defaultDockerEndpoint = "unix:///var/run/docker.sock"
 
 type DockerConfig struct {
 	Endpoint string `yaml:"endpoint"`
@@ -160,8 +157,8 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 		docker.Endpoint = defaultDockerEndpoint
 	}
 	if containerd := config.Runtimes.Containerd; containerd != nil {
-		containerd.Socket = cmp.Or(containerd.Socket, defaultContainerdSocket)
-		containerd.Namespace = cmp.Or(containerd.Namespace, defaultContainerdNamespace)
+		containerd.Socket = cmp.Or(containerd.Socket, common.ContainerdSocket)
+		containerd.Namespace = cmp.Or(containerd.Namespace, common.ContainerdNamespace)
 	}
 }
 

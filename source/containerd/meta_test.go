@@ -92,7 +92,7 @@ func eruLabels(t *testing.T) map[string]string {
 			Publish:     []string{"80"},
 			HealthCheck: &coretypes.HealthCheck{TCPPorts: []string{"80"}, HTTPPort: "80", HTTPURL: "/healthz", HTTPCode: 200},
 		}),
-		cluster.LabelNodeName:          "node-1",
-		networkLabelPrefix + "eru-cni": "10.0.0.5",
+		cluster.LabelNodeName:                 "node-1",
+		common.NetworkLabelPrefix + "eru-cni": "10.0.0.5",
 	}
 }

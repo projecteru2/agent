@@ -17,6 +17,7 @@ import (
 	"github.com/projecteru2/agent/logshim"
 	"github.com/projecteru2/agent/manager/node"
 	"github.com/projecteru2/agent/manager/workload"
+	"github.com/projecteru2/agent/ocihook"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/version"
@@ -210,7 +211,7 @@ func main() {
 				Usage: "will only check containers belong to this node if set",
 			},
 		},
-		Commands: []*cli.Command{logshim.Command()},
+		Commands: []*cli.Command{logshim.Command(), ocihook.Command()},
 		Action:   serve,
 	}
 	if err := app.Run(context.Background(), os.Args); err != nil {

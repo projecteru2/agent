@@ -2,7 +2,7 @@
 
 `eru-agent` is a single static binary. It needs a reachable `eru-core` and, for each runtime it is configured with, that runtime on the same host: a Docker socket, a containerd socket, or systemd with cgroup v2 plus `journalctl`.
 
-The binary also carries the helper modes containerd invokes on the node. `eru-agent log-shim` is the binary logger core points a task's `cio.LogURI` at; it is not started by hand and takes no configuration.
+The binary also carries the helper modes containerd invokes on the node, neither of them started by hand. `eru-agent log-shim` is the binary logger core points a task's `cio.LogURI` at. `eru-agent oci-hook --network <cni network> [--conf-dir /etc/cni/net.d] [--bin-dir /opt/cni/bin]` is what core writes into a container's OCI spec, as a `createRuntime` hook and again as a `poststop` hook; it needs the CNI plugin binaries and the containerd socket on the node.
 
 ## From source
 

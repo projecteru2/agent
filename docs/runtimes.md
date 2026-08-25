@@ -44,7 +44,7 @@ The agent talks to the local containerd over `runtimes.containerd.socket`, in th
 
 **Events.** One subscription to the events service carries `/tasks/start`, `/tasks/exit`, `/containers/delete` and `/containers/update`. An exec process exiting is not the workload exiting, so a task exit only counts when its process id is the container id. A container update is a start: it is how the addresses the OCI hook wrote back reach the agent.
 
-**Networks.** eru's CNI hook writes the address of each network into the container's labels as `eru.network.<name>`. The agent reads them from there instead of entering the network namespace; a container with no such label is on the host network and is health checked against `127.0.0.1`.
+**Networks.** Core has no access to the node's network namespaces, so CNI runs on the node: core writes `eru-agent oci-hook --network <name>` into the container's OCI spec as a `createRuntime` hook and again as a `poststop` hook. The hook reads the OCI state from stdin — a container with a pid in state `created` is the attach, anything else the detach — runs CNI against `/proc/<pid>/ns/net`, and writes the resulting IPv4 back as the container label `eru.network.<name>`. The agent reads the address from that label instead of entering the namespace; a container with no such label is on the host network and is health checked against `127.0.0.1`.
 
 **Metrics.** The cgroup directory comes from `/proc/<pid>/cgroup` of the task's pid, so it is found whatever cgroup driver containerd uses, and it must be a unified cgroup v2 hierarchy.
 
