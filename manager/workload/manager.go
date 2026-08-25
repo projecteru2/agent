@@ -33,9 +33,8 @@ type Manager struct {
 	collectMutex sync.Mutex
 	collecting   map[string]context.CancelFunc
 
-	journalOnce sync.Once
-	logMutex    sync.RWMutex
-	logTargets  map[string]*logTarget
+	logMutex   sync.RWMutex
+	logTargets map[string]*logTarget
 
 	logBroadcaster *logBroadcaster
 }
@@ -65,11 +64,15 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 func (m *Manager) Run(ctx context.Context) error {
 	go m.logBroadcaster.run(ctx)
 
+	// watching before the initial load means an event raised during it is handled, not missed
+	go m.monitor(ctx)
+
 	if err := m.initWorkloadStatus(ctx); err != nil {
 		return err
 	}
 
-	go m.monitor(ctx)
+	// the journal reader starts once the load registered every target, so no backlog line is dropped
+	go m.forwardJournal(ctx)
 
 	go m.healthCheck(ctx)
 

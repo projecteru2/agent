@@ -14,16 +14,16 @@ func (m *Manager) listWithRetry(ctx context.Context) ([]*source.Workload, error)
 	ticker := time.NewTicker(m.config.GlobalConnectionTimeout)
 	defer ticker.Stop()
 	for {
+		workloads, err := m.source.List(ctx)
+		if err == nil {
+			return workloads, nil
+		}
+		log.WithFunc("workload.listWithRetry").Error(ctx, err, "failed to load workloads, will retry")
+
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-ticker.C:
-			workloads, err := m.source.List(ctx)
-			if err != nil {
-				log.WithFunc("workload.listWithRetry").Error(ctx, err, "failed to load workloads, will retry")
-				continue
-			}
-			return workloads, nil
 		}
 	}
 }

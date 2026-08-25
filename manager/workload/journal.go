@@ -37,8 +37,6 @@ func (m *Manager) forwardJournal(ctx context.Context) {
 
 func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 	logger := log.WithFunc("workload.startForwarding").WithField("ID", w.ID)
-	// the reader is one process for the whole node, so it starts with the first workload that needs it
-	m.journalOnce.Do(func() { go m.forwardJournal(ctx) })
 
 	m.logMutex.Lock()
 	defer m.logMutex.Unlock()
