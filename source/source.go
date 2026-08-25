@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -9,6 +10,8 @@ import (
 
 	"github.com/projecteru2/agent/types"
 )
+
+var ErrUnknownWorkload = errors.New("no runtime on this node knows this workload")
 
 // Source is one runtime's view of the workloads this node runs.
 type Source interface {
@@ -56,6 +59,11 @@ type Workload struct {
 
 	LocalIP string
 	Running bool
+}
+
+// Streams reports whether the workload's output comes from its runtime instead of the journal.
+func (w *Workload) Streams() bool {
+	return w.Log == Log{}
 }
 
 // LogFields returns the extra fields every log record of this workload carries.

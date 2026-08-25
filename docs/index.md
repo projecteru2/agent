@@ -22,9 +22,9 @@
                                      |
                     +----------------+----------------+
                     |                                 |
-             docker source                     yavirt source
-       (containers: list, events,        (guests: list, events,
-        attach)                           status)
+             docker source                     systemd source
+       (containers: list, events,        (process pods: meta dir,
+        attach)                           D-Bus units)
                     |                                 |
                     +----------------+----------------+
                                      |

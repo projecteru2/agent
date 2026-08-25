@@ -21,7 +21,6 @@ type Manager struct {
 	config    *types.Config
 	store     store.Store
 	source    source.Source
-	attacher  source.Attacher
 	collector *collector.Collector
 	journal   *collector.Journal
 
@@ -34,8 +33,9 @@ type Manager struct {
 	collectMutex sync.Mutex
 	collecting   map[string]context.CancelFunc
 
-	logMutex   sync.RWMutex
-	logTargets map[string]*logTarget
+	journalOnce sync.Once
+	logMutex    sync.RWMutex
+	logTargets  map[string]*logTarget
 
 	logBroadcaster *logBroadcaster
 }
@@ -47,14 +47,10 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		return nil, err
 	}
 
-	// a source that streams a workload's output keeps the attach pump, the rest read the journal
-	attacher, _ := clients.Source.(source.Attacher)
-
 	return &Manager{
 		config:            config,
 		store:             clients.Store,
 		source:            clients.Source,
-		attacher:          attacher,
 		collector:         collector.New(ctx, config),
 		journal:           collector.NewJournal(config.StateDir),
 		forwards:          utils.NewHashBackends(config.Log.Forwards),
@@ -68,10 +64,6 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 
 func (m *Manager) Run(ctx context.Context) error {
 	go m.logBroadcaster.run(ctx)
-
-	if m.attacher == nil {
-		go m.forwardJournal(ctx)
-	}
 
 	if err := m.initWorkloadStatus(ctx); err != nil {
 		return err
@@ -106,11 +98,11 @@ func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter
 // start forwards the workload's output and samples it, both idempotent per workload.
 func (m *Manager) start(ctx context.Context, w *source.Workload) {
 	m.startCollecting(ctx, w)
-	if m.attacher == nil {
-		m.startForwarding(ctx, w)
+	if w.Streams() {
+		go m.attach(ctx, w)
 		return
 	}
-	go m.attach(ctx, w)
+	m.startForwarding(ctx, w)
 }
 
 func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {

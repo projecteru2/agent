@@ -19,6 +19,11 @@ import (
 )
 
 func (m *Manager) attach(ctx context.Context, w *source.Workload) {
+	attacher, ok := m.source.(source.Attacher)
+	if !ok {
+		return
+	}
+
 	logger := log.WithFunc("workload.attach").WithField("ID", w.ID)
 	logger.Debug(ctx, "attaching workload")
 	ctx, cancel := context.WithCancel(ctx)
@@ -34,7 +39,7 @@ func (m *Manager) attach(ctx context.Context, w *source.Workload) {
 		return
 	}
 
-	outr, errr, err := m.attacher.Attach(ctx, w.ID)
+	outr, errr, err := attacher.Attach(ctx, w.ID)
 	if err != nil {
 		logger.Errorf(ctx, err, "failed to attach workload %s", w.Meta.Appname)
 		return

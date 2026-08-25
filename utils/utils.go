@@ -17,8 +17,6 @@ import (
 	engineapi "github.com/moby/moby/client"
 	"github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
-	yavirtclient "github.com/projecteru2/libyavirt/client"
-	yavirttypes "github.com/projecteru2/libyavirt/types"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
@@ -35,13 +33,9 @@ var (
 
 func MakeDockerClient(config *types.Config) (*engineapi.Client, error) {
 	return engineapi.New(
-		engineapi.WithHost(config.Docker.Endpoint),
+		engineapi.WithHost(config.Runtimes.Docker.Endpoint),
 		engineapi.WithUserAgent("eru-agent-"+version.VERSION),
 	)
-}
-
-func MakeYavirtClient(config *types.Config) (yavirtclient.Client, error) {
-	return yavirtclient.New(&yavirttypes.Config{URI: config.Yavirt.Endpoint})
 }
 
 func WritePid(ctx context.Context, path string) {

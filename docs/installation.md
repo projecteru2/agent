@@ -1,6 +1,6 @@
 # Installation
 
-`eru-agent` is a single static binary. It needs a reachable `eru-core` and, depending on the configured runtime, a Docker socket or a yavirt endpoint on the same host.
+`eru-agent` is a single static binary. It needs a reachable `eru-core` and, for each runtime it is configured with, that runtime on the same host: a Docker socket, or systemd plus `journalctl`.
 
 ## From source
 

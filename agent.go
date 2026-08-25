@@ -145,11 +145,6 @@ func main() {
 				Sources: cli.EnvVars("ERU_AGENT_CORE_PASSWORD"),
 			},
 			&cli.StringFlag{
-				Name:    "runtime",
-				Usage:   "runtime type",
-				Sources: cli.EnvVars("ERU_AGENT_RUNTIME"),
-			},
-			&cli.StringFlag{
 				Name:    "docker-endpoint",
 				Usage:   "docker endpoint",
 				Sources: cli.EnvVars("ERU_AGENT_DOCKER_ENDPOINT"),

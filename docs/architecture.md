@@ -12,7 +12,7 @@ Everything runtime-specific lives in a **source**: it lists the workloads the no
 | `manager/node` | Node status heartbeat and shutdown |
 | `manager/workload` | Workload discovery, health checks, log attach and broadcast |
 | `source` | The `Source` interface every runtime implements, and the `Workload` it yields |
-| `source/docker`, `source/yavirt` | The two runtime backends |
+| `source/docker`, `source/systemd` | The runtime backends, plus `source.Multi` for a node that hosts several |
 | `collector` | Runtime-agnostic hot paths: cgroup v2 metrics, network counters, health probes |
 | `store` | The `Store` interface the managers report through |
 | `store/core` | gRPC client pool talking to `eru-core` |
@@ -24,7 +24,7 @@ Everything runtime-specific lives in a **source**: it lists the workloads the no
 
 `manager/node` reports this node alive. Every `heartbeat_interval` seconds it:
 
-1. Pings the runtime daemon through the source. If the daemon is unreachable the report is skipped, so a node whose Docker died stops looking alive and core expires it.
+1. Pings every runtime the node is configured with. If any of them is unreachable the report is skipped, so a node whose Docker died stops looking alive and core expires it.
 2. Calls `SetNodeStatus` with a ttl of three times the interval, retrying three times with exponential backoff.
 
 The ttl outlives the interval on purpose: a single lost or slow report must not evict the node.

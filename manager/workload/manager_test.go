@@ -33,7 +33,7 @@ func newMockWorkloadManager(t *testing.T) *Manager {
 		HeartbeatInterval: 10,
 		CheckOnlyMine:     false,
 		Store:             common.MocksStore,
-		Runtime:           common.MocksRuntime,
+		Runtimes:          types.RuntimesConfig{Mocks: &types.MocksConfig{}},
 		Log: types.LogConfig{
 			Stdout: true,
 		},
