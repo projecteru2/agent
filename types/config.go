@@ -104,7 +104,7 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	if c.Int("health-check-timeout") > 0 {
 		config.HealthCheck.Timeout = c.Int("health-check-timeout")
 	}
-	if c.Int("health-check-cache-ttl") > 0 {
+	if c.Int64("health-check-cache-ttl") > 0 {
 		config.HealthCheck.CacheTTL = c.Int64("health-check-cache-ttl")
 	}
 	if c.String("docker-endpoint") != "" {
