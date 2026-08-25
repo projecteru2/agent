@@ -28,6 +28,9 @@ const (
 	signalDepth = 100
 )
 
+// emitFunc reports one workload transition to whoever is watching the source.
+type emitFunc func(ID, action string)
+
 var _ source.Source = (*Systemd)(nil)
 
 type Systemd struct {
@@ -39,6 +42,12 @@ type Systemd struct {
 func New(ctx context.Context, config *types.Config) (*Systemd, error) {
 	logger := log.WithFunc("systemd.New")
 	logger.Infof(ctx, "systemd source starting, watching %s", config.MetaDir)
+
+	// the meta dir is on tmpfs, so it is empty after a reboot and inotify has nothing to watch
+	if err := os.MkdirAll(config.MetaDir, 0o755); err != nil { //nolint:gosec // core writes this dir over ssh as well
+		logger.Errorf(ctx, err, "failed to create the meta dir %s", config.MetaDir)
+		return nil, err
+	}
 
 	conn, err := dbus.NewSystemConnectionContext(ctx)
 	if err != nil {
@@ -52,11 +61,6 @@ func (s *Systemd) List(ctx context.Context) ([]*source.Workload, error) {
 	logger := log.WithFunc("systemd.List")
 
 	entries, err := os.ReadDir(s.dir)
-	if errors.Is(err, os.ErrNotExist) {
-		// the meta dir is on tmpfs, so a node that has not run a process workload yet has none
-		logger.Debugf(ctx, "meta dir %s does not exist yet", s.dir)
-		return nil, nil
-	}
 	if err != nil {
 		logger.Error(ctx, err, "failed to read the meta dir")
 		return nil, err
@@ -76,10 +80,10 @@ func (s *Systemd) List(ctx context.Context) ([]*source.Workload, error) {
 		}
 		m, err := readMeta(s.dir, ID)
 		if err != nil {
-			logger.Errorf(ctx, err, "failed to read the meta file of %s", ID)
+			logger.Warnf(ctx, "skipping the meta file of %s: %v", ID, err)
 			continue
 		}
-		workloads = append(workloads, m.workload(running[unitOf(ID)]))
+		workloads = append(workloads, s.withNetns(ctx, m.workload(running[unitOf(ID)])))
 	}
 	return workloads, nil
 }
@@ -90,17 +94,13 @@ func (s *Systemd) Get(ctx context.Context, ID string) (*source.Workload, error) 
 		return nil, err
 	}
 
-	props, err := s.conn.GetUnitPropertiesContext(ctx, unitOf(ID))
+	state, err := s.conn.GetUnitPropertyContext(ctx, unitOf(ID), "ActiveState")
 	if err != nil {
 		return nil, err
 	}
-	state, _ := props["ActiveState"].(string)
+	active, _ := state.Value.Value().(string)
 
-	w := m.workload(state == stateActive)
-	if pid, ok := props["MainPID"].(uint32); ok && needsNetns(w) {
-		w.NetnsPID = int(pid)
-	}
-	return w, nil
+	return s.withNetns(ctx, m.workload(active == stateActive)), nil
 }
 
 func (s *Systemd) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage, <-chan error) {
@@ -108,12 +108,12 @@ func (s *Systemd) Events(ctx context.Context) (<-chan *types.WorkloadEventMessag
 	errChan := make(chan error, 1)
 
 	ctx, cancel := context.WithCancel(ctx)
-	emit := func(ID, action string) {
+	emit := emitFunc(func(ID, action string) {
 		select {
 		case eventChan <- &types.WorkloadEventMessage{ID: ID, Type: eventType, Action: action, TimeNano: time.Now().UnixNano()}:
 		case <-ctx.Done():
 		}
-	}
+	})
 	fail := func(err error) {
 		cancel()
 		select {
@@ -153,7 +153,7 @@ func (s *Systemd) Alive(ctx context.Context) bool {
 }
 
 // watchMetaDir turns a meta file appearing into discovery and its removal into removal.
-func (s *Systemd) watchMetaDir(ctx context.Context, emit func(ID, action string)) error {
+func (s *Systemd) watchMetaDir(ctx context.Context, emit emitFunc) error {
 	watcher, err := newDirWatcher(s.dir)
 	if err != nil {
 		return err
@@ -177,7 +177,10 @@ func (s *Systemd) watchMetaDir(ctx context.Context, emit func(ID, action string)
 }
 
 // watchUnits turns an ActiveState change of an eru unit into a start or a die.
-func (s *Systemd) watchUnits(ctx context.Context, emit func(ID, action string)) error {
+func (s *Systemd) watchUnits(ctx context.Context, emit emitFunc) error {
+	logger := log.WithFunc("systemd.watchUnits")
+	// a previous Events left its subscription on this shared connection, still feeding dead channels
+	_ = s.conn.Unsubscribe()
 	if err := s.conn.Subscribe(); err != nil {
 		return err
 	}
@@ -204,11 +207,35 @@ func (s *Systemd) watchUnits(ctx context.Context, emit func(ID, action string)) 
 				emit(ID, common.StatusDie)
 			}
 		case err := <-errs:
-			return err
+			// a subscriber that fell behind missed transitions, it did not lose the bus
+			logger.Warnf(ctx, "systemd subscription fell behind, relisting: %v", err)
+			if err := s.relist(ctx, emit); err != nil {
+				return err
+			}
 		case <-ctx.Done():
 			return nil
 		}
 	}
+}
+
+// relist replays the state of every eru unit, so a transition the subscription missed is reconciled.
+func (s *Systemd) relist(ctx context.Context, emit emitFunc) error {
+	running, err := s.runningUnits(ctx)
+	if err != nil {
+		return err
+	}
+	for unit, active := range running {
+		ID, ok := workloadIDFromUnit(unit)
+		if !ok {
+			continue
+		}
+		if active {
+			emit(ID, common.StatusStart)
+			continue
+		}
+		emit(ID, common.StatusDie)
+	}
+	return nil
 }
 
 func (s *Systemd) runningUnits(ctx context.Context) (map[string]bool, error) {
@@ -223,7 +250,24 @@ func (s *Systemd) runningUnits(ctx context.Context) (map[string]bool, error) {
 	return running, nil
 }
 
-// needsNetns reports whether the workload has a network of its own, so the host counters are not its.
+// withNetns reads the pid off the unit: the meta file is written before the process exists.
+func (s *Systemd) withNetns(ctx context.Context, w *source.Workload) *source.Workload {
+	if !needsNetns(w) {
+		return w
+	}
+	// MainPID lives on the Service interface, not the Unit one
+	prop, err := s.conn.GetServicePropertyContext(ctx, unitOf(w.ID), "MainPID")
+	if err != nil {
+		log.WithFunc("systemd.withNetns").WithField("ID", w.ID).Warnf(ctx, "no main pid, so no network counters: %v", err)
+		return w
+	}
+	if pid, ok := prop.Value.Value().(uint32); ok {
+		w.NetnsPID = int(pid)
+	}
+	return w
+}
+
+// needsNetns reports whether the workload has a running network of its own, so the host counters are not its.
 func needsNetns(w *source.Workload) bool {
-	return len(w.Meta.Networks) > 0 && w.NetnsPID == 0 && w.HostIface == ""
+	return w.Running && len(w.Meta.Networks) > 0 && w.NetnsPID == 0 && w.HostIface == ""
 }

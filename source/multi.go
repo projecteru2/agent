@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"errors"
 	"io"
 	"slices"
 	"sync"
@@ -36,15 +37,15 @@ func (m *Multi) List(ctx context.Context) ([]*Workload, error) {
 
 // Get asks every runtime in turn, since a workload id says nothing about which one runs it.
 func (m *Multi) Get(ctx context.Context, ID string) (*Workload, error) {
-	err := ErrUnknownWorkload
+	refusals := []error{ErrUnknownWorkload}
 	for _, src := range m.sources {
-		w, getErr := src.Get(ctx, ID)
-		if getErr == nil {
+		w, err := src.Get(ctx, ID)
+		if err == nil {
 			return w, nil
 		}
-		err = getErr
+		refusals = append(refusals, err)
 	}
-	return nil, err
+	return nil, errors.Join(refusals...)
 }
 
 func (m *Multi) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage, <-chan error) {
@@ -101,17 +102,17 @@ func (m *Multi) Alive(ctx context.Context) bool {
 
 // Attach streams the output of a workload, from whichever runtime holds it.
 func (m *Multi) Attach(ctx context.Context, ID string) (io.Reader, io.Reader, error) {
-	err := ErrUnknownWorkload
+	refusals := []error{ErrUnknownWorkload}
 	for _, src := range m.sources {
 		attacher, ok := src.(Attacher)
 		if !ok {
 			continue
 		}
-		stdout, stderr, attachErr := attacher.Attach(ctx, ID)
-		if attachErr == nil {
+		stdout, stderr, err := attacher.Attach(ctx, ID)
+		if err == nil {
 			return stdout, stderr, nil
 		}
-		err = attachErr
+		refusals = append(refusals, err)
 	}
-	return nil, nil, err
+	return nil, nil, errors.Join(refusals...)
 }

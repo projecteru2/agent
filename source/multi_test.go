@@ -62,6 +62,11 @@ func TestMultiGetAsksEveryRuntime(t *testing.T) {
 func TestMultiGetWithoutARuntimeThatKnowsIt(t *testing.T) {
 	_, err := (&Multi{}).Get(t.Context(), "nowhere")
 	assert.ErrorIs(t, err, ErrUnknownWorkload)
+
+	multi := &Multi{sources: []Source{&fakeSource{err: errBroken}, &fakeSource{}}}
+	_, err = multi.Get(t.Context(), "nowhere")
+	assert.ErrorIs(t, err, ErrUnknownWorkload)
+	assert.ErrorIs(t, err, errBroken)
 }
 
 func TestMultiIsAliveOnlyWhenEveryRuntimeIs(t *testing.T) {
@@ -89,6 +94,11 @@ func TestMultiAttachUsesTheRuntimeThatStreams(t *testing.T) {
 func TestMultiAttachWithoutAnyStreamingRuntime(t *testing.T) {
 	_, _, err := (&Multi{sources: []Source{&fakeSource{}}}).Attach(t.Context(), "process")
 	assert.ErrorIs(t, err, ErrUnknownWorkload)
+
+	multi := &Multi{sources: []Source{&fakeAttacher{fakeSource: fakeSource{err: errBroken}}}}
+	_, _, err = multi.Attach(t.Context(), "container")
+	assert.ErrorIs(t, err, ErrUnknownWorkload)
+	assert.ErrorIs(t, err, errBroken)
 }
 
 func TestMultiMergesTheEventsOfEveryRuntime(t *testing.T) {

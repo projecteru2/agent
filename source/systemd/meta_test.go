@@ -54,7 +54,12 @@ func TestReadMetaRejectsBadInput(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestNeedsNetnsOnlyForAWorkloadWithItsOwnNetwork(t *testing.T) {
+func TestReadMetaRejectsAFileThatSaysNothingAboutLogs(t *testing.T) {
+	_, err := readMeta("testdata", "nolog")
+	assert.ErrorContains(t, err, "says nothing about where its logs are")
+}
+
+func TestNeedsNetnsOnlyForARunningWorkloadWithItsOwnNetwork(t *testing.T) {
 	m, err := readMeta("testdata", "abc123")
 	require.NoError(t, err)
 
@@ -67,6 +72,8 @@ func TestNeedsNetnsOnlyForAWorkloadWithItsOwnNetwork(t *testing.T) {
 	w.NetnsPID = 0
 	w.HostIface = "tap-abc123"
 	assert.False(t, needsNetns(w))
+
+	assert.False(t, needsNetns(m.workload(false)))
 }
 
 func TestUnitNaming(t *testing.T) {

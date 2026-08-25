@@ -2,6 +2,7 @@ package systemd
 
 import (
 	"encoding/json"
+	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
@@ -68,6 +69,9 @@ func readMeta(dir, ID string) (*meta, error) {
 	m := &meta{}
 	if err := json.Unmarshal(data, m); err != nil {
 		return nil, err
+	}
+	if m.Log == (logSource{}) {
+		return nil, fmt.Errorf("meta file of %s says nothing about where its logs are", ID)
 	}
 	return m, nil
 }

@@ -151,14 +151,21 @@ func (d *Docker) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage
 		for {
 			select {
 			case message := <-stream.Messages:
-				eventChan <- &types.WorkloadEventMessage{
+				select {
+				case eventChan <- &types.WorkloadEventMessage{
 					ID:       message.Actor.ID,
 					Type:     string(message.Type),
 					Action:   string(message.Action),
 					TimeNano: message.TimeNano,
+				}:
+				case <-ctx.Done():
+					return
 				}
 			case err := <-stream.Err:
-				errChan <- err
+				select {
+				case errChan <- err:
+				case <-ctx.Done():
+				}
 				return
 			case <-ctx.Done():
 				return
