@@ -8,13 +8,22 @@ import (
 )
 
 var (
-	once      sync.Once
-	client    *Containerd
-	clientErr error
+	mutex  sync.Mutex
+	client *Containerd
 )
 
-// GetClient returns the process-wide containerd source, creating it on first call.
+// GetClient returns the process-wide containerd source, creating it on the first call that succeeds.
 func GetClient(ctx context.Context, config *types.Config, nodeIP, storeIdentifier string) (*Containerd, error) {
-	once.Do(func() { client, clientErr = New(ctx, config, nodeIP, storeIdentifier) })
-	return client, clientErr
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if client != nil {
+		return client, nil
+	}
+	source, err := New(ctx, config, nodeIP, storeIdentifier)
+	if err != nil {
+		return nil, err
+	}
+	client = source
+	return client, nil
 }
