@@ -152,6 +152,9 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 		for {
 			select {
 			case message := <-stream.Messages:
+				if message.Action == events.ActionUpdate {
+					d.refreshMetricsContainer(ctx, message.Actor.ID)
+				}
 				eventChan <- &types.WorkloadEventMessage{
 					ID:       message.Actor.ID,
 					Type:     string(message.Type),
@@ -303,6 +306,15 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 	}
 
 	return container, nil
+}
+
+func (d *Docker) refreshMetricsContainer(ctx context.Context, ID string) {
+	container, err := d.detectWorkload(ctx, ID)
+	if err != nil {
+		log.WithFunc("docker.refreshMetricsContainer").WithField("ID", ID).Error(ctx, err, "failed to refresh container meta")
+		return
+	}
+	setMetricsContainer(ID, container)
 }
 
 func (d *Docker) workloadNetworks(ctx context.Context, c enginecontainer.InspectResponse) (string, map[string]string) {
