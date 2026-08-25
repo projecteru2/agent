@@ -21,7 +21,8 @@ import (
 const (
 	vmWorkload    = "3c4d5e6f708192a3b4c5d6e7f8091a2b"
 	otherWorkload = "4d5e6f708192a3b4c5d6e7f8091a2b3c"
-	cocoonVMID    = "01k3n8qz7m4vx9pbc2ry6dth5w"
+	cocoonVMID    = "XMD6Y5GKRNMYZVDGDKPL4PGQV2"
+	cocoonTap     = "tapXMD6Y5GK-0"
 
 	syncFrame   = "event: sync\ndata: {\"vms\":[{\"name\":%q,\"state\":\"running\",\"live\":true}]}\n\n"
 	changeFrame = "event: change\ndata: {\"type\":%q,\"vm\":{\"name\":%q,\"state\":%q,\"live\":%t}}\n\n"
@@ -97,8 +98,8 @@ func TestListUsesTheDaemonLiveness(t *testing.T) {
 	require.Len(t, workloads, 1)
 	assert.True(t, workloads[0].Running)
 	assert.Equal(t, "10.0.0.9", workloads[0].LocalIP)
-	assert.Equal(t, "tap-"+vmWorkload, workloads[0].HostIface)
-	assert.Equal(t, "/var/lib/cocoon/run/ch/"+cocoonVMID+"/console.sock", workloads[0].Log.ConsoleSocket)
+	assert.Equal(t, cocoonTap, workloads[0].HostIface)
+	assert.Equal(t, "/var/lib/cocoon/run/cloudhypervisor/"+cocoonVMID+"/console.sock", workloads[0].Log.ConsoleSocket)
 }
 
 func TestListFallsBackToTheVMScope(t *testing.T) {
@@ -254,8 +255,8 @@ func writeMeta(t *testing.T, dir, ID, cgroup string) {
 	t.Helper()
 	body := fmt.Sprintf(
 		`{"id":%q,"kind":"vm","appname":"myvm","entrypoint":"web","networks":{"eru-cni":"10.0.0.9"},`+
-			`"cgroup":%q,"iface":"tap-%s","log":{"console_socket":"/var/lib/cocoon/run/ch/%s/console.sock"}}`,
-		ID, cgroup, ID, cocoonVMID,
+			`"cgroup":%q,"iface":%q,"log":{"console_socket":"/var/lib/cocoon/run/cloudhypervisor/%s/console.sock"}}`,
+		ID, cgroup, cocoonTap, cocoonVMID,
 	)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ID+".json"), []byte(body), 0o600))
 }

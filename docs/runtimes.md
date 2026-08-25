@@ -57,7 +57,7 @@ VM pods are Cloud Hypervisor or Firecracker guests that the `cocoon` CLI created
 
 **Discovery.** Same as a process pod: a file appearing is a new VM, its removal a gone one.
 
-**Running.** `cocoon daemon` supervises the VMs on the node and serves a read-only API on `runtimes.cocoon.socket`. The agent opens `GET /v1/events` once and turns every change into a start or a die; `GET /v1/vms` answers the same question for a listing. A VM counts as running when the daemon reports it both in state `running` and live, and VMs are matched to workloads by the name core created them under, so a VM an operator created outside eru is ignored.
+**Running.** `cocoon daemon` supervises the VMs on the node and serves a read-only API on `runtimes.cocoon.socket`. That socket is `root:root` mode `0660`, so on a cocoon node the agent runs as root; nothing else authenticates against it. The agent opens `GET /v1/events` once and turns every change into a start or a die; `GET /v1/vms` answers the same question for a listing. A VM counts as running when the daemon reports it both in state `running` and live, and VMs are matched to workloads by the name core created them under, so a VM an operator created outside eru is ignored.
 
 Every state that is not `running` counts as not running, `creating` and `created` included. A VM therefore reports itself not running for the moment between core writing its meta file and the guest booting: the meta file's arrival is a start, the daemon's first snapshot says `created`, and the boot that follows says `running`. The source reports a workload only when what it says about it changes, so core sees not-running once and then running once, which is what happened.
 

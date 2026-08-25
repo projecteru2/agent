@@ -47,7 +47,7 @@ runtimes:
 |---|---|---|
 | `containerd` | `socket` — the local containerd gRPC socket, defaults to `/run/containerd/containerd.sock`; `namespace` — the containerd namespace eru's containers live in, defaults to `eru` | health service check |
 | `systemd` | none — a process pod is described by its meta file in `meta_dir`, and its unit is read over the system D-Bus | D-Bus unit listing |
-| `cocoon` | `socket` — the cocoon daemon's read-only API socket; defaults to `/run/cocoond.sock`. A VM pod is described by its meta file in `meta_dir`, and the daemon answers which VMs are live | daemon `GET /healthz`; a node with no socket at that path is up, since the daemon is optional |
+| `cocoon` | `socket` — the cocoon daemon's read-only API socket; defaults to `/run/cocoond.sock`. A VM pod is described by its meta file in `meta_dir`, and the daemon answers which VMs are live | `meta_dir` is readable. The daemon is optional, so one that is installed but not answering is a warning rather than a dead node |
 | `mocks` | none — the scripted runtime the test suite runs against; pair it with `store: mocks` to bring the agent up with neither a runtime nor a core | scripted |
 
 A node listing several runtimes reports the union of their workloads, and merges their event streams into one; a failure in any of them tears the subscription down and the agent resubscribes to all of them.

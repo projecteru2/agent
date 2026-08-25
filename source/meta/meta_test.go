@@ -17,7 +17,8 @@ const (
 	noLogWorkload   = "2b3c4d5e6f708192a3b4c5d6e7f8091a"
 	vmWorkload      = "3c4d5e6f708192a3b4c5d6e7f8091a2b"
 
-	cocoonVMID = "01k3n8qz7m4vx9pbc2ry6dth5w"
+	cocoonVMID = "XMD6Y5GKRNMYZVDGDKPL4PGQV2"
+	cocoonTap  = "tapXMD6Y5GK-0"
 )
 
 func TestReadRendersAProcessWorkload(t *testing.T) {
@@ -50,11 +51,11 @@ func TestReadRendersAVMWorkload(t *testing.T) {
 
 	w := f.Workload(true)
 	assert.Equal(t, "/sys/fs/cgroup/cocoon.slice/vm-"+cocoonVMID+".scope", w.CgroupPath)
-	assert.Equal(t, "tap-"+vmWorkload, w.HostIface)
+	assert.Equal(t, cocoonTap, w.HostIface)
 	assert.True(t, w.HostIfaceMirrored)
 	assert.Zero(t, w.NetnsPID)
 	assert.Equal(t, "10.0.0.9", w.LocalIP)
-	assert.Equal(t, "/var/lib/cocoon/run/ch/"+cocoonVMID+"/console.sock", w.Log.ConsoleSocket)
+	assert.Equal(t, "/var/lib/cocoon/run/cloudhypervisor/"+cocoonVMID+"/console.sock", w.Log.ConsoleSocket)
 	assert.Empty(t, w.Log.JournalUnit)
 }
 
