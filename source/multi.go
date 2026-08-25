@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"errors"
-	"io"
 	"slices"
 	"sync"
 
@@ -98,21 +97,4 @@ func (m *Multi) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage,
 // Alive reports whether every runtime the node hosts is up.
 func (m *Multi) Alive(ctx context.Context) bool {
 	return !slices.ContainsFunc(m.sources, func(src Source) bool { return !src.Alive(ctx) })
-}
-
-// Attach streams the output of a workload, from whichever runtime holds it.
-func (m *Multi) Attach(ctx context.Context, ID string) (io.Reader, io.Reader, error) {
-	refusals := []error{ErrUnknownWorkload}
-	for _, src := range m.sources {
-		attacher, ok := src.(Attacher)
-		if !ok {
-			continue
-		}
-		stdout, stderr, err := attacher.Attach(ctx, ID)
-		if err == nil {
-			return stdout, stderr, nil
-		}
-		refusals = append(refusals, err)
-	}
-	return nil, nil, errors.Join(refusals...)
 }

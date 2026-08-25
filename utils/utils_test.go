@@ -3,10 +3,8 @@ package utils
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -39,63 +37,6 @@ func TestGetAppInfo(t *testing.T) {
 	_, _, _, err = GetAppInfo(containerName)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid workload name")
-}
-
-func TestPipeWriter_NoBlocking(t *testing.T) {
-	r, w := NewBufPipe(10000)
-	io.WriteString(w, "abc")
-	io.WriteString(w, "def")
-	w.Close()
-
-	b, err := io.ReadAll(r)
-	assert.NoError(t, err)
-	assert.Equal(t, b, []byte("abcdef"))
-}
-
-func TestMultiBlocking(t *testing.T) {
-	results := make(chan []byte)
-	block := func(r io.Reader) {
-		b := make([]byte, 3)
-		n, err := r.Read(b)
-		assert.NoError(t, err)
-		results <- b[:n]
-	}
-
-	r, w := NewBufPipe(10000)
-	go block(r)
-	go block(r)
-	go block(r)
-
-	time.Sleep(time.Millisecond)
-
-	data := []string{"abc", "def", "ghi"}
-	for _, s := range data {
-		n, err := w.Write([]byte(s))
-		assert.NoError(t, err)
-		assert.Equal(t, n, 3)
-	}
-
-	var ss []string
-	for range 3 {
-		ss = append(ss, string(<-results))
-	}
-	slices.Sort(ss)
-	assert.Equal(t, ss, data)
-}
-
-func BenchmarkBufPipe(b *testing.B) {
-	r, w := NewBufPipe(1 << 20)
-	payload := []byte("benchmark\n")
-	data := make([]byte, len(payload))
-
-	for b.Loop() {
-		if _, err := w.Write(payload); err != nil {
-			b.Fatalf("write: %v", err)
-		}
-		if _, err := io.ReadFull(r, data); err != nil {
-			b.Fatalf("read: %v", err)
-		}
-	}
 }
 
 func TestReplaceNonUtf8(t *testing.T) {
@@ -142,13 +83,6 @@ func TestGetMaxAttemptsByTTL(t *testing.T) {
 	assert.Equal(t, GetMaxAttemptsByTTL(0), 5)
 	assert.Equal(t, GetMaxAttemptsByTTL(1), 2)
 	assert.Equal(t, GetMaxAttemptsByTTL(8), 4)
-}
-
-func TestGetIP(t *testing.T) {
-	host := "protocol://127.0.0.1:8888888888/some-api?param=none"
-	assert.Equal(t, GetIP(host), "127.0.0.1")
-	host = "invalid-string"
-	assert.Equal(t, GetIP(host), "")
 }
 
 func TestProcRoot(t *testing.T) {

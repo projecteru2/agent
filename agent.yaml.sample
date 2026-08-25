@@ -28,11 +28,6 @@ store: grpc
 # reachable, otherwise the node heartbeat stops and eru-core expires the node.
 # Name only the runtimes the node actually hosts.
 #
-# runtimes.docker.endpoint is the url that eru-agent will use to connect to.
-# This URL can be a tcp address like "tcp://10.233.10.14:2376",
-# or a unix socket file path like "unix:///var/run/docker.sock".
-# It defaults to unix:///var/run/docker.sock.
-#
 # runtimes.containerd.socket is the local containerd grpc socket, and
 # runtimes.containerd.namespace the namespace eru's containers live in.
 # They default to /run/containerd/containerd.sock and eru.
@@ -43,8 +38,6 @@ store: grpc
 # runtimes.mocks is the scripted runtime the test suite runs against; pair it
 # with store: mocks to bring the agent up with neither a runtime nor a core.
 runtimes:
-  docker:
-    endpoint: unix:///var/run/docker.sock
   containerd:
     socket: /run/containerd/containerd.sock
     namespace: eru

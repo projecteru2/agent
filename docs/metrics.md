@@ -1,6 +1,6 @@
 # Metrics
 
-The agent exports per-workload metrics for every source that yields a cgroup directory. Today that is the Docker source; yavirt guests are not sampled.
+The agent exports per-workload metrics for every source that yields a cgroup directory, which is every runtime it supports.
 
 Collection starts when the agent first sees a workload running and stops when that workload dies, at which point its gauges are unregistered and the workload disappears from `/metrics`.
 

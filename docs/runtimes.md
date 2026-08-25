@@ -2,37 +2,19 @@
 
 `runtimes` lists what a node hosts. Each one implements the same `Source` interface — list the workloads, stream their events, answer whether its daemon is alive — but they do not all yield every fact a collector can use.
 
-| Capability | `docker` | `containerd` | `systemd` | `mocks` |
-|---|---|---|---|---|
-| List workloads | yes | yes | yes | yes |
-| Event stream | daemon events | daemon events | inotify + D-Bus | scripted |
-| Daemon liveness ping | yes | yes | yes | scripted |
-| Streams its own output (attach) | yes | no, journald | no, journald | yes |
-| Cgroup path, so per-workload metrics | yes | yes | yes | no |
-| Health check address | yes | yes | yes | scripted |
+| Capability | `containerd` | `systemd` | `mocks` |
+|---|---|---|---|
+| List workloads | yes | yes | yes |
+| Event stream | daemon events | inotify + D-Bus | scripted |
+| Daemon liveness ping | yes | yes | scripted |
+| Cgroup path, so per-workload metrics | yes | yes | no |
+| Health check address | yes | yes | scripted |
 
 `mocks` needs no runtime at all and is what the test suite runs against; pair it with `store: mocks` to bring the agent up with no core either.
 
-A node may list several runtimes. The agent then reports the union of their workloads and merges their event streams; one runtime failing tears the subscription down and the agent resubscribes to all of them. The node heartbeat needs every listed runtime alive, so a node whose Docker died stops looking alive even if its systemd units are fine.
+A node may list several runtimes. The agent then reports the union of their workloads and merges their event streams; one runtime failing tears the subscription down and the agent resubscribes to all of them. The node heartbeat needs every listed runtime alive, so a node whose containerd died stops looking alive even if its systemd units are fine.
 
-A source that does not attach has its workloads' logs read from the journal instead; see [architecture](architecture.md). Health checks and metrics are not a source's business either: the source yields the workload's probe address, cgroup directory and netns pid, and the collectors do the rest, identically for every runtime.
-
-## Docker
-
-The agent talks to the local Docker API at `docker.endpoint`, negotiating the API version with the daemon on its first call. The client supports API 1.40 and up.
-
-**Which containers it manages.** Every list and every event subscription is filtered by the eru mark label, so containers that eru did not create are invisible to the agent. `check_only_mine: true` narrows that further to containers belonging to this node. There are two ways to express "belonging":
-
-- default — the agent inspects the container and compares its `ERU_NODE_NAME` environment variable to its own hostname
-- `ERU_AGENT_EXPERIMENTAL_FILTER=label` — the agent adds `eru.nodename` and `eru.coreid` to the label filter, so the daemon does the filtering and no inspect is needed
-
-The label path is the faster one and is the direction this is heading; it requires that core labelled the containers when it created them.
-
-**Workload identity.** A container name must be the three part eru form `app_entrypoint_ident`. Containers whose name does not parse are skipped. Process pods carry the three parts as separate fields in their meta file, so they are not subject to this.
-
-**Networks.** The agent reports the first network it finds on a running container. A container on the host network reports the node ip and health checks against `127.0.0.1`; any other network reports the container's own address and health checks against that.
-
-**Resources.** The agent no longer asks Docker what a container was allowed: the metrics sampler reads `cpu.max` and `memory.max` out of the container's own cgroup on every tick. cpu is `quota / period`, falling back to the host cpu count when the quota is `max`; memory falls back to the node total when the limit is `max`. The cgroup directory comes from `/proc/<pid>/cgroup`, so it is found whatever cgroup driver the daemon uses — but it must be a **unified cgroup v2 hierarchy**. On a cgroup v1 node the agent warns and reports no metrics.
+Every source's logs are read from the node's journal; see [architecture](architecture.md). Health checks and metrics are not a source's business either: the source yields the workload's probe address, cgroup directory and netns pid, and the collectors do the rest, identically for every runtime.
 
 ## Containerd
 
@@ -40,7 +22,7 @@ The agent talks to the local containerd over `runtimes.containerd.socket`, in th
 
 **Which containers it manages.** Lists are filtered by the eru mark label, so containers eru did not create are invisible. `check_only_mine: true` narrows that to this node, either by comparing the container's `ERU_NODE_NAME` to the hostname or, with `ERU_AGENT_EXPERIMENTAL_FILTER=label`, by adding `eru.nodename` and `eru.coreid` to the daemon-side filter.
 
-**Workload identity.** A containerd container id is the eru workload name, the three part `app_entrypoint_ident` form. Containers whose id does not parse are skipped. Pod and node names come from the `ERU_POD` and `ERU_NODE_NAME` variables of the runtime spec, the same variables core writes for Docker.
+**Workload identity.** A containerd container id is the eru workload name, the three part `app_entrypoint_ident` form. Containers whose id does not parse are skipped. Pod and node names come from the `ERU_POD` and `ERU_NODE_NAME` variables of the runtime spec.
 
 **Events.** One subscription to the events service carries `/tasks/start`, `/tasks/exit`, `/containers/delete` and `/containers/update`. An exec process exiting is not the workload exiting, so a task exit only counts when its process id is the container id. A container update is a start: it is how the addresses the OCI hook wrote back reach the agent.
 
@@ -75,4 +57,4 @@ A workload declares its health check in the `ERU_META` label that core writes wh
 
 Both probes must pass for the workload to be healthy. A workload that is running and declares no health check is always healthy; a workload that is not running is never healthy.
 
-For containers the probe address is the container's own address, or `127.0.0.1` for host networking. For yavirt guests it is the first ip the guest owns.
+The probe address is the workload's own CNI address, or `127.0.0.1` when it shares the host network.

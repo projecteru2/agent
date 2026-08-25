@@ -16,15 +16,15 @@
    |   - heartbeat             - initial load               - /version/  |
    |   - remove on exit        - runtime event watch        - /profile/  |
    |                           - periodic health sweep      - /log/      |
-   |                           - attach and forward logs    - /metrics   |
+   |                           - forward journal logs       - /metrics   |
    |                           - collect metrics            - /debug/    |
    +---------------------------------+-----------------------------------+
                                      |
                     +----------------+----------------+
                     |                                 |
-             docker source                     systemd source
+           containerd source                   systemd source
        (containers: list, events,        (process pods: meta dir,
-        attach)                           D-Bus units)
+        labels)                           D-Bus units)
                     |                                 |
                     +----------------+----------------+
                                      |
@@ -38,7 +38,7 @@
 - [Installation](installation.md) — building, the container image, the systemd unit
 - [Configuration](configuration.md) — every key in `agent.yaml`, the flags and the environment variables
 - [Architecture](architecture.md) — what the two managers do and how status reaches core
-- [Runtimes](runtimes.md) — what the Docker and yavirt sources each support, and how health checks are declared
+- [Runtimes](runtimes.md) — what the containerd and systemd sources each support, and how health checks are declared
 - [Metrics](metrics.md) — the Prometheus gauges, their labels, and the statsd sink
 
 ## Source

@@ -4,6 +4,8 @@ The agent is one process with two independent managers and an HTTP server. Both 
 
 Everything runtime-specific lives in a **source**: it lists the workloads the node runs, streams their state changes and answers whether its daemon is alive. Everything else — the metrics sampler, the health prober — is a runtime-agnostic **collector** that reads Linux files. A source hands a collector a `source.Workload`: the id, the metadata core wrote at create time, the workload's cgroup directory, the pid whose network namespace to read (or a host interface), and where its log lines are. No collector makes an IPC call.
 
+The binary is also the two helper modes containerd runs on the node: `eru-agent log-shim` as a task's logger and `eru-agent oci-hook` as its CNI hook. Neither reads the agent's configuration nor talks to core.
+
 ## Packages
 
 | Package | Responsibility |
@@ -12,7 +14,7 @@ Everything runtime-specific lives in a **source**: it lists the workloads the no
 | `manager/node` | Node status heartbeat and shutdown |
 | `manager/workload` | Workload discovery, health checks, log attach and broadcast |
 | `source` | The `Source` interface every runtime implements, and the `Workload` it yields |
-| `source/docker`, `source/containerd`, `source/systemd` | The runtime backends, plus `source.Multi` for a node that hosts several |
+| `source/containerd`, `source/systemd` | The runtime backends, plus `source.Multi` for a node that hosts several |
 | `collector` | Runtime-agnostic hot paths: cgroup v2 metrics, network counters, health probes |
 | `logshim` | The `eru-agent log-shim` mode: containerd's binary logger, one process per task |
 | `ocihook` | The `eru-agent oci-hook` mode: cni attach and detach from the container's own oci spec |
@@ -26,7 +28,7 @@ Everything runtime-specific lives in a **source**: it lists the workloads the no
 
 `manager/node` reports this node alive. Every `heartbeat_interval` seconds it:
 
-1. Pings every runtime the node is configured with. If any of them is unreachable the report is skipped, so a node whose Docker died stops looking alive and core expires it.
+1. Pings every runtime the node is configured with. If any of them is unreachable the report is skipped, so a node whose containerd died stops looking alive and core expires it.
 2. Calls `SetNodeStatus` with a ttl of three times the interval, retrying three times with exponential backoff.
 
 The ttl outlives the interval on purpose: a single lost or slow report must not evict the node.
@@ -40,11 +42,11 @@ On shutdown the behaviour depends on the signal:
 
 `manager/workload` owns everything about the workloads on the node.
 
-**Initial load.** At startup it lists every workload carrying the eru mark, retrying until the runtime answers, then for each one fetches status, attaches if it is running, and reports the status to core. Startup blocks until this sweep finishes, so core has a complete picture before the agent starts reacting to events.
+**Initial load.** At startup it lists every workload carrying the eru mark, retrying until the runtime answers, then for each one fetches status, starts forwarding and sampling if it is running, and reports the status to core. Startup blocks until this sweep finishes, so core has a complete picture before the agent starts reacting to events.
 
 **Event watch.** It subscribes to the runtime's event stream, filtered to the same set of workloads, and handles two actions:
 
-- `start` — fetch status; attach if running; if the workload is already healthy, report it, otherwise start a backoff retry task that re-checks it until it becomes healthy or the attempts run out. A second `start` for the same workload cancels the previous task.
+- `start` — fetch status; forward and sample if running; if the workload is already healthy, report it, otherwise start a backoff retry task that re-checks it until it becomes healthy or the attempts run out. A second `start` for the same workload cancels the previous task.
 - `die` — fetch status and report it.
 
 If the stream errors the manager waits `global_connection_timeout` and resubscribes, so a runtime daemon restart is survivable.
@@ -53,12 +55,9 @@ If the stream errors the manager waits `global_connection_timeout` and resubscri
 
 **Metrics.** Each running workload gets one sampling goroutine, started when the workload is first seen running and cancelled on its die event. The sampler reads the workload's cgroup v2 files and its netns counters directly, so a tick costs a handful of small file reads and no call to any daemon. See [metrics](metrics.md).
 
-**Logs.** There are two ways a workload's output reaches the agent, and the source decides which.
+**Logs.** Every workload's output reaches the agent through the node's journal. The agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` child process for the whole node, and routes each record to a workload by its `ERU_ID` field or by the unit that emitted it. One term, not two: journald ors terms with `+`, but `-u` is an option rather than a term, so `-u 'eru-*' + SYSLOG_IDENTIFIER=eru` is rejected. Everything eru runs therefore carries the same identifier — process units get `SyslogIdentifier=eru` from core's `systemd-run`, containers get it from `eru-agent log-shim`, which containerd execs once per task. One reader per node replaces one attach per workload, and a cursor persisted under `state_dir` means an agent restart resumes where it stopped instead of losing the lines in between. journald's format is only readable through libsystemd, so the system tool is the reader; the agent logs that requirement at debug level on startup.
 
-- **Attach** — a source that streams output implements `source.Attacher`; for each running workload the manager opens its stdout and stderr and pumps them line by line. This is the Docker path.
-- **Journal** — every other source logs to journald. The agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` child process for the whole node, and routes each record to a workload by its `ERU_ID` field or by the unit that emitted it. One term, not two: journald ors terms with `+`, but `-u` is an option rather than a term, so `-u 'eru-*' + SYSLOG_IDENTIFIER=eru` is rejected. Everything eru runs therefore carries the same identifier — process units get `SyslogIdentifier=eru` from core's `systemd-run`, the container log shim writes it itself. One reader per node replaces one attach per workload, and a cursor persisted under `state_dir` means an agent restart resumes where it stopped instead of losing the lines in between. journald's format is only readable through libsystemd, so the system tool is the reader; the agent logs that requirement at debug level on startup.
-
-Either way, each line becomes the same JSON record:
+Each line becomes the same JSON record:
 
 ```json
 {
@@ -79,7 +78,7 @@ The record goes to two places: the configured forwarder for that workload, and t
 
 ## Status reporting
 
-Both workload paths report through `store.Store`. The core store sends `SetWorkloadsStatus` with a ttl of `0`, which means core owns expiry — the agent does not set a workload ttl because selfmon lives in core now. To avoid re-sending an unchanged status every sweep, the core store caches the last reported status per workload for `healthcheck.cache_ttl` seconds, with per-workload jitter.
+Both the event path and the sweep report through `store.Store`. The core store sends `SetWorkloadsStatus` with a ttl of `0`, which means core owns expiry — the agent does not set a workload ttl because selfmon lives in core now. To avoid re-sending an unchanged status every sweep, the core store caches the last reported status per workload for `healthcheck.cache_ttl` seconds, with per-workload jitter.
 
 ## Concurrency
 

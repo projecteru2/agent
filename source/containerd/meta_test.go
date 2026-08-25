@@ -22,7 +22,6 @@ func TestWorkloadFromLabelsAndEnv(t *testing.T) {
 	assert.Equal(t, "myapp_web_EAXPcM", w.ID)
 	assert.Equal(t, "10.0.0.5", w.LocalIP)
 	assert.Equal(t, source.Log{JournalIdentifier: common.JournalIdentifier}, w.Log)
-	assert.False(t, w.Streams())
 	assert.Equal(t, source.Meta{
 		Appname:     "myapp",
 		Entrypoint:  "web",

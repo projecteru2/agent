@@ -146,11 +146,6 @@ func main() {
 				Usage:   "core password",
 				Sources: cli.EnvVars("ERU_AGENT_CORE_PASSWORD"),
 			},
-			&cli.StringFlag{
-				Name:    "docker-endpoint",
-				Usage:   "docker endpoint",
-				Sources: cli.EnvVars("ERU_AGENT_DOCKER_ENDPOINT"),
-			},
 			&cli.Int64Flag{
 				Name:    "metrics-step",
 				Usage:   "interval for metrics to send",
