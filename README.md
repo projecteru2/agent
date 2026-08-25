@@ -1,6 +1,6 @@
 # agent
 
-Eru's per-node agent. It watches the workloads a node runs — Docker containers and systemd process pods — health checks them, forwards their logs, exports their metrics and reports node and workload status back to [eru-core](https://github.com/projecteru2/core).
+Eru's per-node agent. It watches the workloads a node runs — Docker containers, containerd containers and systemd process pods — health checks them, forwards their logs, exports their metrics and reports node and workload status back to [eru-core](https://github.com/projecteru2/core).
 
 **Documentation: [projecteru2.github.io/agent](https://projecteru2.github.io/agent/)** (source in [`docs/`](docs/))
 
@@ -14,7 +14,7 @@ Eru's per-node agent. It watches the workloads a node runs — Docker containers
 - **Log forwarding** — ships each line as a JSON record to `tcp://`, `udp://` or `journal://` targets, sharded over several targets by workload id: attached per container, or read from the node's journal with a persisted cursor for everything else.
 - **Live log tailing** — `GET /log/?app=<name>` streams the logs of one application straight off the node.
 - **Prometheus metrics** — per-workload cpu, memory, per-nic network and per-device block io gauges on `/metrics`, optionally pushed to statsd as well. Sampled straight from cgroup v2 files, so a tick makes no call to any daemon.
-- **Runtimes per node** — a node declares the runtimes it hosts under a required `runtimes:` section: Docker containers, systemd process pods, or both; the heartbeat needs every one of them alive. The old `runtime:` and `docker:` keys are gone, with no compatibility shim. A mock runtime and store cover development.
+- **Runtimes per node** — a node declares the runtimes it hosts under a required `runtimes:` section: Docker containers, containerd containers, systemd process pods, or any mix; the heartbeat needs every one of them alive. The old `runtime:` and `docker:` keys are gone, with no compatibility shim. A mock runtime and store cover development.
 
 ## Quick start
 

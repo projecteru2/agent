@@ -2,14 +2,14 @@
 
 `runtimes` lists what a node hosts. Each one implements the same `Source` interface — list the workloads, stream their events, answer whether its daemon is alive — but they do not all yield every fact a collector can use.
 
-| Capability | `docker` | `systemd` | `mocks` |
-|---|---|---|---|
-| List workloads | yes | yes | yes |
-| Event stream | daemon events | inotify + D-Bus | scripted |
-| Daemon liveness ping | yes | yes | scripted |
-| Streams its own output (attach) | yes | no, journald | yes |
-| Cgroup path, so per-workload metrics | yes | yes | no |
-| Health check address | yes | yes | scripted |
+| Capability | `docker` | `containerd` | `systemd` | `mocks` |
+|---|---|---|---|---|
+| List workloads | yes | yes | yes | yes |
+| Event stream | daemon events | daemon events | inotify + D-Bus | scripted |
+| Daemon liveness ping | yes | yes | yes | scripted |
+| Streams its own output (attach) | yes | no, journald | no, journald | yes |
+| Cgroup path, so per-workload metrics | yes | yes | yes | no |
+| Health check address | yes | yes | yes | scripted |
 
 `mocks` needs no runtime at all and is what the test suite runs against; pair it with `store: mocks` to bring the agent up with no core either.
 
@@ -33,6 +33,22 @@ The label path is the faster one and is the direction this is heading; it requir
 **Networks.** The agent reports the first network it finds on a running container. A container on the host network reports the node ip and health checks against `127.0.0.1`; any other network reports the container's own address and health checks against that.
 
 **Resources.** The agent no longer asks Docker what a container was allowed: the metrics sampler reads `cpu.max` and `memory.max` out of the container's own cgroup on every tick. cpu is `quota / period`, falling back to the host cpu count when the quota is `max`; memory falls back to the node total when the limit is `max`. The cgroup directory comes from `/proc/<pid>/cgroup`, so it is found whatever cgroup driver the daemon uses — but it must be a **unified cgroup v2 hierarchy**. On a cgroup v1 node the agent warns and reports no metrics.
+
+## Containerd
+
+The agent talks to the local containerd over `runtimes.containerd.socket`, in the namespace `runtimes.containerd.namespace`. There is no daemon in front of it: eru's core creates the container, the task and the OCI hooks itself.
+
+**Which containers it manages.** Lists are filtered by the eru mark label, so containers eru did not create are invisible. `check_only_mine: true` narrows that to this node, either by comparing the container's `ERU_NODE_NAME` to the hostname or, with `ERU_AGENT_EXPERIMENTAL_FILTER=label`, by adding `eru.nodename` and `eru.coreid` to the daemon-side filter.
+
+**Workload identity.** A containerd container id is the eru workload name, the three part `app_entrypoint_ident` form. Containers whose id does not parse are skipped. Pod and node names come from the `ERU_POD` and `ERU_NODE_NAME` variables of the runtime spec, the same variables core writes for Docker.
+
+**Events.** One subscription to the events service carries `/tasks/start`, `/tasks/exit`, `/containers/delete` and `/containers/update`. An exec process exiting is not the workload exiting, so a task exit only counts when its process id is the container id. A container update is a start: it is how the addresses the OCI hook wrote back reach the agent.
+
+**Networks.** eru's CNI hook writes the address of each network into the container's labels as `eru.network.<name>`. The agent reads them from there instead of entering the network namespace; a container with no such label is on the host network and is health checked against `127.0.0.1`.
+
+**Metrics.** The cgroup directory comes from `/proc/<pid>/cgroup` of the task's pid, so it is found whatever cgroup driver containerd uses, and it must be a unified cgroup v2 hierarchy.
+
+**Logs.** containerd keeps no logs. Core creates every task with `cio.LogURI` pointing at `eru-agent log-shim`, which writes each line to the journal under `SYSLOG_IDENTIFIER=eru` with the container id in `ERU_ID`; the agent's journal reader picks them up from there. See [architecture](architecture.md).
 
 ## Systemd
 

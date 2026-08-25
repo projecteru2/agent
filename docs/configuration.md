@@ -37,12 +37,16 @@ This section is required and replaces the old top-level `runtime:` and `docker:`
 runtimes:
   docker:
     endpoint: unix:///var/run/docker.sock
+  containerd:
+    socket: /run/containerd/containerd.sock
+    namespace: eru
   systemd: {}
 ```
 
 | Runtime | Keys | Liveness check |
 |---|---|---|
 | `docker` | `endpoint` — the local Docker API, a unix socket path or a `tcp://host:port` address; defaults to `unix:///var/run/docker.sock`. The agent negotiates the API version on its first call, so it works against any daemon from API 1.40 up. | daemon ping |
+| `containerd` | `socket` — the local containerd gRPC socket, defaults to `/run/containerd/containerd.sock`; `namespace` — the containerd namespace eru's containers live in, defaults to `eru` | health service check |
 | `systemd` | none — a process pod is described by its meta file in `meta_dir`, and its unit is read over the system D-Bus | D-Bus unit listing |
 | `mocks` | none — the scripted runtime the test suite runs against; pair it with `store: mocks` to bring the agent up with neither a runtime nor a core | scripted |
 

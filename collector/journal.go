@@ -13,12 +13,13 @@ import (
 	"time"
 
 	"github.com/projecteru2/core/log"
+
+	"github.com/projecteru2/agent/common"
 )
 
 const (
 	journalBinary = "journalctl"
 	cursorFile    = "journal.cursor"
-	identifier    = "eru"
 
 	defaultStream = "stdout"
 
@@ -184,7 +185,7 @@ func args(cursor string) []string {
 		args = append(args, "--after-cursor="+cursor, "--lines=all")
 	}
 	// journalctl ors terms with "+" but -u is an option, not a term, so every eru unit carries the identifier
-	return append(args, "SYSLOG_IDENTIFIER="+identifier)
+	return append(args, "SYSLOG_IDENTIFIER="+common.JournalIdentifier)
 }
 
 // message decodes MESSAGE, which journalctl renders as a byte array when the line is not utf8.

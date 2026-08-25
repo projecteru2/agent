@@ -33,6 +33,10 @@ store: grpc
 # or a unix socket file path like "unix:///var/run/docker.sock".
 # It defaults to unix:///var/run/docker.sock.
 #
+# runtimes.containerd.socket is the local containerd grpc socket, and
+# runtimes.containerd.namespace the namespace eru's containers live in.
+# They default to /run/containerd/containerd.sock and eru.
+#
 # runtimes.systemd has no options: a process pod is described by its meta file,
 # and the units are read over the system D-Bus.
 #
@@ -41,6 +45,9 @@ store: grpc
 runtimes:
   docker:
     endpoint: unix:///var/run/docker.sock
+  containerd:
+    socket: /run/containerd/containerd.sock
+    namespace: eru
   systemd: {}
 
 # meta_dir is where eru-core writes the metadata of the workloads it creates

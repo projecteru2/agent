@@ -5,9 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 
 	coretypes "github.com/projecteru2/core/types"
 
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 )
 
@@ -77,4 +80,14 @@ func (w *Workload) LogFields() map[string]string {
 		fields[fmt.Sprintf("networks_%s", name)] = addr
 	}
 	return fields
+}
+
+// LocalIP returns the workload's own address, or localhost when it shares the host network.
+func LocalIP(networks map[string]string) string {
+	for _, name := range slices.Sorted(maps.Keys(networks)) {
+		if addr := networks[name]; addr != "" {
+			return addr
+		}
+	}
+	return common.LocalIP
 }

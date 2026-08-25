@@ -10,6 +10,9 @@ const (
 
 	LocalIP = "127.0.0.1"
 
+	// JournalIdentifier is the one term the journal reader matches, so every eru workload logs under it.
+	JournalIdentifier = "eru"
+
 	GRPCStore  = "grpc"
 	MocksStore = "mocks"
 )

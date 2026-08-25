@@ -3,16 +3,13 @@ package systemd
 import (
 	"encoding/json"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strings"
 
 	coretypes "github.com/projecteru2/core/types"
 
-	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/source"
 )
 
@@ -115,19 +112,9 @@ func (m *meta) workload(running bool) *source.Workload {
 		CgroupPath: m.Cgroup,
 		NetnsPID:   m.NetnsPID,
 		HostIface:  m.Iface,
-		LocalIP:    m.localIP(),
+		LocalIP:    source.LocalIP(m.Networks),
 		Running:    running,
 	}
-}
-
-// localIP returns the workload's own address, or localhost when it shares the host network.
-func (m *meta) localIP() string {
-	for _, name := range slices.Sorted(maps.Keys(m.Networks)) {
-		if addr := m.Networks[name]; addr != "" {
-			return addr
-		}
-	}
-	return common.LocalIP
 }
 
 func unitOf(ID string) string {

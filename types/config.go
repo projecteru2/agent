@@ -15,11 +15,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// defaultDockerEndpoint is applied in Prepare: the walker cannot default a pointer the file allocates.
-const defaultDockerEndpoint = "unix:///var/run/docker.sock"
+// Prepare applies these defaults: the walker cannot default a pointer the file allocates.
+const (
+	defaultDockerEndpoint = "unix:///var/run/docker.sock"
+
+	defaultContainerdSocket    = "/run/containerd/containerd.sock"
+	defaultContainerdNamespace = "eru"
+)
 
 type DockerConfig struct {
 	Endpoint string `yaml:"endpoint"`
+}
+
+type ContainerdConfig struct {
+	Socket    string `yaml:"socket"`
+	Namespace string `yaml:"namespace"`
 }
 
 // SystemdConfig has no keys: a process pod is described by its meta file, not by the runtime.
@@ -30,9 +40,10 @@ type MocksConfig struct{}
 
 // RuntimesConfig lists the runtimes this node hosts; the heartbeat needs every one of them alive.
 type RuntimesConfig struct {
-	Docker  *DockerConfig  `yaml:"docker"`
-	Systemd *SystemdConfig `yaml:"systemd"`
-	Mocks   *MocksConfig   `yaml:"mocks"`
+	Docker     *DockerConfig     `yaml:"docker"`
+	Containerd *ContainerdConfig `yaml:"containerd"`
+	Systemd    *SystemdConfig    `yaml:"systemd"`
+	Mocks      *MocksConfig      `yaml:"mocks"`
 }
 
 type MetricsConfig struct {
@@ -147,6 +158,10 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	}
 	if docker := config.Runtimes.Docker; docker != nil && docker.Endpoint == "" {
 		docker.Endpoint = defaultDockerEndpoint
+	}
+	if containerd := config.Runtimes.Containerd; containerd != nil {
+		containerd.Socket = cmp.Or(containerd.Socket, defaultContainerdSocket)
+		containerd.Namespace = cmp.Or(containerd.Namespace, defaultContainerdNamespace)
 	}
 }
 
