@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/projecteru2/core/log"
@@ -23,6 +25,7 @@ const (
 	cursorFlushInterval = 5 * time.Second
 	scanBufferSize      = 64 << 10
 	scanLineMax         = 1 << 20
+	stderrMax           = 4 << 10
 )
 
 // Entry is one journal record, addressed by the workload id the log shim wrote or by its unit.
@@ -59,21 +62,33 @@ func (r *journalRecord) entry() *Entry {
 
 // Journal follows the node's journal and hands every eru workload line to one reader.
 type Journal struct {
+	binary     string
 	cursorPath string
 }
 
 func NewJournal(stateDir string) *Journal {
-	return &Journal{cursorPath: filepath.Join(stateDir, cursorFile)}
+	return &Journal{binary: journalBinary, cursorPath: filepath.Join(stateDir, cursorFile)}
 }
 
 // Read follows the journal until ctx is done, calling handle for every eru workload line.
 func (j *Journal) Read(ctx context.Context, handle func(*Entry)) error {
-	logger := log.WithFunc("collector.Read")
+	err := j.read(ctx, handle)
+	if ctx.Err() != nil {
+		// a stop is not a reader failure, whatever the child made of being killed
+		return nil
+	}
+	return err
+}
+
+func (j *Journal) read(ctx context.Context, handle func(*Entry)) error {
+	logger := log.WithFunc("collector.read")
 	// journald speaks a binary format only libsystemd reads, so its own tool is the reader
-	logger.Debugf(ctx, "forwarding workload logs needs %s on this node", journalBinary)
+	logger.Debugf(ctx, "forwarding workload logs needs %s on this node", j.binary)
 
 	cursor := j.loadCursor(ctx)
-	cmd := exec.CommandContext(ctx, journalBinary, args(cursor)...) //nolint:gosec // the arguments are the agent's own match list and its saved cursor
+	cmd := exec.CommandContext(ctx, j.binary, args(cursor)...) //nolint:gosec // the arguments are the agent's own match list and its saved cursor
+	stderr := &ring{limit: stderrMax}
+	cmd.Stderr = stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -81,7 +96,6 @@ func (j *Journal) Read(ctx context.Context, handle func(*Entry)) error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	defer func() { _ = cmd.Wait() }()
 	defer func() { j.saveCursor(ctx, cursor) }()
 
 	scanner := bufio.NewScanner(stdout)
@@ -102,7 +116,15 @@ func (j *Journal) Read(ctx context.Context, handle func(*Entry)) error {
 			nextFlush = time.Now().Add(cursorFlushInterval)
 		}
 	}
-	return scanner.Err()
+	if err := scanner.Err(); err != nil {
+		_ = cmd.Wait()
+		return err
+	}
+	// a journalctl that dies looks like a clean eof on stdout, so its status is the only signal
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("%s exited: %w: %s", j.binary, err, stderr)
+	}
+	return nil
 }
 
 func (j *Journal) loadCursor(ctx context.Context) string {
@@ -135,12 +157,31 @@ func (j *Journal) saveCursor(ctx context.Context, cursor string) {
 	}
 }
 
+// ring keeps the last limit bytes written to it, so a chatty stderr cannot grow without bound.
+type ring struct {
+	limit int
+	buf   []byte
+}
+
+func (r *ring) Write(p []byte) (int, error) {
+	r.buf = append(r.buf, p...)
+	if len(r.buf) > r.limit {
+		r.buf = r.buf[len(r.buf)-r.limit:]
+	}
+	return len(p), nil
+}
+
+func (r *ring) String() string {
+	return strings.TrimSpace(string(r.buf))
+}
+
 func args(cursor string) []string {
 	args := []string{"--follow", "--output=json", "--no-pager"}
 	if cursor == "" {
 		args = append(args, "--lines=0")
 	} else {
-		args = append(args, "--after-cursor="+cursor)
+		// --follow implies --lines=10, which would replay ten lines and skip the rest of the backlog
+		args = append(args, "--after-cursor="+cursor, "--lines=all")
 	}
 	// journalctl ors terms with "+" but -u is an option, not a term, so every eru unit carries the identifier
 	return append(args, "SYSLOG_IDENTIFIER="+identifier)

@@ -2,6 +2,7 @@ package collector
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -51,7 +52,8 @@ func TestJournalArgsFollowFromTheSavedCursor(t *testing.T) {
 	}, args(""))
 
 	assert.Equal(t, []string{
-		"--follow", "--output=json", "--no-pager", "--after-cursor=s=aaa;i=7", "SYSLOG_IDENTIFIER=eru",
+		"--follow", "--output=json", "--no-pager",
+		"--after-cursor=s=aaa;i=7", "--lines=all", "SYSLOG_IDENTIFIER=eru",
 	}, args("s=aaa;i=7"))
 }
 
@@ -74,6 +76,50 @@ func TestJournalDoesNotSaveAnEmptyCursor(t *testing.T) {
 	j.saveCursor(ctx, "")
 	_, err := os.Stat(j.cursorPath)
 	assert.Error(t, err)
+}
+
+func TestJournalReadReportsTheExitStatusOfTheReader(t *testing.T) {
+	j := NewJournal(filepath.Join(t.TempDir(), "state"))
+	j.binary = fakeReader(t, "echo 'no journal on this node' >&2\nexit 1\n")
+
+	err := j.Read(t.Context(), func(*Entry) { t.Error("no entry is expected") })
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "exited")
+	assert.Contains(t, err.Error(), "no journal on this node")
+}
+
+func TestJournalReadDoesNotBlameTheReaderWhenTheContextEnds(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	j := NewJournal(filepath.Join(t.TempDir(), "state"))
+	j.binary = fakeReader(t, "sleep 30\n")
+
+	done := make(chan error, 1)
+	go func() { done <- j.Read(ctx, func(*Entry) { t.Error("no entry is expected") }) }()
+	cancel()
+
+	select {
+	case err := <-done:
+		assert.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for the reader to stop")
+	}
+}
+
+func TestRingKeepsTheLastBytes(t *testing.T) {
+	r := &ring{limit: 4}
+
+	_, err := r.Write([]byte("abcdefg"))
+	require.NoError(t, err)
+	assert.Equal(t, "defg", r.String())
+}
+
+func fakeReader(t *testing.T, body string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "fake-journalctl")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+body), 0o700); err != nil { //nolint:gosec // a test fixture the test itself executes
+		t.Fatalf("write fake reader: %v", err)
+	}
+	return path
 }
 
 func readFixture(t *testing.T) []*Entry {
