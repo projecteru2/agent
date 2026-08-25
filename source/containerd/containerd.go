@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	tasks "github.com/containerd/containerd/api/services/tasks/v1"
+	tasktypes "github.com/containerd/containerd/api/types/task"
 	containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/errdefs"
+	"github.com/containerd/errdefs/pkg/errgrpc"
 	"github.com/projecteru2/core/cluster"
 	"github.com/projecteru2/core/log"
 
@@ -120,24 +123,28 @@ func (c *Containerd) inspect(ctx context.Context, container containerd.Container
 		return nil, err
 	}
 
-	task, err := container.Task(ctx, nil)
+	process, err := c.task(ctx, info.ID)
 	if err != nil {
 		if !errdefs.IsNotFound(err) {
 			return nil, err
 		}
 		return w, nil
 	}
-	status, err := task.Status(ctx)
-	if err != nil {
-		return nil, err
-	}
-	w.Running = status.Status == containerd.Running
+	w.Running = process.Status == tasktypes.Status_RUNNING
 	if !w.Running {
 		return w, nil
 	}
-	w.NetnsPID = int(task.Pid())
+	w.NetnsPID = int(process.Pid)
 	w.CgroupPath = cgroupPath(ctx, w.NetnsPID)
 	return w, nil
+}
+
+func (c *Containerd) task(ctx context.Context, ID string) (*tasktypes.Process, error) {
+	resp, err := c.client.TaskService().Get(ctx, &tasks.GetRequest{ContainerID: ID})
+	if err != nil {
+		return nil, errgrpc.ToNative(err)
+	}
+	return resp.Process, nil
 }
 
 // newFilter builds one containerd filter term, whose comma separated conditions are anded.
