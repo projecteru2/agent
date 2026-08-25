@@ -117,7 +117,6 @@ func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {
 	m.collectMutex.Lock()
 	defer m.collectMutex.Unlock()
 
-	// a repeated start is not a restart: the sampler this workload already has keeps running
 	if _, ok := m.collecting[w.ID]; ok {
 		return
 	}

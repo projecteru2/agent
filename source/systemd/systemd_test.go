@@ -51,6 +51,24 @@ func TestEmitChangeReportsEachUnitOnItsOwn(t *testing.T) {
 	assert.Equal(t, []string{cniWorkload, hostNetWorkload}, emitted)
 }
 
+func TestListSeedsWhatItAlreadyToldTheManager(t *testing.T) {
+	s := &Systemd{reported: map[string]string{}}
+	var emitted []string
+	emit := emitFunc(func(_, action string) { emitted = append(emitted, action) })
+
+	s.report(unitOf(cniWorkload), actionOf(true))
+	s.emitChange(emit, cniWorkload, common.StatusStart)
+	assert.Empty(t, emitted)
+
+	s.emitChange(emit, cniWorkload, common.StatusDie)
+	assert.Equal(t, []string{common.StatusDie}, emitted)
+}
+
+func TestActionOf(t *testing.T) {
+	assert.Equal(t, common.StatusStart, actionOf(true))
+	assert.Equal(t, common.StatusDie, actionOf(false))
+}
+
 func TestForgetLetsARemovedUnitBeReportedAgain(t *testing.T) {
 	s := &Systemd{reported: map[string]string{}}
 
