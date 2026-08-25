@@ -32,7 +32,7 @@ func New(ctx context.Context, config *types.Config) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Store{clientPool, config, newStatusCache()}, nil
+	return &Store{clientPool: clientPool, config: config, cache: newStatusCache()}, nil
 }
 
 func (c *Store) GetClient() pb.CoreRPCClient {

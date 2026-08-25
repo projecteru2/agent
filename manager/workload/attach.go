@@ -3,6 +3,7 @@ package workload
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"strings"
 	"sync"
@@ -17,7 +18,7 @@ import (
 )
 
 func (m *Manager) attach(ctx context.Context, ID string) {
-	logger := log.WithFunc("attach").WithField("ID", ID)
+	logger := log.WithFunc("workload.attach").WithField("ID", ID)
 	logger.Debug(ctx, "attaching workload")
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -34,7 +35,7 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 
 	workloadName, err := m.runtimeClient.GetWorkloadName(ctx, ID)
 	if err != nil {
-		if err != common.ErrNotImplemented {
+		if !errors.Is(err, common.ErrNotImplemented) {
 			logger.Error(ctx, err, "failed to get workload name")
 		} else {
 			logger.Debug(ctx, "should ignore this workload")
@@ -71,7 +72,7 @@ func (m *Manager) attach(ctx context.Context, ID string) {
 		for {
 			data, err := buf.ReadString('\n')
 			if err != nil {
-				if err != io.EOF {
+				if !errors.Is(err, io.EOF) {
 					logger.Errorf(ctx, err, "attach pump %s %s failed", workloadName, typ)
 				}
 				return

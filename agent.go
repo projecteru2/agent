@@ -37,7 +37,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 		zerolog.Fatal().Err(err).Send()
 	}
 
-	logger := log.WithFunc("main")
+	logger := log.WithFunc("main.serve")
 
 	config, err := initConfig(ctx, cmd)
 	if err != nil {
@@ -61,7 +61,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	}
 	wg.Go(func() {
 		if runErr := workloadsManager.Run(ctx); runErr != nil {
-			logger.Error(ctx, runErr, "[agent] workload manager failed")
+			logger.Error(ctx, runErr, "workload manager failed")
 			errChan <- runErr
 		}
 	})
@@ -72,7 +72,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	}
 	wg.Go(func() {
 		if runErr := nodeManager.Run(ctx); runErr != nil {
-			logger.Error(ctx, runErr, "[agent] node manager failed")
+			logger.Error(ctx, runErr, "node manager failed")
 			errChan <- runErr
 		}
 	})
@@ -83,15 +83,15 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 	go func() {
 		select {
 		case <-ctx.Done():
-			logger.Info(ctx, "[agent] Agent exiting")
+			logger.Info(ctx, "agent exiting")
 		case runErr := <-errChan:
-			logger.Error(ctx, runErr, "[agent] Got error, exiting")
+			logger.Error(ctx, runErr, "got error, exiting")
 			cancel()
 		case sig := <-signalChan:
-			logger.Infof(ctx, "[agent] Agent caught system signal %v", sig)
+			logger.Infof(ctx, "caught system signal %v", sig)
 			if sig != syscall.SIGUSR1 {
 				if exitErr := nodeManager.Exit(ctx); exitErr != nil {
-					logger.Error(ctx, exitErr, "[agent] node manager exits with err")
+					logger.Error(ctx, exitErr, "node manager exit failed")
 				}
 			}
 			cancel()

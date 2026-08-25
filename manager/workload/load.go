@@ -20,7 +20,7 @@ func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[strin
 		case <-ticker.C:
 			workloadIDs, err = m.runtimeClient.ListWorkloadIDs(ctx, filter)
 			if err != nil {
-				log.WithFunc("listWorkloadIDsWithRetry").Error(ctx, err, "failed to load workloads, will retry")
+				log.WithFunc("workload.listWorkloadIDsWithRetry").Error(ctx, err, "failed to load workloads, will retry")
 				continue
 			}
 			return workloadIDs, nil
@@ -29,7 +29,7 @@ func (m *Manager) listWorkloadIDsWithRetry(ctx context.Context, filter map[strin
 }
 
 func (m *Manager) initWorkloadStatus(ctx context.Context) error {
-	logger := log.WithFunc("initWorkloadStatus")
+	logger := log.WithFunc("workload.initWorkloadStatus")
 	logger.Info(ctx, "load workloads")
 	workloadIDs, err := m.listWorkloadIDsWithRetry(ctx, m.baseFilter)
 	if err != nil {

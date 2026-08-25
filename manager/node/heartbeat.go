@@ -9,6 +9,11 @@ import (
 	"github.com/projecteru2/agent/utils"
 )
 
+const (
+	ttlHeartbeats  = 3
+	reportAttempts = 3
+)
+
 func (m *Manager) heartbeat(ctx context.Context) {
 	if m.config.HeartbeatInterval <= 0 {
 		return
@@ -28,9 +33,8 @@ func (m *Manager) heartbeat(ctx context.Context) {
 	}
 }
 
-// nodeStatusReport reports a ttl longer than the interval so one lost report is survivable.
 func (m *Manager) nodeStatusReport(ctx context.Context) {
-	logger := log.WithFunc("nodeStatusReport").WithField("hostname", m.config.HostName)
+	logger := log.WithFunc("node.nodeStatusReport").WithField("hostname", m.config.HostName)
 	logger.Debug(ctx, "report begins")
 	defer logger.Debug(ctx, "report ends")
 
@@ -39,9 +43,10 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 		return
 	}
 
-	ttl := int64(m.config.HeartbeatInterval * 3)
+	// the ttl outlives the interval so one lost report cannot expire the node
+	ttl := int64(m.config.HeartbeatInterval * ttlHeartbeats)
 
-	if err := utils.BackoffRetry(ctx, 3, func() (err error) {
+	if err := utils.BackoffRetry(ctx, reportAttempts, func() (err error) {
 		utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
 			if err = m.store.SetNodeStatus(ctx, ttl); err != nil {
 				logger.Error(ctx, err, "failed to set node status")
@@ -49,6 +54,6 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 		})
 		return err
 	}); err != nil {
-		logger.Error(ctx, err, "failed to set node status for 3 times")
+		logger.Errorf(ctx, err, "failed to set node status after %d attempts", reportAttempts)
 	}
 }

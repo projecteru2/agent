@@ -21,14 +21,14 @@ type Manager struct {
 func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 	clients, err := manager.NewClients(ctx, config)
 	if err != nil {
-		log.WithFunc("NewManager").WithField("hostname", config.HostName).Error(ctx, err, "failed to create clients")
+		log.WithFunc("node.NewManager").WithField("hostname", config.HostName).Error(ctx, err, "failed to create clients")
 		return nil, err
 	}
 	return &Manager{config: config, store: clients.Store, runtimeClient: clients.Runtime}, nil
 }
 
 func (m *Manager) Run(ctx context.Context) error {
-	logger := log.WithFunc("Run")
+	logger := log.WithFunc("node.Run")
 	logger.Info(ctx, "start node status heartbeat")
 	go m.heartbeat(ctx)
 
@@ -38,7 +38,7 @@ func (m *Manager) Run(ctx context.Context) error {
 }
 
 func (m *Manager) Exit(ctx context.Context) error {
-	logger := log.WithFunc("Exit").WithField("hostname", m.config.HostName)
+	logger := log.WithFunc("node.Exit").WithField("hostname", m.config.HostName)
 	logger.Info(ctx, "remove node status")
 
 	var err error

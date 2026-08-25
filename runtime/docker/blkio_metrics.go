@@ -14,8 +14,8 @@ const (
 type BlkIOMetrics struct {
 	IOServiceBytesReadRecursive  []*BlkIOEntry
 	IOServiceBytesWriteRecursive []*BlkIOEntry
-	IOServicedReadRecusive       []*BlkIOEntry
-	IOServicedWriteRecusive      []*BlkIOEntry
+	IOServicedReadRecursive      []*BlkIOEntry
+	IOServicedWriteRecursive     []*BlkIOEntry
 }
 
 type BlkIOEntry struct {
@@ -44,21 +44,20 @@ func fromEngineBlkioStats(raw *enginecontainer.BlkioStats) (*BlkIOMetrics, error
 		}
 		switch entry.Op {
 		case ReadOp:
-			blkioMetrics.IOServicedReadRecusive = append(blkioMetrics.IOServicedReadRecusive, &BlkIOEntry{Dev: devPath, Value: entry.Value})
+			blkioMetrics.IOServicedReadRecursive = append(blkioMetrics.IOServicedReadRecursive, &BlkIOEntry{Dev: devPath, Value: entry.Value})
 		case WriteOp:
-			blkioMetrics.IOServicedWriteRecusive = append(blkioMetrics.IOServicedWriteRecusive, &BlkIOEntry{Dev: devPath, Value: entry.Value})
+			blkioMetrics.IOServicedWriteRecursive = append(blkioMetrics.IOServicedWriteRecursive, &BlkIOEntry{Dev: devPath, Value: entry.Value})
 		}
 	}
 	return blkioMetrics, nil
 }
 
-// getBlkIOMetricsDifference returns new-old per device, counting a missing device as 0.
 func getBlkIOMetricsDifference(old, new *BlkIOMetrics) (diff *BlkIOMetrics) {
 	return &BlkIOMetrics{
 		IOServiceBytesReadRecursive:  getGroupDifference(old.IOServiceBytesReadRecursive, new.IOServiceBytesReadRecursive),
 		IOServiceBytesWriteRecursive: getGroupDifference(old.IOServiceBytesWriteRecursive, new.IOServiceBytesWriteRecursive),
-		IOServicedReadRecusive:       getGroupDifference(old.IOServicedReadRecusive, new.IOServicedReadRecusive),
-		IOServicedWriteRecusive:      getGroupDifference(old.IOServicedWriteRecusive, new.IOServicedWriteRecusive),
+		IOServicedReadRecursive:      getGroupDifference(old.IOServicedReadRecursive, new.IOServicedReadRecursive),
+		IOServicedWriteRecursive:     getGroupDifference(old.IOServicedWriteRecursive, new.IOServicedWriteRecursive),
 	}
 }
 

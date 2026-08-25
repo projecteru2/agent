@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	_ "net/http/pprof" //nolint
-	"runtime/pprof"    //nolint:nolintlint
+	_ "net/http/pprof" //nolint:gosec // pprof is mounted only on the operator-configured api addr
+	"runtime/pprof"
 	"time"
 
 	"github.com/projecteru2/core/log"
@@ -34,7 +34,7 @@ func (h *Handler) Serve(ctx context.Context) {
 	if h.config.API.Addr == "" {
 		return
 	}
-	logger := log.WithFunc("serve")
+	logger := log.WithFunc("api.Serve")
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /profile/{$}", h.profile)
@@ -77,7 +77,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	logger := log.WithFunc("log").WithField("path", "/log")
+	logger := log.WithFunc("api.log").WithField("path", "/log")
 	// the status line must go out before the hijack, otherwise clients see no response
 	w.WriteHeader(http.StatusOK)
 	if hijack, ok := w.(http.Hijacker); ok {

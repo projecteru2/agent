@@ -56,9 +56,9 @@ func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, err
 		nodeIP:    nodeIP,
 		transfers: utils.NewHashBackends(config.Metrics.Transfers),
 	}
-	logger := log.WithFunc("runtime.docker.New").WithField("nodeIP", d.nodeIP)
+	logger := log.WithFunc("docker.New").WithField("nodeIP", d.nodeIP)
 
-	logger.Infof(ctx, "Host IP %s", d.nodeIP)
+	logger.Info(ctx, "docker runtime starting")
 	var err error
 	if d.client, err = utils.MakeDockerClient(config); err != nil {
 		logger.Error(ctx, err, "failed to make docker client")
@@ -72,13 +72,13 @@ func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, err
 	}
 
 	cpus := runtime.NumCPU()
-	logger.Infof(ctx, "Host has %d cpus", cpus)
+	logger.Infof(ctx, "host has %d cpus", cpus)
 
 	memory, err := mem.VirtualMemory()
 	if err != nil {
 		return nil, err
 	}
-	logger.Infof(ctx, "Host has %d memory", memory.Total)
+	logger.Infof(ctx, "host has %d bytes of memory", memory.Total)
 
 	d.cpuCore = float64(cpus)
 	d.memory = int64(min(memory.Total, math.MaxInt64))
@@ -94,7 +94,7 @@ func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 		listed, err = d.client.ContainerList(ctx, opts)
 	})
 	if err != nil {
-		log.WithFunc("ListWorkloadIDs").Error(ctx, err, "failed to list workloads")
+		log.WithFunc("docker.ListWorkloadIDs").Error(ctx, err, "failed to list workloads")
 		return nil, err
 	}
 
@@ -106,7 +106,7 @@ func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 }
 
 func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.Reader, error) {
-	logger := log.WithFunc("AttachWorkload").WithField("ID", ID)
+	logger := log.WithFunc("docker.AttachWorkload").WithField("ID", ID)
 	resp, err := d.client.ContainerAttach(ctx, ID, engineapi.ContainerAttachOptions{
 		Stream: true,
 		Stdout: true,
@@ -171,7 +171,7 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 }
 
 func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*types.WorkloadStatus, error) {
-	logger := log.WithFunc("GetStatus").WithField("ID", ID)
+	logger := log.WithFunc("docker.GetStatus").WithField("ID", ID)
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
 		logger.Error(ctx, err, "failed to detect workload")
@@ -214,7 +214,7 @@ func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error)
 		inspected, err = d.client.ContainerInspect(ctx, ID, engineapi.ContainerInspectOptions{})
 	})
 	if err != nil {
-		log.WithFunc("GetWorkloadName").WithField("ID", ID).Error(ctx, err, "failed to get container by id")
+		log.WithFunc("docker.GetWorkloadName").WithField("ID", ID).Error(ctx, err, "failed to get container by id")
 		return "", err
 	}
 
@@ -224,7 +224,7 @@ func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error)
 func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]string, error) {
 	container, err := d.detectWorkload(ctx, ID)
 	if err != nil {
-		log.WithFunc("LogFieldsExtra").WithField("ID", ID).Error(ctx, err, "failed to detect container")
+		log.WithFunc("docker.LogFieldsExtra").WithField("ID", ID).Error(ctx, err, "failed to detect container")
 		return nil, err
 	}
 
@@ -245,7 +245,7 @@ func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
 		_, err = d.client.Ping(ctx, engineapi.PingOptions{})
 	})
 	if err != nil {
-		log.WithFunc("IsDaemonRunning").Error(ctx, err, "connect to docker daemon failed")
+		log.WithFunc("docker.IsDaemonRunning").Error(ctx, err, "connect to docker daemon failed")
 		return false
 	}
 	return true
@@ -266,16 +266,10 @@ func (d *Docker) getFilterArgs(filters map[string]string) engineapi.Filters {
 }
 
 func (d *Docker) checkHostname(env []string) bool {
-	for _, e := range env {
-		ps := strings.SplitN(e, "=", 2)
-		if len(ps) != 2 {
-			continue
-		}
-		if ps[0] == "ERU_NODE_NAME" && ps[1] == d.config.HostName {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(env, func(e string) bool {
+		name, value, ok := strings.Cut(e, "=")
+		return ok && name == fieldNodeName && value == d.config.HostName
+	})
 }
 
 func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, error) {
@@ -291,11 +285,11 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 	label := c.Config.Labels
 
 	if _, ok := label[cluster.ERUMark]; !ok {
-		return nil, common.ErrInvaildContainer
+		return nil, common.ErrInvalidContainer
 	}
 
 	if d.config.CheckOnlyMine && !utils.UseLabelAsFilter() && !d.checkHostname(c.Config.Env) {
-		return nil, common.ErrInvaildContainer
+		return nil, common.ErrInvalidContainer
 	}
 
 	meta := coreutils.DecodeMetaInLabel(ctx, label)
@@ -304,7 +298,7 @@ func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, err
 	if err != nil {
 		return nil, err
 	}
-	container = calcuateCPUNum(container, c, d.cpuCore)
+	container = calculateCPUNum(container, c, d.cpuCore)
 	if container.Memory == 0 || container.Memory == math.MaxInt64 {
 		container.Memory = d.memory
 	}
@@ -342,7 +336,7 @@ func (d *Docker) workloadNetworks(ctx context.Context, c enginecontainer.Inspect
 }
 
 func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginecontainer.StatsResponse, error) {
-	logger := log.WithFunc("getContainerStats").WithField("ID", ID)
+	logger := log.WithFunc("docker.getContainerStats").WithField("ID", ID)
 	rawStat, err := d.client.ContainerStats(ctx, ID, engineapi.ContainerStatsOptions{})
 	if err != nil {
 		logger.Error(ctx, err, "failed to get container stats")
@@ -367,7 +361,7 @@ func (d *Docker) getBlkioStats(ctx context.Context, ID string) (*enginecontainer
 }
 
 func addrFromNS(ctx context.Context, cid, ifname string) string {
-	logger := log.WithFunc("addrFromNS").WithField("ID", cid)
+	logger := log.WithFunc("docker.addrFromNS").WithField("ID", cid)
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 

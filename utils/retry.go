@@ -13,8 +13,8 @@ type RetryFunc func() error
 type RetryTask struct {
 	ctx         context.Context
 	cancel      context.CancelFunc
-	Func        RetryFunc
-	MaxAttempts int
+	fn          RetryFunc
+	maxAttempts int
 }
 
 func NewRetryTask(ctx context.Context, maxAttempts int, f RetryFunc) *RetryTask {
@@ -25,13 +25,13 @@ func NewRetryTask(ctx context.Context, maxAttempts int, f RetryFunc) *RetryTask 
 	return &RetryTask{
 		ctx:         ctx,
 		cancel:      cancel,
-		MaxAttempts: maxAttempts,
-		Func:        f,
+		maxAttempts: maxAttempts,
+		fn:          f,
 	}
 }
 
 func (r *RetryTask) Run(ctx context.Context) error {
-	logger := log.WithFunc("Run")
+	logger := log.WithFunc("utils.RetryTask.Run")
 	logger.Debug(ctx, "start")
 	defer r.Stop()
 
@@ -40,13 +40,13 @@ func (r *RetryTask) Run(ctx context.Context) error {
 	timer := time.NewTimer(0)
 	defer timer.Stop()
 
-	for range r.MaxAttempts {
+	for range r.maxAttempts {
 		select {
 		case <-r.ctx.Done():
 			logger.Debug(ctx, "abort")
 			return r.ctx.Err()
 		case <-timer.C:
-			err = r.Func()
+			err = r.fn()
 			if err == nil {
 				return nil
 			}

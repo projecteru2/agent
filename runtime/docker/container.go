@@ -40,8 +40,7 @@ func (c *Container) CheckHealth(ctx context.Context, timeout time.Duration) bool
 		httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", c.LocalIP, c.HealthCheck.HTTPPort, c.HealthCheck.HTTPURL))
 	}
 
-	ID := c.ID
-	f1 := utils.CheckHTTP(ctx, ID, httpChecker, c.HealthCheck.HTTPCode, timeout)
-	f2 := utils.CheckTCP(ctx, ID, tcpChecker, timeout)
-	return f1 && f2
+	httpOK := utils.CheckHTTP(ctx, c.ID, httpChecker, c.HealthCheck.HTTPCode, timeout)
+	tcpOK := utils.CheckTCP(ctx, c.ID, tcpChecker, timeout)
+	return httpOK && tcpOK
 }

@@ -3,6 +3,7 @@ package docker
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 
@@ -68,12 +69,12 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		return metricsClient
 	}
 
-	clables := []string{}
+	labelPairs := make([]string, 0, len(container.Labels))
 	for k, v := range container.Labels {
 		if strings.HasPrefix(k, cluster.ERUMark) || strings.HasPrefix(k, cluster.LabelMeta) {
 			continue
 		}
-		clables = append(clables, fmt.Sprintf("%s=%s", k, v))
+		labelPairs = append(labelPairs, fmt.Sprintf("%s=%s", k, v))
 	}
 	labels := map[string]string{
 		"containerID":  container.ID,
@@ -81,7 +82,7 @@ func NewMetricsClient(statsd, hostname string, container *Container) *MetricsCli
 		"appname":      container.Name,
 		"entrypoint":   container.EntryPoint,
 		"orchestrator": cluster.ERUMark,
-		"labels":       strings.Join(clables, ","),
+		"labels":       strings.Join(slices.Sorted(slices.Values(labelPairs)), ","),
 	}
 	cpuHostUsage := prometheus.NewGauge(prometheus.GaugeOpts{
 		Name:        "cpu_host_usage",
@@ -464,7 +465,7 @@ func (m *MetricsClient) checkConn(ctx context.Context) error {
 	// statsd speaks UDP only, so a client never has to be renewed
 	var err error
 	if m.statsdClient, err = coreutils.NewStatsd(m.statsd); err != nil {
-		log.WithFunc("checkConn").Error(ctx, err, "[statsd] Connect statsd failed")
+		log.WithFunc("docker.checkConn").Error(ctx, err, "failed to connect statsd")
 		return err
 	}
 	return nil

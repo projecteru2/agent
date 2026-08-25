@@ -26,11 +26,11 @@ func (m *Manager) healthCheck(ctx context.Context) {
 
 // checkAllWorkloads lists stopped workloads too, so a late check cannot resurrect a dead one.
 func (m *Manager) checkAllWorkloads(ctx context.Context) {
-	logger := log.WithFunc("checkAllWorkloads")
+	logger := log.WithFunc("workload.checkAllWorkloads")
 	logger.Debug(ctx, "health check begin")
 	workloadIDs, err := m.runtimeClient.ListWorkloadIDs(ctx, m.baseFilter)
 	if err != nil {
-		logger.Error(ctx, err, "error when list all workloads with label \"ERU=1\"")
+		logger.Error(ctx, err, "failed to list workloads")
 		return
 	}
 
@@ -40,7 +40,7 @@ func (m *Manager) checkAllWorkloads(ctx context.Context) {
 }
 
 func (m *Manager) checkOneWorkload(ctx context.Context, ID string) bool {
-	logger := log.WithFunc("checkOneWorkload").WithField("ID", ID)
+	logger := log.WithFunc("workload.checkOneWorkload").WithField("ID", ID)
 	workloadStatus, err := m.runtimeClient.GetStatus(ctx, ID, true)
 	if err != nil {
 		logger.Error(ctx, err, "failed to get status of workload")

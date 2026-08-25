@@ -95,7 +95,7 @@ func TestLogBroadcaster(t *testing.T) {
 		EntryPoint: "eva0",
 		Data:       "data1",
 	}
-	manager.logBroadcaster.RLock()
-	defer manager.logBroadcaster.RUnlock()
+	manager.logBroadcaster.mu.RLock()
+	defer manager.logBroadcaster.mu.RUnlock()
 	assert.Empty(t, manager.logBroadcaster.subscribersMap)
 }

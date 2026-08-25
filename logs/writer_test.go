@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"errors"
 	"net"
 	"testing"
 	"time"
@@ -37,7 +38,7 @@ func TestNewWriterWithJournal(t *testing.T) {
 	ctx := t.Context()
 	addr := "journal://system"
 	enc, err := CreateJournalEncoder()
-	if err == common.ErrJournalDisable {
+	if errors.Is(err, common.ErrJournalDisabled) {
 		return
 	}
 	assert.NoError(t, err)

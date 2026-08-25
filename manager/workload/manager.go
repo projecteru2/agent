@@ -3,6 +3,7 @@ package workload
 import (
 	"bufio"
 	"context"
+	"errors"
 	"io"
 	"sync"
 
@@ -35,7 +36,7 @@ type Manager struct {
 func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 	clients, err := manager.NewClients(ctx, config)
 	if err != nil {
-		log.WithFunc("NewManager").Errorf(ctx, err, "failed to create clients for node %s", config.HostName)
+		log.WithFunc("workload.NewManager").Errorf(ctx, err, "failed to create clients for node %s", config.HostName)
 		return nil, err
 	}
 
@@ -65,7 +66,7 @@ func (m *Manager) Run(ctx context.Context) error {
 	go m.healthCheck(ctx)
 
 	<-ctx.Done()
-	log.WithFunc("Run").Info(ctx, "exiting")
+	log.WithFunc("workload.Run").Info(ctx, "exiting")
 	return nil
 }
 
@@ -78,8 +79,8 @@ func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter
 		case <-ctx.Done():
 			return
 		case err := <-errChan:
-			if err != io.EOF {
-				log.WithFunc("PullLog").WithField("ID", ID).Error(ctx, err, "failed to pull log")
+			if !errors.Is(err, io.EOF) {
+				log.WithFunc("workload.PullLog").WithField("ID", ID).Error(ctx, err, "failed to pull log")
 			}
 			return
 		}
