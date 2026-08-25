@@ -86,7 +86,9 @@ func (s *Systemd) List(ctx context.Context) ([]*source.Workload, error) {
 			logger.Warnf(ctx, "skipping the meta file of %s: %v", ID, err)
 			continue
 		}
-		workloads = append(workloads, s.withNetns(ctx, m.workload(running[unitOf(ID)])))
+		active := running[unitOf(ID)]
+		s.report(unitOf(ID), actionOf(active))
+		workloads = append(workloads, s.withNetns(ctx, m.workload(active)))
 	}
 	return workloads, nil
 }
@@ -205,7 +207,6 @@ func (s *Systemd) watchUnits(ctx context.Context, emit emitFunc) error {
 			if !ok {
 				continue
 			}
-			// PropertiesChanged fires for every property, so only a settled state that moved is news
 			if action, ok := actionFor(changed.Value()); ok {
 				s.emitChange(emit, ID, action)
 			}
@@ -232,11 +233,7 @@ func (s *Systemd) relist(ctx context.Context, emit emitFunc) error {
 		if !ok {
 			continue
 		}
-		action := common.StatusDie
-		if active {
-			action = common.StatusStart
-		}
-		s.emitChange(emit, ID, action)
+		s.emitChange(emit, ID, actionOf(active))
 	}
 	return nil
 }
@@ -296,6 +293,13 @@ func (s *Systemd) withNetns(ctx context.Context, w *source.Workload) *source.Wor
 		w.NetnsPID = int(pid)
 	}
 	return w
+}
+
+func actionOf(active bool) string {
+	if active {
+		return common.StatusStart
+	}
+	return common.StatusDie
 }
 
 func actionFor(state any) (string, bool) {
