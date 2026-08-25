@@ -26,6 +26,11 @@ type ContainerdConfig struct {
 // SystemdConfig has no keys: a process pod is described by its meta file, not by the runtime.
 type SystemdConfig struct{}
 
+// CocoonConfig is defaulted in Prepare like ContainerdConfig; the daemon it points at is optional.
+type CocoonConfig struct {
+	Socket string `yaml:"socket"`
+}
+
 // MocksConfig has no keys: the scripted runtime the test suite runs against.
 type MocksConfig struct{}
 
@@ -33,6 +38,7 @@ type MocksConfig struct{}
 type RuntimesConfig struct {
 	Containerd *ContainerdConfig `yaml:"containerd"`
 	Systemd    *SystemdConfig    `yaml:"systemd"`
+	Cocoon     *CocoonConfig     `yaml:"cocoon"`
 	Mocks      *MocksConfig      `yaml:"mocks"`
 }
 
@@ -146,6 +152,9 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	if containerd := config.Runtimes.Containerd; containerd != nil {
 		containerd.Socket = cmp.Or(containerd.Socket, common.ContainerdSocket)
 		containerd.Namespace = cmp.Or(containerd.Namespace, common.ContainerdNamespace)
+	}
+	if cocoon := config.Runtimes.Cocoon; cocoon != nil {
+		cocoon.Socket = cmp.Or(cocoon.Socket, common.CocoonSocket)
 	}
 }
 

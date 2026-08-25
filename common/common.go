@@ -19,6 +19,8 @@ const (
 	ContainerdSocket    = "/run/containerd/containerd.sock"
 	ContainerdNamespace = "eru"
 
+	CocoonSocket = "/run/cocoond.sock"
+
 	GRPCStore  = "grpc"
 	MocksStore = "mocks"
 )
