@@ -16,7 +16,6 @@ import (
 const (
 	journalBinary = "journalctl"
 	cursorFile    = "journal.cursor"
-	unitMatch     = "eru-*"
 	identifier    = "eru"
 
 	defaultStream = "stdout"
@@ -143,8 +142,8 @@ func args(cursor string) []string {
 	} else {
 		args = append(args, "--after-cursor="+cursor)
 	}
-	// -u builds its own disjunction, so the shim's identifier ors with the unit glob
-	return append(args, "--unit="+unitMatch, "+", "SYSLOG_IDENTIFIER="+identifier)
+	// journalctl ors terms with "+" but -u is an option, not a term, so every eru unit carries the identifier
+	return append(args, "SYSLOG_IDENTIFIER="+identifier)
 }
 
 // message decodes MESSAGE, which journalctl renders as a byte array when the line is not utf8.

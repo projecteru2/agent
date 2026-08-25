@@ -44,7 +44,7 @@ Process pods are transient `systemd-run` units named `eru-<workload id>.service`
 
 **Networks.** A process pod on the host network has no counters of its own, so the agent reports none for it and health checks it against `127.0.0.1`. A pod with its own CNI address is health checked against that address, and its network counters come from the namespace of the unit's `MainPID`.
 
-**Logs.** Transient units write to the journal natively; see [architecture](architecture.md) for the reader.
+**Logs.** Transient units write to the journal natively. The agent matches them on one term, `SYSLOG_IDENTIFIER=eru`, so core starts every unit with `-p SyslogIdentifier=eru`; a unit without it is invisible to log forwarding, though its status, health checks and metrics are unaffected. See [architecture](architecture.md) for the reader.
 
 ## Health checks
 

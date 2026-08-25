@@ -74,7 +74,7 @@ log:
 
 `forwards` is a list of targets. Supported schemes are `tcp://`, `udp://` and `journal://`; a target with any other scheme is accepted and silently discards, with a warning at startup. Each workload is pinned to one target by hashing its id, so several targets share the load without duplicating lines. A target that is down is retried every 30 seconds in the background while its lines are dropped.
 
-Where the lines come from depends on the runtime. Docker workloads are attached to directly. Every other runtime logs to journald, and the agent runs one `journalctl --follow` for the whole node, resuming from the cursor it saved under `state_dir`. That path needs `journalctl` on the node.
+Where the lines come from depends on the runtime. Docker workloads are attached to directly. Every other runtime logs to journald, and the agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` for the whole node, resuming from the cursor it saved under `state_dir`. That path needs `journalctl` on the node, and needs every eru workload to log under the `eru` syslog identifier.
 
 `stdout: true` additionally writes every forwarded line to the agent's own log.
 

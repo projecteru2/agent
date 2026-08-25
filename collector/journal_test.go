@@ -47,13 +47,11 @@ func TestJournalRecordWithoutATimestampIsStampedOnRead(t *testing.T) {
 
 func TestJournalArgsFollowFromTheSavedCursor(t *testing.T) {
 	assert.Equal(t, []string{
-		"--follow", "--output=json", "--no-pager", "--lines=0",
-		"--unit=eru-*", "+", "SYSLOG_IDENTIFIER=eru",
+		"--follow", "--output=json", "--no-pager", "--lines=0", "SYSLOG_IDENTIFIER=eru",
 	}, args(""))
 
 	assert.Equal(t, []string{
-		"--follow", "--output=json", "--no-pager", "--after-cursor=s=aaa;i=7",
-		"--unit=eru-*", "+", "SYSLOG_IDENTIFIER=eru",
+		"--follow", "--output=json", "--no-pager", "--after-cursor=s=aaa;i=7", "SYSLOG_IDENTIFIER=eru",
 	}, args("s=aaa;i=7"))
 }
 
