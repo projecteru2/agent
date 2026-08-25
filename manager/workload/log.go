@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	corelog "github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
@@ -13,11 +14,15 @@ import (
 	"github.com/projecteru2/agent/types"
 )
 
+const subscriberDepth = 256
+
 type subscriber struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
 	buf     *bufio.ReadWriter
+	lines   chan []byte
 	errChan chan error
+	dropped atomic.Int64
 }
 
 func (s *subscriber) isDone() bool {
@@ -26,6 +31,35 @@ func (s *subscriber) isDone() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// send never blocks: one client that stopped reading must not stall the node's forwarding.
+func (s *subscriber) send(line []byte) {
+	select {
+	case s.lines <- line:
+	default:
+		s.dropped.Add(1)
+	}
+}
+
+// pump writes off the broadcast path, so a stalled socket stalls only its own subscriber.
+func (s *subscriber) pump() {
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case line := <-s.lines:
+			if _, err := s.buf.Write(line); err != nil {
+				s.cancel()
+				select {
+				case s.errChan <- err:
+				default:
+				}
+				return
+			}
+			_ = s.buf.Flush()
+		}
 	}
 }
 
@@ -55,12 +89,15 @@ func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.R
 	subCtx, cancel := context.WithCancel(ctx)
 	errChan := make(chan error)
 
-	subscribers[ID] = &subscriber{
+	sub := &subscriber{
 		ctx:     subCtx,
 		cancel:  cancel,
 		buf:     buf,
+		lines:   make(chan []byte, subscriberDepth),
 		errChan: errChan,
 	}
+	subscribers[ID] = sub
+	go sub.pump()
 
 	corelog.WithFunc("workload.subscribe").Infof(ctx, "%s %s log subscribed", app, ID)
 	return ID, errChan, func() {
@@ -73,13 +110,16 @@ func (l *logBroadcaster) unsubscribe(ctx context.Context, app, ID string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	logger := corelog.WithFunc("workload.unsubscribe")
 	subscribers := l.subscribersMap[app]
-	if subscriber, ok := subscribers[ID]; ok {
-		close(subscriber.errChan)
+	if sub, ok := subscribers[ID]; ok {
+		if dropped := sub.dropped.Load(); dropped > 0 {
+			logger.Warnf(ctx, "%s %s could not keep up, %d log lines dropped", app, ID, dropped)
+		}
 	}
 	delete(subscribers, ID)
 
-	corelog.WithFunc("workload.unsubscribe").Infof(ctx, "%s %s detached", app, ID)
+	logger.Infof(ctx, "%s %s detached", app, ID)
 
 	if len(subscribers) == 0 {
 		delete(l.subscribersMap, app)
@@ -101,26 +141,11 @@ func (l *logBroadcaster) broadcast(ctx context.Context, log *types.Log) {
 	}
 	line := fmt.Appendf(nil, "%X\r\n%s\r\n\r\n", len(data)+2, data)
 
-	// waiting here keeps the log lines ordered across subscribers
-	var wg sync.WaitGroup
-	for ID, sub := range subscribers {
-		wg.Go(func() {
-			if sub.isDone() {
-				return
-			}
-			if _, err := sub.buf.Write(line); err != nil {
-				corelog.WithFunc("workload.broadcast").WithField("ID", ID).Debug(ctx, "failed to write to subscriber")
-				sub.cancel()
-				select {
-				case sub.errChan <- err:
-				default:
-				}
-				return
-			}
-			_ = sub.buf.Flush()
-		})
+	for _, sub := range subscribers {
+		if !sub.isDone() {
+			sub.send(line)
+		}
 	}
-	wg.Wait()
 }
 
 func (l *logBroadcaster) run(ctx context.Context) {

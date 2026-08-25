@@ -6,16 +6,16 @@ import (
 	"github.com/projecteru2/core/log"
 
 	"github.com/projecteru2/agent/manager"
-	"github.com/projecteru2/agent/runtime"
+	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/store"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 )
 
 type Manager struct {
-	config        *types.Config
-	store         store.Store
-	runtimeClient runtime.Runtime
+	config *types.Config
+	store  store.Store
+	source source.Source
 }
 
 func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
@@ -24,7 +24,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		log.WithFunc("node.NewManager").WithField("hostname", config.HostName).Error(ctx, err, "failed to create clients")
 		return nil, err
 	}
-	return &Manager{config: config, store: clients.Store, runtimeClient: clients.Runtime}, nil
+	return &Manager{config: config, store: clients.Store, source: clients.Source}, nil
 }
 
 func (m *Manager) Run(ctx context.Context) error {

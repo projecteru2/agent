@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,13 +17,14 @@ import (
 	engineapi "github.com/moby/moby/client"
 	"github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
-	yavirtclient "github.com/projecteru2/libyavirt/client"
-	yavirttypes "github.com/projecteru2/libyavirt/types"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/version"
 )
+
+// CgroupRoot is where the unified cgroup v2 hierarchy is mounted.
+const CgroupRoot = "/sys/fs/cgroup"
 
 var (
 	dockerized bool
@@ -31,13 +33,9 @@ var (
 
 func MakeDockerClient(config *types.Config) (*engineapi.Client, error) {
 	return engineapi.New(
-		engineapi.WithHost(config.Docker.Endpoint),
+		engineapi.WithHost(config.Runtimes.Docker.Endpoint),
 		engineapi.WithUserAgent("eru-agent-"+version.VERSION),
 	)
-}
-
-func MakeYavirtClient(config *types.Config) (yavirtclient.Client, error) {
-	return yavirtclient.New(&yavirttypes.Config{URI: config.Yavirt.Endpoint})
 }
 
 func WritePid(ctx context.Context, path string) {
@@ -99,6 +97,29 @@ func IsDockerized() bool {
 		dockerized = os.Getenv(common.DOCKERIZED) != ""
 	})
 	return dockerized
+}
+
+// ProcRoot returns where this agent reads the host's procfs.
+func ProcRoot() string {
+	if IsDockerized() {
+		return "/hostProc"
+	}
+	return "/proc"
+}
+
+// CgroupPath returns the absolute cgroup v2 directory of the process pid.
+func CgroupPath(cgroupRoot, procRoot string, pid int) (string, error) {
+	data, err := os.ReadFile(filepath.Join(procRoot, strconv.Itoa(pid), "cgroup")) //nolint:gosec // the pid comes from the runtime, never from a request
+	if err != nil {
+		return "", err
+	}
+	// cgroup v2 shows one "0::<path>" line, v1 shows a numbered line per controller
+	for line := range strings.Lines(string(data)) {
+		if rel, ok := strings.CutPrefix(strings.TrimSpace(line), "0::"); ok {
+			return filepath.Join(cgroupRoot, rel), nil
+		}
+	}
+	return "", common.ErrNoCgroupV2
 }
 
 func WithTimeout(ctx context.Context, timeout time.Duration, f func(ctx2 context.Context)) {

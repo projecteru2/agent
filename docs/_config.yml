@@ -1,3 +1,3 @@
 title: eru-agent
-description: Eru node agent — health checks, log forwarding, metrics and node status for Docker and yavirt workloads
+description: Eru node agent — health checks, log forwarding, metrics and node status for the containers and process pods a node runs
 theme: jekyll-theme-primer

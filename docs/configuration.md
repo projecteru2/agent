@@ -13,8 +13,9 @@ Precedence is: flag or environment variable, then the YAML file, then the built-
 | `heartbeat_interval` | `60` | Seconds between node status reports; `0` disables the heartbeat entirely |
 | `check_only_mine` | `false` | Ignore workloads that belong to another node (see [runtimes](runtimes.md)) |
 | `store` | `grpc` | `grpc` talks to core, `mocks` uses an in-memory fake for development |
-| `runtime` | `docker` | `docker`, `yavirt` or `mocks` |
-| `global_connection_timeout` | `5s` | Timeout for every call to core and to the runtime daemon |
+| `meta_dir` | `/run/eru/workloads` | Directory core writes workload metadata into over ssh, one `<id>.json` per workload |
+| `state_dir` | `/var/lib/eru-agent` | Directory the agent keeps what it must survive a restart in, currently the journal cursor |
+| `global_connection_timeout` | `5s` | Timeout for every call to core and to a runtime daemon |
 
 ## `auth`
 
@@ -26,27 +27,36 @@ auth:
   password: secret
 ```
 
-## `docker`
+## `runtimes`
+
+Which runtimes this node hosts. Name only the ones it actually runs: **every runtime listed here must be reachable**, otherwise the node heartbeat stops and core expires the node. The agent refuses to start with the section empty.
+
+This section is required and replaces the old top-level `runtime:` and `docker:` keys. There is no compatibility shim: a config that still carries those keys is parsed with them **ignored**, leaves `runtimes` empty and fails startup. Rewrite them.
 
 ```yaml
-docker:
-  endpoint: unix:///var/run/docker.sock
+runtimes:
+  docker:
+    endpoint: unix:///var/run/docker.sock
+  systemd: {}
 ```
 
-`endpoint` is the local Docker API, either a unix socket path or a `tcp://host:port` address. The agent negotiates the API version with the daemon on its first call, so it works against any daemon from API 1.40 up.
+| Runtime | Keys | Liveness check |
+|---|---|---|
+| `docker` | `endpoint` — the local Docker API, a unix socket path or a `tcp://host:port` address; defaults to `unix:///var/run/docker.sock`. The agent negotiates the API version on its first call, so it works against any daemon from API 1.40 up. | daemon ping |
+| `systemd` | none — a process pod is described by its meta file in `meta_dir`, and its unit is read over the system D-Bus | D-Bus unit listing |
+| `mocks` | none — the scripted runtime the test suite runs against; pair it with `store: mocks` to bring the agent up with neither a runtime nor a core | scripted |
 
-## `yavirt`
+A node listing several runtimes reports the union of their workloads, and merges their event streams into one; a failure in any of them tears the subscription down and the agent resubscribes to all of them.
 
-yavirt is archived upstream; this section only matters for clusters that still run guests.
+### Running the agent in a container
 
-```yaml
-yavirt:
-  endpoint: grpc://127.0.0.1:9697
-  skip_guest_report_regexps:
-    - .+002
+Metrics are read out of the workload's own cgroup, which the agent has to be able to see. A containerized agent therefore needs its runtime's cgroup namespace and a mount of the host hierarchy:
+
+```
+--cgroupns=host -v /sys/fs/cgroup:/sys/fs/cgroup:ro
 ```
 
-`skip_guest_report_regexps` is a list of regular expressions matched against the guest id. A guest whose id matches is treated as not belonging to this agent and is never reported. An invalid expression fails startup.
+Without `--cgroupns=host` the agent resolves `/proc/<pid>/cgroup` inside its own namespace and finds nothing at those paths, so every workload reports no metrics. `AGENT_IN_DOCKER` plus a `/proc` bind mount at `/hostProc` covers the process side; this covers the cgroup side.
 
 ## `healthcheck`
 
@@ -75,6 +85,8 @@ log:
 ```
 
 `forwards` is a list of targets. Supported schemes are `tcp://`, `udp://` and `journal://`; a target with any other scheme is accepted and silently discards, with a warning at startup. Each workload is pinned to one target by hashing its id, so several targets share the load without duplicating lines. A target that is down is retried every 30 seconds in the background while its lines are dropped.
+
+Where the lines come from depends on the runtime. Docker workloads are attached to directly. Every other runtime logs to journald, and the agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` for the whole node, resuming from the cursor it saved under `state_dir`. That path needs `journalctl` on the node, and needs every eru workload to log under the `eru` syslog identifier.
 
 `stdout: true` additionally writes every forwarded line to the agent's own log.
 
@@ -116,7 +128,6 @@ Every flag has an environment variable. `--core-endpoint` and the two list flags
 | `--core-endpoint` | `ERU_AGENT_CORE_ENDPOINT` |
 | `--core-username` | `ERU_AGENT_CORE_USERNAME` |
 | `--core-password` | `ERU_AGENT_CORE_PASSWORD` |
-| `--runtime` | `ERU_AGENT_RUNTIME` |
 | `--docker-endpoint` | `ERU_AGENT_DOCKER_ENDPOINT` |
 | `--metrics-step` | `ERU_AGENT_METRICS_STEP` |
 | `--metrics-transfers` | `ERU_AGENT_METRICS_TRANSFERS` |

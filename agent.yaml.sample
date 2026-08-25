@@ -5,7 +5,7 @@
 pid: /tmp/agent.pid
 
 # core defines the addresses of the eru-core component.
-# This option is required and has no default; the agent load balances across the list.
+# This option is required and has no default; the agent load balances across them.
 core:
   - 127.0.0.1:5001
   - 127.0.0.1:5002
@@ -24,9 +24,36 @@ check_only_mine: false
 # This option is not required as the default value is "grpc".
 store: grpc
 
-# runtime defines the type of runtime.
-# This option is not required as the default value is "docker".
-runtime: docker
+# runtimes lists what this node runs. Every runtime named here must be
+# reachable, otherwise the node heartbeat stops and eru-core expires the node.
+# Name only the runtimes the node actually hosts.
+#
+# runtimes.docker.endpoint is the url that eru-agent will use to connect to.
+# This URL can be a tcp address like "tcp://10.233.10.14:2376",
+# or a unix socket file path like "unix:///var/run/docker.sock".
+# It defaults to unix:///var/run/docker.sock.
+#
+# runtimes.systemd has no options: a process pod is described by its meta file,
+# and the units are read over the system D-Bus.
+#
+# runtimes.mocks is the scripted runtime the test suite runs against; pair it
+# with store: mocks to bring the agent up with neither a runtime nor a core.
+runtimes:
+  docker:
+    endpoint: unix:///var/run/docker.sock
+  systemd: {}
+
+# meta_dir is where eru-core writes the metadata of the workloads it creates
+# over ssh, one <workload id>.json per workload. eru-agent watches the
+# directory with inotify: a file appearing is a new workload, its removal a
+# gone one. The directory lives on tmpfs and is created by the node role.
+# The default value is /run/eru/workloads.
+meta_dir: /run/eru/workloads
+
+# state_dir is where eru-agent keeps what it must remember across restarts,
+# currently the journal cursor it resumes log forwarding from.
+# The default value is /var/lib/eru-agent.
+state_dir: /var/lib/eru-agent
 
 # auth defines the authentication values for eru-core.
 #
@@ -35,26 +62,6 @@ runtime: docker
 auth:
   username: username
   password: password
-
-# docker defines docker config.
-#
-# docker.endpoint is the url that eru-agent will use to connect to.
-# This URL can be a tcp address like "tcp://10.233.10.14:2376",
-# or a unix socket file path like "unix:///var/run/docker/sock",
-# Note that this endpoint is usually the API URL of docker on local machine.
-docker:
-  endpoint: unix:///var/run/docker.sock
-
-# yavirt defines yavirt config.
-# yavirt is archived upstream, so this section only matters for clusters that still run guests.
-#
-# yavirt.endpoint is the url that eru-agent will use to connect to.
-# This URL is a grpc address like "grpc://127.0.0.1:9697".
-# Guests whose ids match one of yavirt.skip_guest_report_regexps will not be checked by eru-agent.
-yavirt:
-  endpoint: grpc://127.0.0.1:9697
-  skip_guest_report_regexps:
-    - .+002
 
 # metrics defines where should eru-agent send metrics of containers to.
 #
@@ -122,6 +129,6 @@ healthcheck:
 
 # global_connection_timeout defines the timeout for eru-agent other than healthcheck.
 # E.g. the timeout for reporting action of eru-agent, or the timeout for eru-agent to
-# connect to docker.
+# connect to a runtime.
 # The default value is "5s", note that "s" in the end.
 global_connection_timeout: 15s

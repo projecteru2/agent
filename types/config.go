@@ -15,13 +15,24 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// defaultDockerEndpoint is applied in Prepare: the walker cannot default a pointer the file allocates.
+const defaultDockerEndpoint = "unix:///var/run/docker.sock"
+
 type DockerConfig struct {
-	Endpoint string `yaml:"endpoint" required:"false"`
+	Endpoint string `yaml:"endpoint"`
 }
 
-type YavirtConfig struct {
-	Endpoint               string   `yaml:"endpoint" required:"false"`
-	SkipGuestReportRegexps []string `yaml:"skip_guest_report_regexps" required:"false"`
+// SystemdConfig has no keys: a process pod is described by its meta file, not by the runtime.
+type SystemdConfig struct{}
+
+// MocksConfig has no keys: the scripted runtime the test suite runs against.
+type MocksConfig struct{}
+
+// RuntimesConfig lists the runtimes this node hosts; the heartbeat needs every one of them alive.
+type RuntimesConfig struct {
+	Docker  *DockerConfig  `yaml:"docker"`
+	Systemd *SystemdConfig `yaml:"systemd"`
+	Mocks   *MocksConfig   `yaml:"mocks"`
 }
 
 type MetricsConfig struct {
@@ -52,12 +63,12 @@ type Config struct {
 
 	CheckOnlyMine bool `yaml:"check_only_mine" default:"false"`
 
-	Store   string `yaml:"store" default:"grpc"`
-	Runtime string `yaml:"runtime" default:"docker"`
+	Store    string `yaml:"store" default:"grpc"`
+	MetaDir  string `yaml:"meta_dir" default:"/run/eru/workloads"`
+	StateDir string `yaml:"state_dir" default:"/var/lib/eru-agent"`
 
-	Auth   coretypes.AuthConfig `yaml:"auth"`
-	Docker DockerConfig
-	Yavirt YavirtConfig
+	Auth     coretypes.AuthConfig `yaml:"auth"`
+	Runtimes RuntimesConfig       `yaml:"runtimes"`
 
 	Metrics     MetricsConfig
 	API         APIConfig `yaml:"api"`
@@ -102,7 +113,9 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	if c.Int64("health-check-cache-ttl") > 0 {
 		config.HealthCheck.CacheTTL = c.Int64("health-check-cache-ttl")
 	}
-	config.Docker.Endpoint = cmp.Or(c.String("docker-endpoint"), config.Docker.Endpoint)
+	if endpoint := c.String("docker-endpoint"); endpoint != "" {
+		config.dockerRuntime().Endpoint = endpoint
+	}
 	if c.Int64("metrics-step") > 0 {
 		config.Metrics.Step = c.Int64("metrics-step")
 	}
@@ -119,7 +132,6 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	if c.Bool("check-only-mine") {
 		config.CheckOnlyMine = true
 	}
-	config.Runtime = cmp.Or(c.String("runtime"), config.Runtime)
 	config.Store = cmp.Or(c.String("store"), config.Store)
 	if config.PidFile == "" {
 		config.PidFile = "./agent.pid"
@@ -132,6 +144,9 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	}
 	if config.HealthCheck.CacheTTL == 0 {
 		config.HealthCheck.CacheTTL = 300
+	}
+	if docker := config.Runtimes.Docker; docker != nil && docker.Endpoint == "" {
+		docker.Endpoint = defaultDockerEndpoint
 	}
 }
 
@@ -147,6 +162,14 @@ func (config *Config) Print(ctx context.Context) {
 		fmt.Println(scanner.Text())
 	}
 	fmt.Println("------------------------")
+}
+
+// dockerRuntime adds the docker runtime when only the flag asks for it.
+func (config *Config) dockerRuntime() *DockerConfig {
+	if config.Runtimes.Docker == nil {
+		config.Runtimes.Docker = &DockerConfig{}
+	}
+	return config.Runtimes.Docker
 }
 
 func (config *Config) redacted() *Config {

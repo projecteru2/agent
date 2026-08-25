@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/projecteru2/agent/common"
-	"github.com/projecteru2/agent/runtime"
-	"github.com/projecteru2/agent/runtime/docker"
-	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
-	"github.com/projecteru2/agent/runtime/yavirt"
+	"github.com/projecteru2/agent/source"
+	"github.com/projecteru2/agent/source/docker"
+	sourcemocks "github.com/projecteru2/agent/source/mocks"
+	"github.com/projecteru2/agent/source/systemd"
 	"github.com/projecteru2/agent/store"
 	corestore "github.com/projecteru2/agent/store/core"
 	storemocks "github.com/projecteru2/agent/store/mocks"
@@ -17,12 +17,11 @@ import (
 
 // Clients holds the shared per-process clients every manager runs on.
 type Clients struct {
-	Store   store.Store
-	Runtime runtime.Runtime
-	NodeIP  string
+	Store  store.Store
+	Source source.Source
 }
 
-// NewClients dials the store, looks this node up and dials the runtime daemon.
+// NewClients dials the store, looks this node up and dials every runtime the node hosts.
 func NewClients(ctx context.Context, config *types.Config) (*Clients, error) {
 	st, err := newStore(ctx, config)
 	if err != nil {
@@ -38,11 +37,11 @@ func NewClients(ctx context.Context, config *types.Config) (*Clients, error) {
 		nodeIP = common.LocalIP
 	}
 
-	rt, err := newRuntime(ctx, config, nodeIP)
+	src, err := newSource(ctx, config, nodeIP, st.GetIdentifier(ctx))
 	if err != nil {
 		return nil, err
 	}
-	return &Clients{Store: st, Runtime: rt, NodeIP: nodeIP}, nil
+	return &Clients{Store: st, Source: src}, nil
 }
 
 func newStore(ctx context.Context, config *types.Config) (store.Store, error) {
@@ -56,15 +55,29 @@ func newStore(ctx context.Context, config *types.Config) (store.Store, error) {
 	}
 }
 
-func newRuntime(ctx context.Context, config *types.Config, nodeIP string) (runtime.Runtime, error) {
-	switch config.Runtime {
-	case common.DockerRuntime:
-		return docker.GetClient(ctx, config, nodeIP)
-	case common.YavirtRuntime:
-		return yavirt.GetClient(ctx, config)
-	case common.MocksRuntime:
-		return runtimemocks.FromTemplate(), nil
-	default:
-		return nil, common.ErrInvalidRuntimeType
+func newSource(ctx context.Context, config *types.Config, nodeIP, storeIdentifier string) (source.Source, error) {
+	var sources []source.Source
+
+	if config.Runtimes.Docker != nil {
+		src, err := docker.GetClient(ctx, config, nodeIP, storeIdentifier)
+		if err != nil {
+			return nil, err
+		}
+		sources = append(sources, src)
 	}
+	if config.Runtimes.Systemd != nil {
+		src, err := systemd.GetClient(ctx, config)
+		if err != nil {
+			return nil, err
+		}
+		sources = append(sources, src)
+	}
+	if config.Runtimes.Mocks != nil {
+		sources = append(sources, sourcemocks.FromTemplate())
+	}
+
+	if len(sources) == 0 {
+		return nil, common.ErrNoRuntime
+	}
+	return source.NewMulti(sources...), nil
 }

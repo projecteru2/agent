@@ -6,23 +6,23 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	runtimemocks "github.com/projecteru2/agent/runtime/mocks"
+	sourcemocks "github.com/projecteru2/agent/source/mocks"
 	storemocks "github.com/projecteru2/agent/store/mocks"
 )
 
 func TestNodeStatusReport(t *testing.T) {
 	ctx := t.Context()
 	manager := newMockNodeManager(t)
-	runtime := manager.runtimeClient.(*runtimemocks.Nerv)
+	src := manager.source.(*sourcemocks.Nerv)
 	store := manager.store.(*storemocks.MockStore)
 
-	runtime.SetDaemonRunning(false)
+	src.SetDaemonRunning(false)
 	manager.nodeStatusReport(ctx)
 	status, err := store.GetNodeStatus(ctx, "fake")
 	assert.Nil(t, err)
 	assert.Equal(t, status.Alive, false)
 
-	runtime.SetDaemonRunning(true)
+	src.SetDaemonRunning(true)
 	manager.nodeStatusReport(ctx)
 	status, err = store.GetNodeStatus(ctx, "fake")
 	assert.Nil(t, err)

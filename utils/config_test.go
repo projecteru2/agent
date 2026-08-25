@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/projecteru2/agent/types"
 )
 
 const (
@@ -30,7 +32,8 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 		{"int default", config.HeartbeatInterval, 60},
 		{"bool default", config.CheckOnlyMine, false},
 		{"store default", config.Store, "grpc"},
-		{"runtime default", config.Runtime, "docker"},
+		{"meta dir default", config.MetaDir, "/run/eru/workloads"},
+		{"state dir default", config.StateDir, "/var/lib/eru-agent"},
 		{"duration default", config.GlobalConnectionTimeout, 5 * time.Second},
 		{"metrics step default", config.Metrics.Step, int64(10)},
 		{"default in a section the file omits", config.HealthCheck.Interval, 60},
@@ -58,8 +61,9 @@ func TestLoadConfigLetsTheFileOverrideDefaults(t *testing.T) {
 		{"duration", config.GlobalConnectionTimeout, 15 * time.Second},
 		{"nested int64", config.Metrics.Step, int64(30)},
 		{"nested slice", config.Metrics.Transfers, []string{"127.0.0.1:8125"}},
-		{"nested struct field", config.Docker.Endpoint, "unix:///var/run/docker.sock"},
-		{"nested slice on a second section", config.Yavirt.SkipGuestReportRegexps, []string{".+002"}},
+		{"nested pointer field", config.Runtimes.Docker.Endpoint, "unix:///var/run/docker.sock"},
+		{"section present with no keys", config.Runtimes.Systemd, &types.SystemdConfig{}},
+		{"section the file omits", config.Runtimes.Mocks, (*types.MocksConfig)(nil)},
 		{"struct field from another module", config.Auth.Username, "username"},
 		{"nested int", config.HealthCheck.Interval, 120},
 		{"field the file cannot reach", config.HostName, ""},

@@ -5,9 +5,9 @@ filename: "{{.InterfaceName}}.go"
 structname: "{{.InterfaceName}}"
 force-file-write: true
 packages:
-  github.com/projecteru2/agent/runtime:
+  github.com/projecteru2/agent/source:
     interfaces:
-      Runtime:
+      Source:
   github.com/projecteru2/agent/store:
     interfaces:
       Store:

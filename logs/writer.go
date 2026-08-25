@@ -19,6 +19,7 @@ const (
 
 	keepaliveInterval = time.Second * 30
 	closeWaitInterval = time.Second * 5
+	writeTimeout      = time.Second * 5
 )
 
 type Writer struct {
@@ -111,7 +112,7 @@ func (w *Writer) createStreamEncoder(network string) (Encoder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewStreamEncoder(conn), nil
+	return NewStreamEncoder(&deadlineConn{Conn: conn, timeout: writeTimeout}), nil
 }
 
 func (w *Writer) createEncoder(ctx context.Context) (enc Encoder, err error) {
@@ -179,6 +180,20 @@ func (w *Writer) checkError(ctx context.Context, err error) {
 			}
 		})
 	}
+}
+
+// deadlineConn bounds a write, so a target that accepts the connection and then
+// stops reading is retried like a down one instead of blocking the node's forwarding.
+type deadlineConn struct {
+	net.Conn
+	timeout time.Duration
+}
+
+func (c *deadlineConn) Write(p []byte) (int, error) {
+	if err := c.SetWriteDeadline(time.Now().Add(c.timeout)); err != nil {
+		return 0, err
+	}
+	return c.Conn.Write(p)
 }
 
 type discard struct{}

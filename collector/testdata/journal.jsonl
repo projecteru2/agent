@@ -1,0 +1,4 @@
+{"__CURSOR":"s=aaa;i=1","__REALTIME_TIMESTAMP":"1627530367000000","MESSAGE":"process pod line","_SYSTEMD_UNIT":"eru-abc123.service","SYSLOG_IDENTIFIER":"eru"}
+{"__CURSOR":"s=aaa;i=2","__REALTIME_TIMESTAMP":"1627530368000000","MESSAGE":"container line","_SYSTEMD_UNIT":"containerd.service","SYSLOG_IDENTIFIER":"eru","ERU_ID":"xyz789","ERU_STREAM":"stderr"}
+{"__CURSOR":"s=aaa;i=3","__REALTIME_TIMESTAMP":"1627530369000000","MESSAGE":[104,105,255],"_SYSTEMD_UNIT":"eru-abc123.service","SYSLOG_IDENTIFIER":"eru"}
+{"__CURSOR":"s=aaa;i=4","MESSAGE":"no timestamp","_SYSTEMD_UNIT":"eru-abc123.service","SYSLOG_IDENTIFIER":"eru"}
