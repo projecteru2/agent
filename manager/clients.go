@@ -7,6 +7,7 @@ import (
 	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/source/docker"
 	sourcemocks "github.com/projecteru2/agent/source/mocks"
+	"github.com/projecteru2/agent/source/systemd"
 	"github.com/projecteru2/agent/source/yavirt"
 	"github.com/projecteru2/agent/store"
 	corestore "github.com/projecteru2/agent/store/core"
@@ -59,6 +60,8 @@ func newSource(ctx context.Context, config *types.Config, nodeIP, storeIdentifie
 	switch config.Runtime {
 	case common.DockerRuntime:
 		return docker.GetClient(ctx, config, nodeIP, storeIdentifier)
+	case common.SystemdRuntime:
+		return systemd.New(ctx, config)
 	case common.YavirtRuntime:
 		return yavirt.GetClient(ctx, config)
 	case common.MocksRuntime:

@@ -54,6 +54,7 @@ type Config struct {
 
 	Store   string `yaml:"store" default:"grpc"`
 	Runtime string `yaml:"runtime" default:"docker"`
+	MetaDir string `yaml:"meta_dir" default:"/run/eru/workloads"`
 
 	Auth   coretypes.AuthConfig `yaml:"auth"`
 	Docker DockerConfig

@@ -10,9 +10,10 @@ const (
 
 	LocalIP = "127.0.0.1"
 
-	DockerRuntime = "docker"
-	YavirtRuntime = "yavirt"
-	MocksRuntime  = "mocks"
+	DockerRuntime  = "docker"
+	SystemdRuntime = "systemd"
+	YavirtRuntime  = "yavirt"
+	MocksRuntime   = "mocks"
 
 	GRPCStore  = "grpc"
 	MocksStore = "mocks"
