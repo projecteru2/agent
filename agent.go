@@ -14,6 +14,7 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/projecteru2/agent/api"
+	"github.com/projecteru2/agent/logshim"
 	"github.com/projecteru2/agent/manager/node"
 	"github.com/projecteru2/agent/manager/workload"
 	"github.com/projecteru2/agent/types"
@@ -209,7 +210,8 @@ func main() {
 				Usage: "will only check containers belong to this node if set",
 			},
 		},
-		Action: serve,
+		Commands: []*cli.Command{logshim.Command()},
+		Action:   serve,
 	}
 	if err := app.Run(context.Background(), os.Args); err != nil {
 		zerolog.Fatal().Err(err).Send()
