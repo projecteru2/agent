@@ -114,6 +114,14 @@ func TestAliveWithAHealthyDaemon(t *testing.T) {
 
 func TestAliveWithAnUnhealthyDaemon(t *testing.T) {
 	c := newCocoon(t, startDaemon(t, health(http.StatusServiceUnavailable)), t.TempDir())
+	assert.True(t, c.Alive(t.Context()))
+}
+
+func TestAliveWithoutAMetaDir(t *testing.T) {
+	dir := t.TempDir()
+	c := newCocoon(t, absentSocket(t), dir)
+	require.NoError(t, os.RemoveAll(dir))
+
 	assert.False(t, c.Alive(t.Context()))
 }
 

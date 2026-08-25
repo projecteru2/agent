@@ -59,7 +59,7 @@ VM pods are Cloud Hypervisor or Firecracker guests that the `cocoon` CLI created
 
 **Running.** `cocoon daemon` supervises the VMs on the node and serves a read-only API on `runtimes.cocoon.socket`. The agent opens `GET /v1/events` once and turns every change into a start or a die; `GET /v1/vms` answers the same question for a listing. A VM counts as running when the daemon reports it both in state `running` and live, and VMs are matched to workloads by the name core created them under, so a VM an operator created outside eru is ignored.
 
-**Without the daemon.** It is optional. When nothing answers on the socket the agent falls back to the VM's own cgroup scope: a `cgroup.procs` with a pid in it is a running VM, read on the health tick like every other file the collectors read. The node stays up in that case — only a daemon that answers and reports itself unhealthy takes the node down, because that is the case where its liveness is stale rather than absent.
+**Without the daemon.** It is optional. When nothing answers on the socket the agent falls back to the VM's own cgroup scope: a `cgroup.procs` with a pid in it is a running VM, read on the health tick like every other file the collectors read. Because that fallback is always there, a cocoon node is alive as long as its meta dir is readable; a daemon that is installed but not answering is logged as a warning and does not stop the node heartbeat, since every VM on the node is still running and still being reported.
 
 **Networks.** A VM's traffic crosses a host-side tap device, which the meta file names, so the counters come from `/sys/class/net/<tap>/statistics` rather than from a network namespace. Health checks go against the CNI address in the same file.
 

@@ -110,14 +110,17 @@ func (c *Cocoon) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage
 	return eventChan, errChan
 }
 
-// Alive reports the daemon healthy; a socket that is not there means no daemon runs, which the scope check covers.
+// Alive reports whether the vm scopes can still answer, which is what the daemon being optional means.
 func (c *Cocoon) Alive(ctx context.Context) bool {
-	err := c.daemon.health(ctx)
-	if err == nil || errors.Is(err, fs.ErrNotExist) {
-		return true
+	logger := log.WithFunc("cocoon.Alive")
+	if err := c.daemon.health(ctx); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		logger.Warnf(ctx, "the cocoon daemon on %s is not answering: %v", c.daemon.socket, err)
 	}
-	log.WithFunc("cocoon.Alive").Error(ctx, err, "the cocoon daemon api is down")
-	return false
+	if _, err := c.dir.List(ctx); err != nil {
+		logger.Error(ctx, err, "the meta dir is unreadable, so this node knows nothing about its vms")
+		return false
+	}
+	return true
 }
 
 // watchDaemon keeps reconnecting: the daemon is optional and restarts on its own, and its stream loses events.
