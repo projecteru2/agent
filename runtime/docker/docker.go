@@ -14,11 +14,10 @@ import (
 	"strings"
 	"time"
 
-	enginecontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/events"
-	enginefilters "github.com/docker/docker/api/types/filters"
-	engineapi "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	enginecontainer "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/events"
+	engineapi "github.com/moby/moby/client"
 	"github.com/projecteru2/core/cluster"
 	"github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
@@ -87,21 +86,20 @@ func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, err
 }
 
 func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string) ([]string, error) {
-	f := d.getFilterArgs(filters)
-	opts := enginecontainer.ListOptions{Filters: f, All: true}
+	opts := engineapi.ContainerListOptions{Filters: d.getFilterArgs(filters), All: true}
 
-	var containers []enginecontainer.Summary
+	var listed engineapi.ContainerListResult
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		containers, err = d.client.ContainerList(ctx, opts)
+		listed, err = d.client.ContainerList(ctx, opts)
 	})
 	if err != nil {
 		log.WithFunc("ListWorkloadIDs").Error(ctx, err, "failed to list workloads")
 		return nil, err
 	}
 
-	workloads := make([]string, 0, len(containers))
-	for _, c := range containers {
+	workloads := make([]string, 0, len(listed.Items))
+	for _, c := range listed.Items {
 		workloads = append(workloads, c.ID)
 	}
 	return workloads, nil
@@ -109,9 +107,8 @@ func (d *Docker) ListWorkloadIDs(ctx context.Context, filters map[string]string)
 
 func (d *Docker) AttachWorkload(ctx context.Context, ID string) (io.Reader, io.Reader, error) {
 	logger := log.WithFunc("AttachWorkload").WithField("ID", ID)
-	resp, err := d.client.ContainerAttach(ctx, ID, enginecontainer.AttachOptions{
+	resp, err := d.client.ContainerAttach(ctx, ID, engineapi.ContainerAttachOptions{
 		Stream: true,
-		Stdin:  false,
 		Stdout: true,
 		Stderr: true,
 	})
@@ -150,20 +147,18 @@ func (d *Docker) Events(ctx context.Context, filters map[string]string) (<-chan 
 		defer close(eventChan)
 		defer close(errChan)
 
-		f := d.getFilterArgs(filters)
-		f.Add("type", string(events.ContainerEventType))
-		options := events.ListOptions{Filters: f}
-		m, e := d.client.Events(ctx, options)
+		f := d.getFilterArgs(filters).Add("type", string(events.ContainerEventType))
+		stream := d.client.Events(ctx, engineapi.EventsListOptions{Filters: f})
 		for {
 			select {
-			case message := <-m:
+			case message := <-stream.Messages:
 				eventChan <- &types.WorkloadEventMessage{
 					ID:       message.Actor.ID,
 					Type:     string(message.Type),
 					Action:   string(message.Action),
 					TimeNano: message.TimeNano,
 				}
-			case err := <-e:
+			case err := <-stream.Err:
 				errChan <- err
 				return
 			case <-ctx.Done():
@@ -213,17 +208,17 @@ func (d *Docker) GetStatus(ctx context.Context, ID string, checkHealth bool) (*t
 }
 
 func (d *Docker) GetWorkloadName(ctx context.Context, ID string) (string, error) {
-	var containerJSON enginecontainer.InspectResponse
+	var inspected engineapi.ContainerInspectResult
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		containerJSON, err = d.client.ContainerInspect(ctx, ID)
+		inspected, err = d.client.ContainerInspect(ctx, ID, engineapi.ContainerInspectOptions{})
 	})
 	if err != nil {
 		log.WithFunc("GetWorkloadName").WithField("ID", ID).Error(ctx, err, "failed to get container by id")
 		return "", err
 	}
 
-	return containerJSON.Name, nil
+	return inspected.Container.Name, nil
 }
 
 func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]string, error) {
@@ -247,7 +242,7 @@ func (d *Docker) LogFieldsExtra(ctx context.Context, ID string) (map[string]stri
 func (d *Docker) IsDaemonRunning(ctx context.Context) bool {
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		_, err = d.client.Ping(ctx)
+		_, err = d.client.Ping(ctx, engineapi.PingOptions{})
 	})
 	if err != nil {
 		log.WithFunc("IsDaemonRunning").Error(ctx, err, "connect to docker daemon failed")
@@ -260,8 +255,8 @@ func (d *Docker) Name() string {
 	return "docker"
 }
 
-func (d *Docker) getFilterArgs(filters map[string]string) enginefilters.Args {
-	f := enginefilters.NewArgs()
+func (d *Docker) getFilterArgs(filters map[string]string) engineapi.Filters {
+	f := make(engineapi.Filters)
 
 	for key, value := range filters {
 		f.Add("label", fmt.Sprintf("%s=%s", key, value))
@@ -284,14 +279,15 @@ func (d *Docker) checkHostname(env []string) bool {
 }
 
 func (d *Docker) detectWorkload(ctx context.Context, ID string) (*Container, error) {
-	var c enginecontainer.InspectResponse
+	var inspected engineapi.ContainerInspectResult
 	var err error
 	utils.WithTimeout(ctx, d.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		c, err = d.client.ContainerInspect(ctx, ID)
+		inspected, err = d.client.ContainerInspect(ctx, ID, engineapi.ContainerInspectOptions{})
 	})
 	if err != nil {
 		return nil, err
 	}
+	c := inspected.Container
 	label := c.Config.Labels
 
 	if _, ok := label[cluster.ERUMark]; !ok {
@@ -327,7 +323,11 @@ func (d *Docker) workloadNetworks(ctx context.Context, c enginecontainer.Inspect
 	}
 
 	name := names[0]
-	localIP, addr := c.NetworkSettings.Networks[name].IPAddress, c.NetworkSettings.Networks[name].IPAddress
+	addr := ""
+	if ip := c.NetworkSettings.Networks[name].IPAddress; ip.IsValid() {
+		addr = ip.String()
+	}
+	localIP := addr
 	if enginecontainer.NetworkMode(name).IsHost() {
 		localIP, addr = common.LocalIP, d.nodeIP
 	}
@@ -343,7 +343,7 @@ func (d *Docker) workloadNetworks(ctx context.Context, c enginecontainer.Inspect
 
 func (d *Docker) getContainerStats(ctx context.Context, ID string) (*enginecontainer.StatsResponse, error) {
 	logger := log.WithFunc("getContainerStats").WithField("ID", ID)
-	rawStat, err := d.client.ContainerStatsOneShot(ctx, ID)
+	rawStat, err := d.client.ContainerStats(ctx, ID, engineapi.ContainerStatsOptions{})
 	if err != nil {
 		logger.Error(ctx, err, "failed to get container stats")
 		return nil, err

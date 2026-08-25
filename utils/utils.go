@@ -13,7 +13,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	engineapi "github.com/docker/docker/client"
+	engineapi "github.com/moby/moby/client"
 	"github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
 	yavirtclient "github.com/projecteru2/libyavirt/client"
@@ -30,10 +30,9 @@ var (
 )
 
 func MakeDockerClient(config *types.Config) (*engineapi.Client, error) {
-	return engineapi.NewClientWithOpts(
+	return engineapi.New(
 		engineapi.WithHost(config.Docker.Endpoint),
-		engineapi.WithVersion(common.DockerCliVersion),
-		engineapi.WithHTTPHeaders(map[string]string{"User-Agent": "eru-agent-" + version.VERSION}),
+		engineapi.WithUserAgent("eru-agent-"+version.VERSION),
 	)
 }
 

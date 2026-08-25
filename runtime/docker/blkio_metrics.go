@@ -1,7 +1,7 @@
 package docker
 
 import (
-	enginecontainer "github.com/docker/docker/api/types/container"
+	enginecontainer "github.com/moby/moby/api/types/container"
 
 	"github.com/projecteru2/agent/utils"
 )
