@@ -5,7 +5,7 @@ import (
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/source"
-	"github.com/projecteru2/agent/source/docker"
+	"github.com/projecteru2/agent/source/containerd"
 	sourcemocks "github.com/projecteru2/agent/source/mocks"
 	"github.com/projecteru2/agent/source/systemd"
 	"github.com/projecteru2/agent/store"
@@ -58,8 +58,8 @@ func newStore(ctx context.Context, config *types.Config) (store.Store, error) {
 func newSource(ctx context.Context, config *types.Config, nodeIP, storeIdentifier string) (source.Source, error) {
 	var sources []source.Source
 
-	if config.Runtimes.Docker != nil {
-		src, err := docker.GetClient(ctx, config, nodeIP, storeIdentifier)
+	if config.Runtimes.Containerd != nil {
+		src, err := containerd.GetClient(ctx, config, nodeIP, storeIdentifier)
 		if err != nil {
 			return nil, err
 		}

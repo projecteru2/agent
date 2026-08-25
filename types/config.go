@@ -13,13 +13,14 @@ import (
 	coretypes "github.com/projecteru2/core/types"
 	"github.com/urfave/cli/v3"
 	"gopkg.in/yaml.v3"
+
+	"github.com/projecteru2/agent/common"
 )
 
-// defaultDockerEndpoint is applied in Prepare: the walker cannot default a pointer the file allocates.
-const defaultDockerEndpoint = "unix:///var/run/docker.sock"
-
-type DockerConfig struct {
-	Endpoint string `yaml:"endpoint"`
+// ContainerdConfig is defaulted in Prepare: the walker cannot default a pointer the file allocates.
+type ContainerdConfig struct {
+	Socket    string `yaml:"socket"`
+	Namespace string `yaml:"namespace"`
 }
 
 // SystemdConfig has no keys: a process pod is described by its meta file, not by the runtime.
@@ -30,9 +31,9 @@ type MocksConfig struct{}
 
 // RuntimesConfig lists the runtimes this node hosts; the heartbeat needs every one of them alive.
 type RuntimesConfig struct {
-	Docker  *DockerConfig  `yaml:"docker"`
-	Systemd *SystemdConfig `yaml:"systemd"`
-	Mocks   *MocksConfig   `yaml:"mocks"`
+	Containerd *ContainerdConfig `yaml:"containerd"`
+	Systemd    *SystemdConfig    `yaml:"systemd"`
+	Mocks      *MocksConfig      `yaml:"mocks"`
 }
 
 type MetricsConfig struct {
@@ -113,9 +114,6 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	if c.Int64("health-check-cache-ttl") > 0 {
 		config.HealthCheck.CacheTTL = c.Int64("health-check-cache-ttl")
 	}
-	if endpoint := c.String("docker-endpoint"); endpoint != "" {
-		config.dockerRuntime().Endpoint = endpoint
-	}
 	if c.Int64("metrics-step") > 0 {
 		config.Metrics.Step = c.Int64("metrics-step")
 	}
@@ -145,8 +143,9 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	if config.HealthCheck.CacheTTL == 0 {
 		config.HealthCheck.CacheTTL = 300
 	}
-	if docker := config.Runtimes.Docker; docker != nil && docker.Endpoint == "" {
-		docker.Endpoint = defaultDockerEndpoint
+	if containerd := config.Runtimes.Containerd; containerd != nil {
+		containerd.Socket = cmp.Or(containerd.Socket, common.ContainerdSocket)
+		containerd.Namespace = cmp.Or(containerd.Namespace, common.ContainerdNamespace)
 	}
 }
 
@@ -162,14 +161,6 @@ func (config *Config) Print(ctx context.Context) {
 		fmt.Println(scanner.Text())
 	}
 	fmt.Println("------------------------")
-}
-
-// dockerRuntime adds the docker runtime when only the flag asks for it.
-func (config *Config) dockerRuntime() *DockerConfig {
-	if config.Runtimes.Docker == nil {
-		config.Runtimes.Docker = &DockerConfig{}
-	}
-	return config.Runtimes.Docker
 }
 
 func (config *Config) redacted() *Config {

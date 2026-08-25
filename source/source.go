@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
+	"maps"
+	"slices"
 
 	coretypes "github.com/projecteru2/core/types"
 
@@ -19,11 +20,6 @@ type Source interface {
 	Get(ctx context.Context, ID string) (*Workload, error)
 	Events(ctx context.Context) (<-chan *types.WorkloadEventMessage, <-chan error)
 	Alive(ctx context.Context) bool
-}
-
-// Attacher is a source whose runtime streams a workload's output on demand.
-type Attacher interface {
-	Attach(ctx context.Context, ID string) (stdout, stderr io.Reader, err error)
 }
 
 // Meta is the workload metadata core wrote when it created the workload.
@@ -61,11 +57,6 @@ type Workload struct {
 	Running bool
 }
 
-// Streams reports whether the workload's output comes from its runtime instead of the journal.
-func (w *Workload) Streams() bool {
-	return w.Log == Log{}
-}
-
 // LogFields returns the extra fields every log record of this workload carries.
 func (w *Workload) LogFields() map[string]string {
 	fields := map[string]string{
@@ -77,4 +68,14 @@ func (w *Workload) LogFields() map[string]string {
 		fields[fmt.Sprintf("networks_%s", name)] = addr
 	}
 	return fields
+}
+
+// Addr returns the workload's own address, empty when the runtime has given it none.
+func Addr(networks map[string]string) string {
+	for _, name := range slices.Sorted(maps.Keys(networks)) {
+		if addr := networks[name]; addr != "" {
+			return addr
+		}
+	}
+	return ""
 }

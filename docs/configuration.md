@@ -35,14 +35,15 @@ This section is required and replaces the old top-level `runtime:` and `docker:`
 
 ```yaml
 runtimes:
-  docker:
-    endpoint: unix:///var/run/docker.sock
+  containerd:
+    socket: /run/containerd/containerd.sock
+    namespace: eru
   systemd: {}
 ```
 
 | Runtime | Keys | Liveness check |
 |---|---|---|
-| `docker` | `endpoint` — the local Docker API, a unix socket path or a `tcp://host:port` address; defaults to `unix:///var/run/docker.sock`. The agent negotiates the API version on its first call, so it works against any daemon from API 1.40 up. | daemon ping |
+| `containerd` | `socket` — the local containerd gRPC socket, defaults to `/run/containerd/containerd.sock`; `namespace` — the containerd namespace eru's containers live in, defaults to `eru` | health service check |
 | `systemd` | none — a process pod is described by its meta file in `meta_dir`, and its unit is read over the system D-Bus | D-Bus unit listing |
 | `mocks` | none — the scripted runtime the test suite runs against; pair it with `store: mocks` to bring the agent up with neither a runtime nor a core | scripted |
 
@@ -86,7 +87,7 @@ log:
 
 `forwards` is a list of targets. Supported schemes are `tcp://`, `udp://` and `journal://`; a target with any other scheme is accepted and silently discards, with a warning at startup. Each workload is pinned to one target by hashing its id, so several targets share the load without duplicating lines. A target that is down is retried every 30 seconds in the background while its lines are dropped.
 
-Where the lines come from depends on the runtime. Docker workloads are attached to directly. Every other runtime logs to journald, and the agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` for the whole node, resuming from the cursor it saved under `state_dir`. That path needs `journalctl` on the node, and needs every eru workload to log under the `eru` syslog identifier.
+Every runtime logs to journald, and the agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` for the whole node, resuming from the cursor it saved under `state_dir`. That path needs `journalctl` on the node, and needs every eru workload to log under the `eru` syslog identifier: process units get it from core's `systemd-run`, containers from `eru-agent log-shim`.
 
 `stdout: true` additionally writes every forwarded line to the agent's own log.
 
@@ -128,7 +129,6 @@ Every flag has an environment variable. `--core-endpoint` and the two list flags
 | `--core-endpoint` | `ERU_AGENT_CORE_ENDPOINT` |
 | `--core-username` | `ERU_AGENT_CORE_USERNAME` |
 | `--core-password` | `ERU_AGENT_CORE_PASSWORD` |
-| `--docker-endpoint` | `ERU_AGENT_DOCKER_ENDPOINT` |
 | `--metrics-step` | `ERU_AGENT_METRICS_STEP` |
 | `--metrics-transfers` | `ERU_AGENT_METRICS_TRANSFERS` |
 | `--api-addr` | `ERU_AGENT_API_ADDR` |

@@ -116,12 +116,7 @@ func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEv
 	m.stopCollecting(event.ID)
 	m.stopForwarding(event.ID)
 
-	w, err := m.source.Get(ctx, event.ID)
-	if err != nil {
-		logger.Error(ctx, err, "failed to get workload")
-		return
-	}
-	status, err := m.workloadStatus(ctx, w)
+	status, err := m.goneStatus(ctx, event.ID)
 	if err != nil {
 		logger.Error(ctx, err, "failed to get workload status")
 		return
@@ -130,4 +125,15 @@ func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEv
 	if err := m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL()); err != nil {
 		logger.Error(ctx, err, "failed to update workload status")
 	}
+}
+
+// goneStatus falls back to the id alone: a workload deleted out of band is one no runtime can describe,
+// and leaving it unreported keeps core calling it running for ever.
+func (m *Manager) goneStatus(ctx context.Context, ID string) (*types.WorkloadStatus, error) {
+	w, err := m.source.Get(ctx, ID)
+	if err != nil {
+		log.WithFunc("workload.goneStatus").WithField("ID", ID).Warnf(ctx, "no runtime knows it any more, reporting it gone: %v", err)
+		return &types.WorkloadStatus{ID: ID, Nodename: m.config.HostName}, nil
+	}
+	return m.workloadStatus(ctx, w)
 }

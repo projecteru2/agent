@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"errors"
-	"io"
 	"testing"
 	"time"
 
@@ -74,31 +73,6 @@ func TestMultiIsAliveOnlyWhenEveryRuntimeIs(t *testing.T) {
 
 	assert.True(t, (&Multi{sources: []Source{up, up}}).Alive(t.Context()))
 	assert.False(t, (&Multi{sources: []Source{up, down}}).Alive(t.Context()))
-}
-
-func TestMultiAttachUsesTheRuntimeThatStreams(t *testing.T) {
-	multi := &Multi{sources: []Source{
-		&fakeSource{},
-		&fakeAttacher{fakeSource: fakeSource{workloads: []*Workload{{ID: "container"}}}},
-	}}
-
-	stdout, stderr, err := multi.Attach(t.Context(), "container")
-	require.NoError(t, err)
-	assert.NotNil(t, stdout)
-	assert.NotNil(t, stderr)
-
-	_, _, err = multi.Attach(t.Context(), "nowhere")
-	assert.Error(t, err)
-}
-
-func TestMultiAttachWithoutAnyStreamingRuntime(t *testing.T) {
-	_, _, err := (&Multi{sources: []Source{&fakeSource{}}}).Attach(t.Context(), "process")
-	assert.ErrorIs(t, err, ErrUnknownWorkload)
-
-	multi := &Multi{sources: []Source{&fakeAttacher{fakeSource: fakeSource{err: errBroken}}}}
-	_, _, err = multi.Attach(t.Context(), "container")
-	assert.ErrorIs(t, err, ErrUnknownWorkload)
-	assert.ErrorIs(t, err, errBroken)
 }
 
 func TestMultiMergesTheEventsOfEveryRuntime(t *testing.T) {
@@ -188,15 +162,4 @@ func (f *fakeSource) Events(ctx context.Context) (<-chan *types.WorkloadEventMes
 
 func (f *fakeSource) Alive(context.Context) bool {
 	return f.alive
-}
-
-type fakeAttacher struct {
-	fakeSource
-}
-
-func (f *fakeAttacher) Attach(_ context.Context, ID string) (io.Reader, io.Reader, error) {
-	if _, err := f.Get(context.Background(), ID); err != nil {
-		return nil, nil, err
-	}
-	return io.LimitReader(nil, 0), io.LimitReader(nil, 0), nil
 }

@@ -61,7 +61,7 @@ func TestLoadConfigLetsTheFileOverrideDefaults(t *testing.T) {
 		{"duration", config.GlobalConnectionTimeout, 15 * time.Second},
 		{"nested int64", config.Metrics.Step, int64(30)},
 		{"nested slice", config.Metrics.Transfers, []string{"127.0.0.1:8125"}},
-		{"nested pointer field", config.Runtimes.Docker.Endpoint, "unix:///var/run/docker.sock"},
+		{"nested pointer field", config.Runtimes.Containerd.Socket, "/run/containerd/containerd.sock"},
 		{"section present with no keys", config.Runtimes.Systemd, &types.SystemdConfig{}},
 		{"section the file omits", config.Runtimes.Mocks, (*types.MocksConfig)(nil)},
 		{"struct field from another module", config.Auth.Username, "username"},

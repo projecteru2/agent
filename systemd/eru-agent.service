@@ -1,6 +1,6 @@
 [Unit]
 Description=Eru Agent
-After=network.target etcd.service docker.service
+After=network.target etcd.service containerd.service
 
 [Service]
 Type=simple

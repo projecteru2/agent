@@ -2,10 +2,8 @@ package mocks
 
 import (
 	"context"
-	"io"
 	"maps"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
@@ -63,11 +61,6 @@ func (n *Nerv) StartCustomEvent(event *types.WorkloadEventMessage) {
 
 func (n *Nerv) SetDaemonRunning(status bool) {
 	n.withLock(func() { n.daemonRunning = status })
-}
-
-// Attach makes Nerv a source.Attacher, so the workload manager pumps its logs.
-func (n *Nerv) Attach(context.Context, string) (io.Reader, io.Reader, error) {
-	return strings.NewReader("stdout\n"), strings.NewReader("stderr\n"), nil
 }
 
 func (n *Nerv) init() {

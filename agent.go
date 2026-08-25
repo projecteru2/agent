@@ -14,8 +14,10 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/projecteru2/agent/api"
+	"github.com/projecteru2/agent/logshim"
 	"github.com/projecteru2/agent/manager/node"
 	"github.com/projecteru2/agent/manager/workload"
+	"github.com/projecteru2/agent/ocihook"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 	"github.com/projecteru2/agent/version"
@@ -144,11 +146,6 @@ func main() {
 				Usage:   "core password",
 				Sources: cli.EnvVars("ERU_AGENT_CORE_PASSWORD"),
 			},
-			&cli.StringFlag{
-				Name:    "docker-endpoint",
-				Usage:   "docker endpoint",
-				Sources: cli.EnvVars("ERU_AGENT_DOCKER_ENDPOINT"),
-			},
 			&cli.Int64Flag{
 				Name:    "metrics-step",
 				Usage:   "interval for metrics to send",
@@ -209,7 +206,8 @@ func main() {
 				Usage: "will only check containers belong to this node if set",
 			},
 		},
-		Action: serve,
+		Commands: []*cli.Command{logshim.Command(), ocihook.Command()},
+		Action:   serve,
 	}
 	if err := app.Run(context.Background(), os.Args); err != nil {
 		zerolog.Fatal().Err(err).Send()

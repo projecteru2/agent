@@ -106,10 +106,6 @@ func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter
 // start forwards the workload's output and samples it, both idempotent per workload.
 func (m *Manager) start(ctx context.Context, w *source.Workload) {
 	m.startCollecting(ctx, w)
-	if w.Streams() {
-		go m.attach(ctx, w)
-		return
-	}
 	m.startForwarding(ctx, w)
 }
 
@@ -130,8 +126,7 @@ func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {
 	}()
 }
 
-// stopCollecting waits for the sampler to exit: it unregisters the workload's gauges on its way
-// out, so it has to be gone before another sampler registers the same workload again.
+// stopCollecting waits for the sampler out: it unregisters the gauges another sampler would re-register.
 func (m *Manager) stopCollecting(ID string) {
 	m.collectMutex.Lock()
 	defer m.collectMutex.Unlock()

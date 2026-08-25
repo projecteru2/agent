@@ -1,13 +1,12 @@
 package systemd
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strings"
 
 	coretypes "github.com/projecteru2/core/types"
@@ -23,8 +22,7 @@ const (
 )
 
 var (
-	// workloadUnit matches a workload's transient unit and nothing else eru puts on a node under the
-	// same prefix, in particular not the agent's own eru-agent.service or a core host's eru-core.service.
+	// workloadUnit excludes what else eru runs under the prefix, eru-agent.service and eru-core.service.
 	workloadUnit = regexp.MustCompile("^" + unitPrefix + "(" + workloadIDPattern + ")" + regexp.QuoteMeta(unitSuffix) + "$")
 
 	workloadID = regexp.MustCompile("^" + workloadIDPattern + "$")
@@ -115,19 +113,9 @@ func (m *meta) workload(running bool) *source.Workload {
 		CgroupPath: m.Cgroup,
 		NetnsPID:   m.NetnsPID,
 		HostIface:  m.Iface,
-		LocalIP:    m.localIP(),
+		LocalIP:    cmp.Or(source.Addr(m.Networks), common.LocalIP),
 		Running:    running,
 	}
-}
-
-// localIP returns the workload's own address, or localhost when it shares the host network.
-func (m *meta) localIP() string {
-	for _, name := range slices.Sorted(maps.Keys(m.Networks)) {
-		if addr := m.Networks[name]; addr != "" {
-			return addr
-		}
-	}
-	return common.LocalIP
 }
 
 func unitOf(ID string) string {

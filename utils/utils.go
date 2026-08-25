@@ -14,13 +14,10 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	engineapi "github.com/moby/moby/client"
 	"github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
 
 	"github.com/projecteru2/agent/common"
-	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/version"
 )
 
 // CgroupRoot is where the unified cgroup v2 hierarchy is mounted.
@@ -30,13 +27,6 @@ var (
 	dockerized bool
 	once       sync.Once
 )
-
-func MakeDockerClient(config *types.Config) (*engineapi.Client, error) {
-	return engineapi.New(
-		engineapi.WithHost(config.Runtimes.Docker.Endpoint),
-		engineapi.WithUserAgent("eru-agent-"+version.VERSION),
-	)
-}
 
 func WritePid(ctx context.Context, path string) {
 	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
@@ -128,8 +118,9 @@ func WithTimeout(ctx context.Context, timeout time.Duration, f func(ctx2 context
 	f(ctx)
 }
 
-func GetIP(daemonHost string) string {
-	u, err := url.Parse(daemonHost)
+// GetIP returns the host of a node endpoint, which is the only address a node record carries.
+func GetIP(endpoint string) string {
+	u, err := url.Parse(endpoint)
 	if err != nil {
 		return ""
 	}

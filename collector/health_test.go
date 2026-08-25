@@ -17,6 +17,14 @@ func TestProbeCallsAWorkloadWithoutAHealthCheckHealthy(t *testing.T) {
 	assert.True(t, Probe(t.Context(), w, time.Second))
 }
 
+func TestProbeRejectsAWorkloadWithoutAnAddress(t *testing.T) {
+	w := &source.Workload{
+		ID:   "no-address",
+		Meta: source.Meta{HealthCheck: &coretypes.HealthCheck{TCPPorts: []string{"80"}}},
+	}
+	assert.False(t, Probe(t.Context(), w, time.Second))
+}
+
 func TestProbeAcceptsAnOpenTCPPort(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
