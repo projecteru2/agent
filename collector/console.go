@@ -22,17 +22,20 @@ const (
 
 type journalFunc func(message string, priority journal.Priority, vars map[string]string) error
 
+// pathFunc answers where the vm's console is now: a restart moves it, and core rewrites the meta file.
+type pathFunc func() (string, error)
+
 // Console follows a vm's serial console: every line is forwarded live and journaled for history.
 type Console struct {
 	workloadID string
-	path       string
+	path       pathFunc
 	send       journalFunc
 	vars       map[string]string
 
 	dropped int
 }
 
-func NewConsole(workloadID, appname, path string) *Console {
+func NewConsole(workloadID, appname string, path pathFunc) *Console {
 	return &Console{
 		workloadID: workloadID,
 		path:       path,
@@ -60,9 +63,9 @@ func (c *Console) Read(ctx context.Context, handle func(*Entry)) {
 			backoff = consoleRetryMin
 		}
 		// the console goes away with the vm and comes back with it, so a closed one is not a failure
-		logger.Debugf(ctx, "console %s stopped: %v", c.path, err)
+		logger.Debugf(ctx, "console stopped: %v", err)
 		if c.dropped > 0 {
-			logger.Warnf(ctx, "the journal refused %d console lines of %s", c.dropped, c.path)
+			logger.Warnf(ctx, "the journal refused %d console lines", c.dropped)
 			c.dropped = 0
 		}
 
@@ -101,14 +104,18 @@ func (c *Console) pump(ctx context.Context, handle func(*Entry)) (bool, error) {
 
 // open dials the console: cloud hypervisor serves a socket for a uefi guest and a pty for a direct boot one.
 func (c *Console) open(ctx context.Context) (io.ReadCloser, error) {
-	info, err := os.Stat(c.path)
+	path, err := c.path()
+	if err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(path)
 	if err != nil {
 		return nil, err
 	}
 	if info.Mode()&os.ModeSocket != 0 {
-		return (&net.Dialer{}).DialContext(ctx, "unix", c.path)
+		return (&net.Dialer{}).DialContext(ctx, "unix", path)
 	}
-	return os.OpenFile(c.path, os.O_RDWR, 0) //nolint:gosec // the path comes from the meta file core wrote
+	return os.OpenFile(path, os.O_RDWR, 0) //nolint:gosec // the path comes from the meta file core wrote
 }
 
 func (c *Console) emit(line string, handle func(*Entry)) {

@@ -24,10 +24,13 @@ const (
 	consoleTimeout = 5 * time.Second
 )
 
-var errJournalRefused = errors.New("journal refused the line")
+var (
+	errJournalRefused = errors.New("journal refused the line")
+	errNoPath         = errors.New("no console path")
+)
 
 func TestConsoleForwardsEveryLineOfASession(t *testing.T) {
-	console := NewConsole(consoleWorkload, consoleAppname, socketConsole(t, "boot\r\nlogin:\n"))
+	console := NewConsole(consoleWorkload, consoleAppname, at(socketConsole(t, "boot\r\nlogin:\n")))
 	entries, lines := readConsole(t, console)
 
 	assert.Equal(t, "boot", nextEntry(t, entries).Data)
@@ -37,7 +40,7 @@ func TestConsoleForwardsEveryLineOfASession(t *testing.T) {
 }
 
 func TestConsoleJournalsTheFieldsCoreReadsBack(t *testing.T) {
-	console := NewConsole(consoleWorkload, consoleAppname, socketConsole(t, "boot\n"))
+	console := NewConsole(consoleWorkload, consoleAppname, at(socketConsole(t, "boot\n")))
 	_, lines := readConsole(t, console)
 
 	assert.Equal(t, map[string]string{
@@ -49,24 +52,53 @@ func TestConsoleJournalsTheFieldsCoreReadsBack(t *testing.T) {
 }
 
 func TestConsoleEmitsATrailingLineWithoutANewline(t *testing.T) {
-	console := NewConsole(consoleWorkload, consoleAppname, socketConsole(t, "no newline here"))
+	console := NewConsole(consoleWorkload, consoleAppname, at(socketConsole(t, "no newline here")))
 	entries, _ := readConsole(t, console)
 
 	assert.Equal(t, "no newline here", nextEntry(t, entries).Data)
 }
 
 func TestConsoleReconnectsWhenTheVMComesBack(t *testing.T) {
-	console := NewConsole(consoleWorkload, consoleAppname, socketConsole(t, "first boot\n", "second boot\n"))
+	console := NewConsole(consoleWorkload, consoleAppname, at(socketConsole(t, "first boot\n", "second boot\n")))
 	entries, _ := readConsole(t, console)
 
 	assert.Equal(t, "first boot", nextEntry(t, entries).Data)
 	assert.Equal(t, "second boot", nextEntry(t, entries).Data)
 }
 
+func TestConsoleFollowsAConsoleThatMoved(t *testing.T) {
+	paths := []string{socketConsole(t, "first boot\n"), socketConsole(t, "second boot\n")}
+	attempt := 0
+	console := NewConsole(consoleWorkload, consoleAppname, func() (string, error) {
+		path := paths[min(attempt, len(paths)-1)]
+		attempt++
+		return path, nil
+	})
+	entries, _ := readConsole(t, console)
+
+	assert.Equal(t, "first boot", nextEntry(t, entries).Data)
+	assert.Equal(t, "second boot", nextEntry(t, entries).Data)
+}
+
+func TestConsoleRetriesWhenThePathCannotBeRead(t *testing.T) {
+	path := socketConsole(t, "boot\n")
+	attempt := 0
+	console := NewConsole(consoleWorkload, consoleAppname, func() (string, error) {
+		attempt++
+		if attempt == 1 {
+			return "", errNoPath
+		}
+		return path, nil
+	})
+	entries, _ := readConsole(t, console)
+
+	assert.Equal(t, "boot", nextEntry(t, entries).Data)
+}
+
 func TestConsoleReadsAConsoleThatIsNotASocket(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "console.pty")
 	require.NoError(t, os.WriteFile(path, []byte("direct boot\n"), 0o600))
-	console := NewConsole(consoleWorkload, consoleAppname, path)
+	console := NewConsole(consoleWorkload, consoleAppname, at(path))
 	entries, _ := readConsole(t, console)
 
 	assert.Equal(t, "direct boot", nextEntry(t, entries).Data)
@@ -74,7 +106,7 @@ func TestConsoleReadsAConsoleThatIsNotASocket(t *testing.T) {
 
 func TestConsoleWaitsForAConsoleThatIsNotThereYet(t *testing.T) {
 	dir := shortDir(t)
-	console := NewConsole(consoleWorkload, consoleAppname, filepath.Join(dir, "c"))
+	console := NewConsole(consoleWorkload, consoleAppname, at(filepath.Join(dir, "c")))
 	entries, _ := readConsole(t, console)
 
 	serve(t, listenAt(t, filepath.Join(dir, "c")), "late boot\n")
@@ -82,7 +114,7 @@ func TestConsoleWaitsForAConsoleThatIsNotThereYet(t *testing.T) {
 }
 
 func TestEmitStampsTheWorkloadAndTheConsoleStream(t *testing.T) {
-	console := NewConsole(consoleWorkload, consoleAppname, "unused")
+	console := NewConsole(consoleWorkload, consoleAppname, at("unused"))
 	console.send = func(string, journal.Priority, map[string]string) error { return nil }
 
 	var entries []*Entry
@@ -95,7 +127,7 @@ func TestEmitStampsTheWorkloadAndTheConsoleStream(t *testing.T) {
 }
 
 func TestEmitKeepsForwardingWhenTheJournalRefuses(t *testing.T) {
-	console := NewConsole(consoleWorkload, consoleAppname, "unused")
+	console := NewConsole(consoleWorkload, consoleAppname, at("unused"))
 	console.send = func(string, journal.Priority, map[string]string) error { return errJournalRefused }
 
 	var entries []*Entry
@@ -104,6 +136,10 @@ func TestEmitKeepsForwardingWhenTheJournalRefuses(t *testing.T) {
 
 	assert.Len(t, entries, 2)
 	assert.Equal(t, 2, console.dropped)
+}
+
+func at(path string) pathFunc {
+	return func() (string, error) { return path, nil }
 }
 
 type journalLine struct {
