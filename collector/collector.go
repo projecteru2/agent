@@ -81,25 +81,13 @@ func New(ctx context.Context, config *types.Config) *Collector {
 	return c
 }
 
-// Collect samples one workload every metrics step until ctx is canceled or the cgroup goes away.
+// Collect samples one workload every metrics step until ctx is canceled; a step that fails is retried on the next one.
 func (c *Collector) Collect(ctx context.Context, w *source.Workload) {
 	logger := log.WithFunc("collector.Collect").WithField("ID", w.ID)
 	if w.CgroupPath == "" {
 		logger.Debug(ctx, "workload has no cgroup, not sampling it")
 		return
 	}
-
-	prev, err := c.sample(w)
-	if err != nil {
-		logger.Error(ctx, err, "failed to read the first sample")
-		return
-	}
-
-	addr := ""
-	if c.transfers.Len() > 0 {
-		addr = c.transfers.Get(w.ID, 0)
-	}
-	client := NewMetricsClient(addr, c.hostname, w, prev.unsupported())
 	defer removeMetricsClient(w.ID)
 
 	tick := time.NewTicker(time.Duration(c.config.Metrics.Step) * time.Second)
@@ -108,20 +96,48 @@ func (c *Collector) Collect(ctx context.Context, w *source.Workload) {
 	logger.Infof(ctx, "workload %s metric report start", w.Meta.Appname)
 	defer logger.Infof(ctx, "workload %s metric report stop", w.Meta.Appname)
 
+	var (
+		client *MetricsClient
+		prev   *sample
+		broken bool
+	)
+	step := func() {
+		next, err := c.sample(w)
+		if err != nil {
+			if !broken {
+				logger.Error(ctx, err, "failed to sample, retrying every step until it works")
+				broken = true
+			}
+			prev = nil
+			return
+		}
+		broken = false
+		if client == nil {
+			client = c.clientFor(w, next)
+		}
+		if prev != nil {
+			c.publish(ctx, client, prev, next)
+		}
+		prev = next
+	}
+
+	step()
 	for {
 		select {
 		case <-tick.C:
-			next, err := c.sample(w)
-			if err != nil {
-				logger.Error(ctx, err, "failed to sample")
-				return
-			}
-			c.publish(ctx, client, prev, next)
-			prev = next
+			step()
 		case <-ctx.Done():
 			return
 		}
 	}
+}
+
+func (c *Collector) clientFor(w *source.Workload, first *sample) *MetricsClient {
+	addr := ""
+	if c.transfers.Len() > 0 {
+		addr = c.transfers.Get(w.ID, 0)
+	}
+	return NewMetricsClient(addr, c.hostname, w, first.unsupported())
 }
 
 func (c *Collector) sample(w *source.Workload) (*sample, error) {
