@@ -104,7 +104,8 @@ func (m *Manager) forward(ctx context.Context, entry *collector.Entry) {
 	}
 	m.logBroadcaster.logC <- l
 	if err := target.writer.Write(ctx, l); err != nil {
-		log.WithFunc("workload.forward").WithField("ID", w.ID).Errorf(ctx, err, "%s workload %s write failed", w.Meta.Appname, w.Meta.Entrypoint)
+		logger := log.WithFunc("workload.forward").WithField("ID", w.ID)
+		logger.Errorf(ctx, err, "%s workload %s write failed", w.Meta.Appname, w.Meta.Entrypoint)
 	}
 }
 
