@@ -109,7 +109,10 @@ func (j *Journal) read(ctx context.Context, handle func(*Entry)) error {
 			logger.Error(ctx, err, "failed to decode a journal record")
 			continue
 		}
-		handle(record.entry())
+		// a console line reached the journal through the reader that already forwarded it
+		if record.EruStream != common.StreamConsole {
+			handle(record.entry())
+		}
 
 		cursor = record.Cursor
 		if time.Now().After(nextFlush) {

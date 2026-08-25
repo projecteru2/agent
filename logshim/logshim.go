@@ -21,10 +21,6 @@ import (
 const (
 	envContainerID = "CONTAINER_ID"
 
-	fieldIdentifier = "SYSLOG_IDENTIFIER"
-	fieldID         = "ERU_ID"
-	fieldStream     = "ERU_STREAM"
-
 	streamStdout = "stdout"
 	streamStderr = "stderr"
 
@@ -101,9 +97,9 @@ type stream struct {
 
 func (s *stream) pump(reader io.Reader) {
 	vars := map[string]string{
-		fieldIdentifier: common.JournalIdentifier,
-		fieldID:         s.id,
-		fieldStream:     s.name,
+		common.FieldIdentifier: common.JournalIdentifier,
+		common.FieldID:         s.id,
+		common.FieldStream:     s.name,
 	}
 
 	buf := bufio.NewReaderSize(reader, lineMax)

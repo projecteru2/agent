@@ -16,7 +16,7 @@ The binary is also the two helper modes containerd runs on the node: `eru-agent 
 | `source` | The `Source` interface every runtime implements, the `Workload` it yields, and the dedup that keeps a repeated state from becoming a second event |
 | `source/containerd`, `source/systemd`, `source/cocoon` | The runtime backends, plus `source.Multi` for a node that hosts several |
 | `source/meta` | The metadata file core writes over ssh, shared by the runtimes it describes |
-| `collector` | Runtime-agnostic hot paths: cgroup v2 metrics, network counters, health probes, journal reader and console tailer |
+| `collector` | Runtime-agnostic hot paths: cgroup v2 metrics, network counters, health probes, journal reader and console reader |
 | `logshim` | The `eru-agent log-shim` mode: containerd's binary logger, one process per task |
 | `ocihook` | The `eru-agent oci-hook` mode: cni attach and detach from the container's own oci spec |
 | `store` | The `Store` interface the managers report through |
@@ -58,7 +58,7 @@ If the stream errors the manager waits `global_connection_timeout` and resubscri
 
 **Logs.** A workload's output reaches the agent one of two ways, and the source decides which.
 
-- **Console file** — a VM writes to its serial console. One goroutine per VM tails the file, armed with an inotify watch on the file's directory before the file is opened, so nothing written in between is missed and the watch outlives a rotation. The reader starts at the end of the file, holds a partial line until the write that finishes it, and follows the file across a rotation or a truncation by comparing the inode and the offset.
+- **Console** — a VM's output is its serial console, which Cloud Hypervisor serves as a unix socket for a UEFI guest and as a PTY for a direct-boot one. One goroutine per VM stays blocked reading it, forwarding every line and writing it to journald under the same fields the log shim uses, so `journalctl ERU_ID=<id>` answers for a VM exactly as it does for a container. A console that is not there yet, or that went away with its VM, is retried on a capped backoff; the reader picks the VM up again when it comes back. The journal reader skips what it finds under `ERU_STREAM=console`, since the reader that wrote those lines already forwarded them.
 - **Journal** — every other runtime logs to journald. The agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` child process for the whole node, and routes each record to a workload by its `ERU_ID` field or by the unit that emitted it. One term, not two: journald ors terms with `+`, but `-u` is an option rather than a term, so `-u 'eru-*' + SYSLOG_IDENTIFIER=eru` is rejected. Everything eru runs therefore carries the same identifier — process units get `SyslogIdentifier=eru` from core's `systemd-run`, containers get it from `eru-agent log-shim`, which containerd execs once per task. One reader per node replaces one attach per workload, and a cursor persisted under `state_dir` means an agent restart resumes where it stopped instead of losing the lines in between. journald's format is only readable through libsystemd, so the system tool is the reader; the agent logs that requirement at debug level on startup.
 
 Either way, each line becomes the same JSON record:

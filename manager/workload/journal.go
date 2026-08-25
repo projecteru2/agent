@@ -35,6 +35,12 @@ func (m *Manager) forwardJournal(ctx context.Context) {
 	}
 }
 
+// forwardConsole reads a vm's serial console, which journald only holds once this reader has written it there.
+func (m *Manager) forwardConsole(ctx context.Context, w *source.Workload) {
+	console := collector.NewConsole(w.ID, w.Meta.Appname, w.Log.ConsoleSocket)
+	console.Read(ctx, func(entry *collector.Entry) { m.forward(ctx, entry) })
+}
+
 func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 	logger := log.WithFunc("workload.startForwarding").WithField("ID", w.ID)
 
@@ -56,6 +62,11 @@ func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 	target := &logTarget{workload: w, writer: writer, extra: w.LogFields(), cancel: cancel}
 	for _, key := range logKeys(w) {
 		m.logTargets[key] = target
+	}
+	if w.Log.ConsoleSocket != "" {
+		go m.forwardConsole(ctx, w)
+		logger.Infof(ctx, "forwarding %s logs from the console at %s", w.Meta.Appname, w.Log.ConsoleSocket)
+		return
 	}
 	logger.Infof(ctx, "forwarding %s logs from the journal", w.Meta.Appname)
 }

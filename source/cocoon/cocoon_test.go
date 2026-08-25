@@ -21,6 +21,7 @@ import (
 const (
 	vmWorkload    = "3c4d5e6f708192a3b4c5d6e7f8091a2b"
 	otherWorkload = "4d5e6f708192a3b4c5d6e7f8091a2b3c"
+	cocoonVMID    = "01k3n8qz7m4vx9pbc2ry6dth5w"
 
 	syncFrame   = "event: sync\ndata: {\"vms\":[{\"name\":%q,\"state\":\"running\",\"live\":true}]}\n\n"
 	changeFrame = "event: change\ndata: {\"type\":%q,\"vm\":{\"name\":%q,\"state\":%q,\"live\":%t}}\n\n"
@@ -73,7 +74,7 @@ func TestListUsesTheDaemonLiveness(t *testing.T) {
 	assert.True(t, workloads[0].Running)
 	assert.Equal(t, "10.0.0.9", workloads[0].LocalIP)
 	assert.Equal(t, "tap-"+vmWorkload, workloads[0].HostIface)
-	assert.Equal(t, "/var/log/cocoon/ch/"+vmWorkload+"/console.log", workloads[0].Log.File)
+	assert.Equal(t, "/var/lib/cocoon/run/ch/"+cocoonVMID+"/console.sock", workloads[0].Log.ConsoleSocket)
 }
 
 func TestListFallsBackToTheVMScope(t *testing.T) {
@@ -213,8 +214,8 @@ func writeMeta(t *testing.T, dir, ID, cgroup string) {
 	t.Helper()
 	body := fmt.Sprintf(
 		`{"id":%q,"kind":"vm","appname":"myvm","entrypoint":"web","networks":{"eru-cni":"10.0.0.9"},`+
-			`"cgroup":%q,"iface":"tap-%s","log":{"file":"/var/log/cocoon/ch/%s/console.log"}}`,
-		ID, cgroup, ID, ID,
+			`"cgroup":%q,"iface":"tap-%s","log":{"console_socket":"/var/lib/cocoon/run/ch/%s/console.sock"}}`,
+		ID, cgroup, ID, cocoonVMID,
 	)
 	require.NoError(t, os.WriteFile(filepath.Join(dir, ID+".json"), []byte(body), 0o600))
 }

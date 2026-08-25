@@ -16,6 +16,8 @@ const (
 	hostNetWorkload = "1a2b3c4d5e6f708192a3b4c5d6e7f809"
 	noLogWorkload   = "2b3c4d5e6f708192a3b4c5d6e7f8091a"
 	vmWorkload      = "3c4d5e6f708192a3b4c5d6e7f8091a2b"
+
+	cocoonVMID = "01k3n8qz7m4vx9pbc2ry6dth5w"
 )
 
 func TestReadRendersAProcessWorkload(t *testing.T) {
@@ -51,7 +53,7 @@ func TestReadRendersAVMWorkload(t *testing.T) {
 	assert.Equal(t, "tap-"+vmWorkload, w.HostIface)
 	assert.Zero(t, w.NetnsPID)
 	assert.Equal(t, "10.0.0.9", w.LocalIP)
-	assert.Equal(t, "/var/log/cocoon/ch/"+vmWorkload+"/console.log", w.Log.File)
+	assert.Equal(t, "/var/lib/cocoon/run/ch/"+cocoonVMID+"/console.sock", w.Log.ConsoleSocket)
 	assert.Empty(t, w.Log.JournalUnit)
 }
 

@@ -1,0 +1,120 @@
+package collector
+
+import (
+	"bufio"
+	"context"
+	"io"
+	"net"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/coreos/go-systemd/v22/journal"
+	"github.com/projecteru2/core/log"
+
+	"github.com/projecteru2/agent/common"
+)
+
+const (
+	consoleRetryMin = 100 * time.Millisecond
+	consoleRetryMax = 5 * time.Second
+)
+
+type journalFunc func(message string, priority journal.Priority, vars map[string]string) error
+
+// Console follows a vm's serial console: every line is forwarded live and journaled for history.
+type Console struct {
+	workloadID string
+	path       string
+	send       journalFunc
+	vars       map[string]string
+
+	dropped int
+}
+
+func NewConsole(workloadID, appname, path string) *Console {
+	return &Console{
+		workloadID: workloadID,
+		path:       path,
+		send:       journal.Send,
+		vars: map[string]string{
+			common.FieldIdentifier: common.JournalIdentifier,
+			common.FieldID:         workloadID,
+			common.FieldName:       appname,
+			common.FieldStream:     common.StreamConsole,
+		},
+	}
+}
+
+// Read follows the console until ctx is done, reconnecting so a vm that restarts comes back on its own.
+func (c *Console) Read(ctx context.Context, handle func(*Entry)) {
+	logger := log.WithFunc("collector.Read").WithField("ID", c.workloadID)
+
+	backoff := consoleRetryMin
+	for {
+		connected, err := c.pump(ctx, handle)
+		if ctx.Err() != nil {
+			return
+		}
+		if connected {
+			backoff = consoleRetryMin
+		}
+		// the console goes away with the vm and comes back with it, so a closed one is not a failure
+		logger.Debugf(ctx, "console %s stopped: %v", c.path, err)
+		if c.dropped > 0 {
+			logger.Warnf(ctx, "the journal refused %d console lines of %s", c.dropped, c.path)
+			c.dropped = 0
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(backoff):
+		}
+		backoff = min(backoff*2, consoleRetryMax)
+	}
+}
+
+// pump reads one console session, reporting whether it opened at all so a retry can back off.
+func (c *Console) pump(ctx context.Context, handle func(*Entry)) (bool, error) {
+	conn, err := c.open(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = conn.Close() }()
+	go func() {
+		<-ctx.Done()
+		_ = conn.Close()
+	}()
+
+	reader := bufio.NewReaderSize(conn, scanBufferSize)
+	for {
+		line, err := reader.ReadString('\n')
+		if line = strings.TrimRight(line, "\r\n"); line != "" {
+			c.emit(line, handle)
+		}
+		if err != nil {
+			return true, err
+		}
+	}
+}
+
+// open dials the console: cloud hypervisor serves a socket for a uefi guest and a pty for a direct boot one.
+func (c *Console) open(ctx context.Context) (io.ReadCloser, error) {
+	info, err := os.Stat(c.path)
+	if err != nil {
+		return nil, err
+	}
+	if info.Mode()&os.ModeSocket != 0 {
+		return (&net.Dialer{}).DialContext(ctx, "unix", c.path)
+	}
+	return os.OpenFile(c.path, os.O_RDWR, 0) //nolint:gosec // the path comes from the meta file core wrote
+}
+
+func (c *Console) emit(line string, handle func(*Entry)) {
+	handle(&Entry{WorkloadID: c.workloadID, Stream: common.StreamConsole, Data: line, Time: time.Now()})
+	// journald holds the history core reads back over ssh, the same way it does for a container
+	if err := c.send(line, journal.PriInfo, c.vars); err != nil {
+		c.dropped++
+	}
+}

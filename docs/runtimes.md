@@ -7,7 +7,7 @@
 | List workloads | yes | yes | yes | yes |
 | Event stream | daemon events | inotify + D-Bus | inotify + daemon SSE | scripted |
 | Daemon liveness ping | yes | yes | when a daemon runs | scripted |
-| Where its logs come from | journald | journald | console file | scripted |
+| Where its logs come from | journald | journald | serial console | scripted |
 | Cgroup path, so per-workload metrics | yes | yes | yes | no |
 | Health check address | yes | yes | yes | scripted |
 
@@ -15,7 +15,7 @@
 
 A node may list several runtimes. The agent then reports the union of their workloads and merges their event streams; one runtime failing tears the subscription down and the agent resubscribes to all of them. The node heartbeat needs every listed runtime alive, so a node whose containerd died stops looking alive even if its systemd units are fine.
 
-A source's logs are read from the node's journal, or tailed from the console file its metadata names; see [architecture](architecture.md). Health checks and metrics are not a source's business either: the source yields the workload's probe address, cgroup directory and netns pid, and the collectors do the rest, identically for every runtime.
+A source's logs are read from the node's journal, or off the serial console its metadata names; see [architecture](architecture.md). Health checks and metrics are not a source's business either: the source yields the workload's probe address, cgroup directory and netns pid, and the collectors do the rest, identically for every runtime.
 
 ## Containerd
 
@@ -63,7 +63,7 @@ VM pods are Cloud Hypervisor or Firecracker guests that the `cocoon` CLI created
 
 **Networks.** A VM's traffic crosses a host-side tap device, which the meta file names, so the counters come from `/sys/class/net/<tap>/statistics` rather than from a network namespace. Health checks go against the CNI address in the same file.
 
-**Logs.** A VM writes to its serial console file, not to the journal — Linux guests their console output, Windows guests SAC. The agent tails the path the meta file names with one goroutine per VM, watching the file's directory with inotify so the watch outlives a rotation, and starting at the end of the file so a restart does not replay the whole boot.
+**Logs.** A VM writes to its serial console, not to the journal — Linux guests their console output, Windows guests SAC. Cloud Hypervisor serves that console as a unix socket for a UEFI guest and as a PTY for a direct-boot one, and `log.console_socket` in the meta file is whichever one the VM got; the file cocoon keeps under its log dir is the VMM's own log, never guest output, so the agent does not read it. One goroutine per VM stays blocked on the console, forwarding each line and writing it to journald under `SYSLOG_IDENTIFIER=eru` with `ERU_ID`, `ERU_NAME` and `ERU_STREAM=console`, so core reads a VM's history back over ssh the same way it reads a container's. A console that is missing or has gone away with its VM is retried on a capped backoff.
 
 ## Health checks
 

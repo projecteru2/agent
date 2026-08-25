@@ -15,5 +15,5 @@
   "cgroup": "/sys/fs/cgroup/cocoon.slice/cocoon-3c4d5e6f708192a3b4c5d6e7f8091a2b.scope",
   "netns_pid": 0,
   "iface": "tap-3c4d5e6f708192a3b4c5d6e7f8091a2b",
-  "log": {"file": "/var/log/cocoon/ch/3c4d5e6f708192a3b4c5d6e7f8091a2b/console.log"}
+  "log": {"console_socket": "/var/lib/cocoon/run/ch/01k3n8qz7m4vx9pbc2ry6dth5w/console.sock"}
 }

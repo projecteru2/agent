@@ -90,7 +90,7 @@ log:
 
 `forwards` is a list of targets. Supported schemes are `tcp://`, `udp://` and `journal://`; a target with any other scheme is accepted and silently discards, with a warning at startup. Each workload is pinned to one target by hashing its id, so several targets share the load without duplicating lines. A target that is down is retried every 30 seconds in the background while its lines are dropped.
 
-A VM's output is its serial console, so the agent tails the file its meta file names, one goroutine per VM. Every other runtime logs to journald, and the agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` for the whole node, resuming from the cursor it saved under `state_dir`. That path needs `journalctl` on the node, and needs every eru workload to log under the `eru` syslog identifier: process units get it from core's `systemd-run`, containers from `eru-agent log-shim`.
+A VM's output is its serial console, so the agent reads the console its meta file names, one goroutine per VM, forwarding each line and writing it to journald so the history is there too. Every other runtime logs to journald natively, and the agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` for the whole node, resuming from the cursor it saved under `state_dir`. That path needs `journalctl` on the node, and needs every eru workload to log under the `eru` syslog identifier: process units get it from core's `systemd-run`, containers from `eru-agent log-shim`.
 
 `stdout: true` additionally writes every forwarded line to the agent's own log.
 

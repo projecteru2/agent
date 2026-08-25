@@ -38,7 +38,7 @@ type Kind string
 type logSource struct {
 	JournalUnit       string `json:"journal_unit"`
 	JournalIdentifier string `json:"journal_identifier"`
-	File              string `json:"file"`
+	ConsoleSocket     string `json:"console_socket"`
 }
 
 type healthCheck struct {
@@ -99,7 +99,7 @@ func (f *File) Workload(running bool) *source.Workload {
 		Log: source.Log{
 			JournalUnit:       f.Log.JournalUnit,
 			JournalIdentifier: f.Log.JournalIdentifier,
-			File:              f.Log.File,
+			ConsoleSocket:     f.Log.ConsoleSocket,
 		},
 		CgroupPath: f.Cgroup,
 		NetnsPID:   f.NetnsPID,

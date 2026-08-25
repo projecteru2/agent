@@ -31,7 +31,7 @@
                               collectors
                     (cgroup v2 metrics, netns counters,
                      health probes, journal reader and
-                     console tailer -- no IPC on a tick)
+                     console reader -- no IPC on a tick)
 ```
 
 ## Guides

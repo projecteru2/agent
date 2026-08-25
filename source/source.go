@@ -36,11 +36,11 @@ type Meta struct {
 	Networks    map[string]string
 }
 
-// Log locates a workload's output: a journal unit, a journal identifier field or a file.
+// Log locates a workload's output: a journal unit, a journal identifier field or a vm console.
 type Log struct {
 	JournalUnit       string
 	JournalIdentifier string
-	File              string
+	ConsoleSocket     string
 }
 
 // Workload is everything a source knows about one workload.
