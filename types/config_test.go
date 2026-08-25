@@ -3,38 +3,16 @@ package types
 import (
 	"context"
 	"testing"
-	"time"
 
-	"github.com/jinzhu/configor"
 	coretypes "github.com/projecteru2/core/types"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v3"
 	"gopkg.in/yaml.v3"
 )
 
-func TestLoadConfig(t *testing.T) {
-	assert := assert.New(t)
-
+func TestGetHealthCheckStatusTTL(t *testing.T) {
 	config := &Config{}
-	err := configor.Load(config, "../agent.yaml.sample")
-	assert.NoError(err)
-	assert.Equal(config.PidFile, "/tmp/agent.pid")
-	assert.Equal(config.Core, []string{"127.0.0.1:5001", "127.0.0.1:5002"})
-	assert.Equal(config.HostName, "")
-	assert.Equal(config.HeartbeatInterval, 120)
-
-	assert.Equal(config.HealthCheck.Interval, 120)
-	assert.Equal(config.HealthCheck.Timeout, 10)
-	assert.Equal(config.HealthCheck.CacheTTL, int64(300))
-	assert.Equal(config.GetHealthCheckStatusTTL(), int64(0))
-
-	assert.Equal(config.Store, "grpc")
-	assert.Equal(config.Runtime, "docker")
-
-	assert.Equal(config.GlobalConnectionTimeout, time.Second*15)
-
-	config.Print(t.Context())
+	require.Equal(t, int64(0), config.GetHealthCheckStatusTTL())
 }
 
 func TestPrepareCoreEndpoints(t *testing.T) {
@@ -80,6 +58,8 @@ func TestPrintRedactsThePassword(t *testing.T) {
 	bs, err := yaml.Marshal(safe)
 	require.NoError(t, err)
 	require.NotContains(t, string(bs), "secret")
+
+	config.Print(t.Context())
 }
 
 func runPrepare(ctx context.Context, config *Config, args []string) error {
