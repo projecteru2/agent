@@ -389,12 +389,12 @@ func addrFromNS(ctx context.Context, cid, ifname string) string {
 	}
 	nic, err := net.InterfaceByName(ifname)
 	if err != nil {
-		logger.Error(ctx, err, "failed to find %s", ifname)
+		logger.Errorf(ctx, err, "failed to find %s", ifname)
 		return ""
 	}
 	addrs, err := nic.Addrs()
 	if err != nil {
-		logger.Error(ctx, err, "failed to get %s addrs", ifname)
+		logger.Errorf(ctx, err, "failed to get %s addrs", ifname)
 		return ""
 	}
 	if len(addrs) == 0 {
@@ -402,7 +402,7 @@ func addrFromNS(ctx context.Context, cid, ifname string) string {
 	}
 	ip, _, err := net.ParseCIDR(addrs[0].String())
 	if err != nil {
-		logger.Error(ctx, err, "failed to parse cidr %s", addrs[0].String())
+		logger.Errorf(ctx, err, "failed to parse cidr %s", addrs[0].String())
 		return ""
 	}
 	return ip.String()
