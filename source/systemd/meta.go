@@ -22,8 +22,7 @@ const (
 )
 
 var (
-	// workloadUnit matches a workload's transient unit and nothing else eru puts on a node under the
-	// same prefix, in particular not the agent's own eru-agent.service or a core host's eru-core.service.
+	// workloadUnit excludes what else eru runs under the prefix, eru-agent.service and eru-core.service.
 	workloadUnit = regexp.MustCompile("^" + unitPrefix + "(" + workloadIDPattern + ")" + regexp.QuoteMeta(unitSuffix) + "$")
 
 	workloadID = regexp.MustCompile("^" + workloadIDPattern + "$")
