@@ -37,7 +37,6 @@ func newDirWatcher(dir string) (*dirWatcher, error) {
 	return &dirWatcher{f: f}, nil
 }
 
-// run reports files appearing in and disappearing from the watched dir until ctx is done.
 func (w *dirWatcher) run(ctx context.Context, notify func(name string, created bool)) error {
 	defer func() { _ = w.f.Close() }()
 	go func() {

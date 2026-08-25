@@ -28,7 +28,6 @@ const (
 	signalDepth = 100
 )
 
-// emitFunc reports one workload transition to whoever is watching the source.
 type emitFunc func(ID, action string)
 
 var _ source.Source = (*Systemd)(nil)
@@ -152,7 +151,6 @@ func (s *Systemd) Alive(ctx context.Context) bool {
 	return true
 }
 
-// watchMetaDir turns a meta file appearing into discovery and its removal into removal.
 func (s *Systemd) watchMetaDir(ctx context.Context, emit emitFunc) error {
 	watcher, err := newDirWatcher(s.dir)
 	if err != nil {
@@ -176,7 +174,6 @@ func (s *Systemd) watchMetaDir(ctx context.Context, emit emitFunc) error {
 	return err
 }
 
-// watchUnits turns an ActiveState change of an eru unit into a start or a die.
 func (s *Systemd) watchUnits(ctx context.Context, emit emitFunc) error {
 	logger := log.WithFunc("systemd.watchUnits")
 	// a previous Events left its subscription on this shared connection, still feeding dead channels
