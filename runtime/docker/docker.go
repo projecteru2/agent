@@ -348,6 +348,7 @@ func (d *Docker) getContainerStats(ctx context.Context, ID string) (*engineconta
 		logger.Error(ctx, err, "failed to get container stats")
 		return nil, err
 	}
+	defer func() { _ = rawStat.Body.Close() }()
 	b, err := io.ReadAll(rawStat.Body)
 	if err != nil {
 		logger.Error(ctx, err, "failed to read container stats")
