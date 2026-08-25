@@ -3,10 +3,12 @@ package collector
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/coreos/go-systemd/v22/journal"
@@ -112,10 +114,14 @@ func (c *Console) open(ctx context.Context) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	if info.Mode()&os.ModeSocket != 0 {
+	switch mode := info.Mode(); {
+	case mode&os.ModeSocket != 0:
 		return (&net.Dialer{}).DialContext(ctx, "unix", path)
+	case mode&os.ModeCharDevice != 0:
+		return os.OpenFile(path, os.O_RDONLY|syscall.O_NOCTTY, 0) //nolint:gosec // the path comes from the meta file core wrote
+	default:
+		return nil, fmt.Errorf("%s is neither a socket nor a console device", path)
 	}
-	return os.OpenFile(path, os.O_RDWR, 0) //nolint:gosec // the path comes from the meta file core wrote
 }
 
 func (c *Console) emit(line string, handle func(*Entry)) {

@@ -95,13 +95,21 @@ func TestConsoleRetriesWhenThePathCannotBeRead(t *testing.T) {
 	assert.Equal(t, "boot", nextEntry(t, entries).Data)
 }
 
-func TestConsoleReadsAConsoleThatIsNotASocket(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "console.pty")
-	require.NoError(t, os.WriteFile(path, []byte("direct boot\n"), 0o600))
-	console := NewConsole(consoleWorkload, consoleAppname, at(path))
-	entries, _ := readConsole(t, console)
+func TestConsoleOpensACharacterDevice(t *testing.T) {
+	console := NewConsole(consoleWorkload, consoleAppname, at(os.DevNull))
 
-	assert.Equal(t, "direct boot", nextEntry(t, entries).Data)
+	conn, err := console.open(t.Context())
+	require.NoError(t, err)
+	require.NoError(t, conn.Close())
+}
+
+func TestConsoleRejectsAConsoleThatIsNotADevice(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "console.log")
+	require.NoError(t, os.WriteFile(path, []byte("not a console\n"), 0o600))
+	console := NewConsole(consoleWorkload, consoleAppname, at(path))
+
+	_, err := console.open(t.Context())
+	assert.ErrorContains(t, err, "neither a socket nor a console device")
 }
 
 func TestConsoleWaitsForAConsoleThatIsNotThereYet(t *testing.T) {
