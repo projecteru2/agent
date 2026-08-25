@@ -99,3 +99,38 @@ func TestLogBroadcaster(t *testing.T) {
 	defer manager.logBroadcaster.mu.RUnlock()
 	assert.Empty(t, manager.logBroadcaster.subscribersMap)
 }
+
+func TestSubscriberSendDropsWhatAStalledClientCannotTake(t *testing.T) {
+	sub := &subscriber{lines: make(chan []byte, 2)}
+
+	for range 5 {
+		sub.send([]byte("line"))
+	}
+
+	assert.Len(t, sub.lines, 2)
+	assert.Equal(t, int64(3), sub.dropped.Load())
+}
+
+func TestBroadcastDoesNotBlockOnAStalledSubscriber(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	stalled := &subscriber{ctx: ctx, cancel: cancel, lines: make(chan []byte, 1)}
+	broadcaster := newLogBroadcaster()
+	broadcaster.subscribersMap["nerv"] = map[string]*subscriber{"stalled": stalled}
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for range 100 {
+			broadcaster.broadcast(ctx, &types.Log{Name: "nerv", Data: "data"})
+		}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("broadcast blocked on a subscriber that stopped reading")
+	}
+	assert.Positive(t, stalled.dropped.Load())
+}

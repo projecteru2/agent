@@ -89,6 +89,19 @@ func TestNewWriters(t *testing.T) {
 	time.Sleep(closeWaitInterval + 2*time.Second)
 }
 
+func TestDeadlineConnFailsAWriteNobodyReads(t *testing.T) {
+	client, server := net.Pipe()
+	defer func() { _ = client.Close() }()
+	defer func() { _ = server.Close() }()
+
+	conn := &deadlineConn{Conn: client, timeout: 50 * time.Millisecond}
+	_, err := conn.Write([]byte("nobody is reading this"))
+
+	var timeout net.Error
+	require.ErrorAs(t, err, &timeout)
+	assert.True(t, timeout.Timeout())
+}
+
 func TestReconnect(t *testing.T) {
 	ctx := t.Context()
 
