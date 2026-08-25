@@ -13,7 +13,6 @@ import (
 	coretypes "github.com/projecteru2/core/types"
 	zerolog "github.com/rs/zerolog/log"
 	"github.com/urfave/cli/v3"
-	_ "go.uber.org/automaxprocs"
 
 	"github.com/projecteru2/agent/api"
 	"github.com/projecteru2/agent/manager/node"

@@ -17,7 +17,6 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/urfave/cli/v3 v3.11.0
 	github.com/vishvananda/netns v0.0.5
-	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/sys v0.47.0
 	gopkg.in/yaml.v3 v3.0.1
 )
