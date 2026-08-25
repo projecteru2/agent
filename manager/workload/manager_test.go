@@ -34,6 +34,7 @@ func newMockWorkloadManager(t *testing.T) *Manager {
 		CheckOnlyMine:     false,
 		Store:             common.MocksStore,
 		Runtimes:          types.RuntimesConfig{Mocks: &types.MocksConfig{}},
+		Metrics:           types.MetricsConfig{Step: 10},
 		Log: types.LogConfig{
 			Stdout: true,
 		},

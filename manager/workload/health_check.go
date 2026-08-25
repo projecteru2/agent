@@ -50,6 +50,9 @@ func (m *Manager) checkOneWorkload(ctx context.Context, w *source.Workload) bool
 		logger.Error(ctx, err, "failed to get status of workload")
 		return false
 	}
+	if status.Running {
+		m.start(ctx, w)
+	}
 
 	if err = m.setWorkloadStatus(ctx, status); err != nil {
 		logger.Error(ctx, err, "update workload status failed")
