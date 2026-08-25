@@ -23,7 +23,6 @@ import (
 	"github.com/projecteru2/core/cluster"
 	"github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
-	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/vishvananda/netns"
 
@@ -73,11 +72,8 @@ func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, err
 		}
 	}
 
-	cpus, err := cpu.Info()
-	if err != nil {
-		return nil, err
-	}
-	logger.Infof(ctx, "Host has %d cpus", len(cpus))
+	cpus := runtime.NumCPU()
+	logger.Infof(ctx, "Host has %d cpus", cpus)
 
 	memory, err := mem.VirtualMemory()
 	if err != nil {
@@ -85,7 +81,7 @@ func New(ctx context.Context, config *types.Config, nodeIP string) (*Docker, err
 	}
 	logger.Infof(ctx, "Host has %d memory", memory.Total)
 
-	d.cpuCore = float64(len(cpus))
+	d.cpuCore = float64(cpus)
 	d.memory = int64(min(memory.Total, math.MaxInt64))
 	return d, nil
 }
