@@ -6,7 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	statsdlib "github.com/CMGS/statsd"
 	"github.com/projecteru2/core/cluster"
 	"github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
@@ -25,7 +24,7 @@ var (
 
 type MetricsClient struct {
 	statsd       string
-	statsdClient *statsdlib.Client
+	statsdClient *coreutils.Statsd
 	prefix       string
 	data         map[string]float64
 
@@ -462,13 +461,10 @@ func (m *MetricsClient) checkConn(ctx context.Context) error {
 	if m.statsdClient != nil {
 		return nil
 	}
-	logger := log.WithFunc("checkConn")
 	// statsd speaks UDP only, so a client never has to be renewed
 	var err error
-	if m.statsdClient, err = statsdlib.New(m.statsd, statsdlib.WithErrorHandler(func(err error) {
-		logger.Error(ctx, err, "[statsd] Sending statsd failed")
-	})); err != nil {
-		logger.Error(ctx, err, "[statsd] Connect statsd failed")
+	if m.statsdClient, err = coreutils.NewStatsd(m.statsd); err != nil {
+		log.WithFunc("checkConn").Error(ctx, err, "[statsd] Connect statsd failed")
 		return err
 	}
 	return nil
@@ -479,6 +475,9 @@ func removeMetricsClient(ID string) {
 	defer clientsMutex.Unlock()
 	if metricsClient, ok := clients[ID]; ok {
 		metricsClient.Unregister()
+		if metricsClient.statsdClient != nil {
+			_ = metricsClient.statsdClient.Close()
+		}
 		delete(clients, ID)
 	}
 }

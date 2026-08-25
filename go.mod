@@ -3,7 +3,6 @@ module github.com/projecteru2/agent
 go 1.27.0
 
 require (
-	github.com/CMGS/statsd v0.0.0-20160223095033-48c421b3c1ab
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/jinzhu/configor v1.2.2
@@ -23,7 +22,6 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/alexcesaro/statsd v2.0.0+incompatible // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
