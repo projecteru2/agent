@@ -45,6 +45,11 @@ func TestReadRendersAProcessWorkload(t *testing.T) {
 	}, w.Meta)
 }
 
+func TestLocalIPFallsBackToLoopbackOnlyForAProcess(t *testing.T) {
+	assert.Equal(t, common.LocalIP, (&File{Kind: KindProcess}).localIP())
+	assert.Empty(t, (&File{Kind: KindVM}).localIP())
+}
+
 func TestReadRendersAVMWorkload(t *testing.T) {
 	f, err := vmDir().Read(vmWorkload)
 	require.NoError(t, err)

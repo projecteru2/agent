@@ -105,9 +105,16 @@ func (f *File) Workload(running bool) *source.Workload {
 		NetnsPID:          f.NetnsPID,
 		HostIface:         f.Iface,
 		HostIfaceMirrored: f.Kind == KindVM,
-		LocalIP:           cmp.Or(source.Addr(f.Networks), common.LocalIP),
+		LocalIP:           f.localIP(),
 		Running:           running,
 	}
+}
+
+func (f *File) localIP() string {
+	if f.Kind == KindProcess {
+		return cmp.Or(source.Addr(f.Networks), common.LocalIP)
+	}
+	return source.Addr(f.Networks)
 }
 
 func IDFromFile(name string) (string, bool) {
