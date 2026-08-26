@@ -18,7 +18,6 @@ const (
 	stateInactive = "inactive"
 	stateFailed   = "failed"
 
-	eventType   = "process"
 	signalDepth = 100
 )
 
@@ -88,7 +87,7 @@ func (s *Systemd) Get(ctx context.Context, ID string) (*source.Workload, error) 
 }
 
 func (s *Systemd) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage, <-chan error) {
-	return source.PipeEvents(ctx, s.reporter, eventType,
+	return source.PipeEvents(ctx, s.reporter,
 		func(ctx context.Context) error { return s.dir.Watch(ctx, s.reporter) },
 		s.watchUnits,
 	)

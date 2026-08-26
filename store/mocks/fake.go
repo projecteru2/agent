@@ -32,7 +32,7 @@ func NewFakeStore() store.Store {
 		if !ok {
 			return nil
 		}
-		return &types.Node{Name: node.Name}
+		return &types.Node{Endpoint: node.Endpoint}
 	}, func(ctx context.Context, nodename string) error {
 		m.Lock()
 		defer m.Unlock()
@@ -60,21 +60,7 @@ func NewFakeStore() store.Store {
 		}
 		return nil
 	})
-	m.On("GetNodeStatus", mock.Anything, mock.Anything).Return(func(ctx context.Context, nodename string) *types.NodeStatus {
-		m.Lock()
-		defer m.Unlock()
-		if status, ok := m.nodeStatus[nodename]; ok {
-			return &types.NodeStatus{
-				Nodename: status.Nodename,
-				Alive:    status.Alive,
-			}
-		}
-		return &types.NodeStatus{
-			Nodename: nodename,
-			Alive:    false,
-		}
-	}, nil)
-	m.On("SetWorkloadStatus", mock.Anything, mock.Anything, mock.Anything).Return(func(ctx context.Context, status *types.WorkloadStatus, ttl int64) error {
+	m.On("SetWorkloadStatus", mock.Anything, mock.Anything).Return(func(ctx context.Context, status *types.WorkloadStatus) error {
 		logger.Infof(ctx, "set workload status: %+v", status)
 		m.Lock()
 		defer m.Unlock()
@@ -84,6 +70,15 @@ func NewFakeStore() store.Store {
 	m.On("GetIdentifier", mock.Anything).Return("fake-identifier")
 
 	return m
+}
+
+func (m *MockStore) GetMockNodeStatus(nodename string) *types.NodeStatus {
+	m.Lock()
+	defer m.Unlock()
+	if status, ok := m.nodeStatus[nodename]; ok {
+		return &types.NodeStatus{Nodename: status.Nodename, Alive: status.Alive}
+	}
+	return &types.NodeStatus{Nodename: nodename}
 }
 
 func (m *MockStore) GetMockWorkloadStatus(ID string) *types.WorkloadStatus {
@@ -109,13 +104,7 @@ func (m *MockStore) init() {
 	m.workloadStatus = map[string]*types.WorkloadStatus{}
 	m.nodeStatus = map[string]*types.NodeStatus{}
 	m.nodeInfo = map[string]*types.Node{
-		"fake": {
-			Name:     "fake",
-			Endpoint: "eva://127.0.0.1:6666",
-		},
-		"faker": {
-			Name:     "faker",
-			Endpoint: "eva://127.0.0.1:6667",
-		},
+		"fake":  {Endpoint: "eva://127.0.0.1:6666"},
+		"faker": {Endpoint: "eva://127.0.0.1:6667"},
 	}
 }

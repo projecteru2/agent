@@ -85,11 +85,6 @@ type Config struct {
 	GlobalConnectionTimeout time.Duration `yaml:"global_connection_timeout" default:"5s"`
 }
 
-// GetHealthCheckStatusTTL returns 0: selfmon lives in eru-core, so core owns the ttl.
-func (config *Config) GetHealthCheckStatusTTL() int64 {
-	return 0
-}
-
 // Prepare overrides the loaded config with the command line flags.
 func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 	if c.String("hostname") != "" {

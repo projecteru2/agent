@@ -16,11 +16,7 @@ import (
 	"github.com/projecteru2/agent/types"
 )
 
-const (
-	eventType = "vm"
-
-	procsFile = "cgroup.procs"
-)
+const procsFile = "cgroup.procs"
 
 var (
 	_ source.Source    = (*Cocoon)(nil)
@@ -87,7 +83,7 @@ func (c *Cocoon) Refresh(ID string) (*source.Workload, error) {
 }
 
 func (c *Cocoon) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage, <-chan error) {
-	return source.PipeEvents(ctx, c.reporter, eventType,
+	return source.PipeEvents(ctx, c.reporter,
 		func(ctx context.Context) error { return c.dir.Watch(ctx, c.reporter) },
 		func(ctx context.Context) error { c.watchDaemon(ctx); return nil },
 	)

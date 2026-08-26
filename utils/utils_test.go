@@ -24,7 +24,6 @@ func TestWritePid(t *testing.T) {
 	assert.Equal(t, strconv.Itoa(os.Getpid()), string(content))
 }
 
-
 func TestReplaceNonUtf8(t *testing.T) {
 	str := "test, 1\x00\xff\x01\xbb\xfd\xff\xfd\n"
 	assert.Equal(t, "test, 1\\x00\\xff\\x01\\xbb\\xfd\\xff\\xfd\n", ReplaceNonUtf8(str))
@@ -64,10 +63,6 @@ func TestUseLabelAsFilter(t *testing.T) {
 	assert.Equal(t, UseLabelAsFilter(), false)
 	t.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", "label")
 	assert.Equal(t, UseLabelAsFilter(), true)
-}
-
-func TestGetMaxAttemptsByTTL(t *testing.T) {
-	assert.Equal(t, GetMaxAttemptsByTTL(0), 5)
 }
 
 func TestGetIP(t *testing.T) {

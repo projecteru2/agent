@@ -33,11 +33,6 @@ func UseLabelAsFilter() bool {
 	return os.Getenv("ERU_AGENT_EXPERIMENTAL_FILTER") == "label"
 }
 
-// GetMaxAttemptsByTTL is fixed: core owns status expiry, so every call site passes a zero ttl.
-func GetMaxAttemptsByTTL(ttl int64) int {
-	return 5
-}
-
 // ReplaceNonUtf8 replaces non-utf8 characters in \x format.
 func ReplaceNonUtf8(str string) string {
 	if str == "" {

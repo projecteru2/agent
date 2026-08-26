@@ -31,21 +31,19 @@ func (c *Store) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
 	return IDs, nil
 }
 
-func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus, ttl int64) error {
+func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error {
 	workloadStatus := fmt.Sprintf("%+v", status)
-	if ttl == 0 {
-		if cached, ok := c.cache.Get(status.ID); ok && cached == workloadStatus {
-			return nil
-		}
+	if cached, ok := c.cache.Get(status.ID); ok && cached == workloadStatus {
+		return nil
 	}
 
+	// core's selfmon owns status expiry, so the reported ttl stays zero
 	statusPb := &pb.WorkloadStatus{
 		Id:        status.ID,
 		Running:   status.Running,
 		Healthy:   status.Healthy,
 		Networks:  status.Networks,
 		Extension: status.Extension,
-		Ttl:       ttl,
 
 		Appname:    status.Appname,
 		Entrypoint: status.Entrypoint,
@@ -61,14 +59,11 @@ func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadSta
 		_, err = c.GetClient().SetWorkloadsStatus(ctx, opts)
 	})
 
-	if ttl == 0 {
-		if err != nil {
-			c.cache.Delete(status.ID)
-		} else {
-			c.cache.Set(status.ID, workloadStatus, getCacheTTL(c.config.HealthCheck.CacheTTL))
-		}
+	if err != nil {
+		c.cache.Delete(status.ID)
+	} else {
+		c.cache.Set(status.ID, workloadStatus, getCacheTTL(c.config.HealthCheck.CacheTTL))
 	}
-
 	return err
 }
 

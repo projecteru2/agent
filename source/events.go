@@ -3,21 +3,20 @@ package source
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/projecteru2/agent/types"
 )
 
 type WatchFunc func(ctx context.Context) error
 
-func PipeEvents(ctx context.Context, reporter *Reporter, eventType string, watchers ...WatchFunc) (<-chan *types.WorkloadEventMessage, <-chan error) {
+func PipeEvents(ctx context.Context, reporter *Reporter, watchers ...WatchFunc) (<-chan *types.WorkloadEventMessage, <-chan error) {
 	eventChan := make(chan *types.WorkloadEventMessage)
 	errChan := make(chan error, 1)
 
 	ctx, cancel := context.WithCancel(ctx)
 	detach := reporter.Attach(func(ID, action string) {
 		select {
-		case eventChan <- &types.WorkloadEventMessage{ID: ID, Type: eventType, Action: action, TimeNano: time.Now().UnixNano()}:
+		case eventChan <- &types.WorkloadEventMessage{ID: ID, Action: action}:
 		case <-ctx.Done():
 		}
 	})

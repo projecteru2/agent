@@ -123,6 +123,6 @@ func (m *Manager) workloadStatus(ctx context.Context, w *source.Workload) (*type
 
 func (m *Manager) setWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error {
 	return utils.BackoffRetry(ctx, 3, func() error {
-		return m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL())
+		return m.store.SetWorkloadStatus(ctx, status)
 	})
 }

@@ -11,6 +11,8 @@ import (
 	"github.com/projecteru2/agent/utils"
 )
 
+const startingCheckAttempts = 5
+
 func (m *Manager) monitor(ctx context.Context) {
 	logger := log.WithFunc("workload.monitor")
 	for {
@@ -43,7 +45,7 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 		retryTask.Stop()
 	}
 
-	retryTask := utils.NewRetryTask(ctx, utils.GetMaxAttemptsByTTL(m.config.GetHealthCheckStatusTTL()), func() error {
+	retryTask := utils.NewRetryTask(ctx, startingCheckAttempts, func() error {
 		w, err := m.source.Get(ctx, ID)
 		if err != nil {
 			return err

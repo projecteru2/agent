@@ -55,12 +55,12 @@ func (c *JournalEncoder) Encode(logline *types.Log) error {
 
 	vars := map[string]string{
 		common.FieldIdentifier: logline.Name,
-		"ID":                logline.ID,
-		"TYPE":              logline.Type,
-		"ENTRY_POINT":       logline.EntryPoint,
-		"IDENT":             logline.Ident,
-		"DATE_TIME":         logline.Datetime,
-		"EXTRA":             string(extra),
+		"ID":                   logline.ID,
+		"TYPE":                 logline.Type,
+		"ENTRY_POINT":          logline.EntryPoint,
+		"IDENT":                logline.Ident,
+		"DATE_TIME":            logline.Datetime,
+		"EXTRA":                string(extra),
 	}
 
 	c.mu.Lock()

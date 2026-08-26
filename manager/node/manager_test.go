@@ -24,14 +24,12 @@ func TestRun(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Duration(manager.config.HeartbeatInterval*3)*time.Second)
 	defer cancel()
 
-	status, err := store.GetNodeStatus(ctx, "fake")
-	assert.Nil(t, err)
+	status := store.GetMockNodeStatus("fake")
 	assert.Equal(t, status.Alive, false)
 
 	go func() {
 		time.Sleep(time.Duration(manager.config.HeartbeatInterval*2) * time.Second)
-		status, err := store.GetNodeStatus(ctx, "fake")
-		assert.Nil(t, err)
+		status := store.GetMockNodeStatus("fake")
 		assert.Equal(t, status.Alive, true)
 	}()
 
@@ -83,13 +81,11 @@ func TestExitRemovesNodeStatus(t *testing.T) {
 	store := manager.store.(*storemocks.MockStore)
 
 	manager.nodeStatusReport(t.Context())
-	status, err := store.GetNodeStatus(t.Context(), "fake")
-	assert.NoError(t, err)
+	status := store.GetMockNodeStatus("fake")
 	assert.True(t, status.Alive)
 
 	assert.NoError(t, manager.Exit(t.Context()))
-	status, err = store.GetNodeStatus(t.Context(), "fake")
-	assert.NoError(t, err)
+	status = store.GetMockNodeStatus("fake")
 	assert.False(t, status.Alive)
 }
 

@@ -61,7 +61,7 @@ func TestHealthCheckReportsCoreRunningWorkloadMissingFromRuntime(t *testing.T) {
 		Nodename:   "fake",
 		Entrypoint: "eva3",
 	}
-	require.NoError(t, store.SetWorkloadStatus(t.Context(), status, 0))
+	require.NoError(t, store.SetWorkloadStatus(t.Context(), status))
 
 	manager.checkAllWorkloads(t.Context())
 
@@ -78,7 +78,7 @@ func TestHealthCheckKeepsAWorkloadTheListingMissed(t *testing.T) {
 	manager.source = &blindListSource{sweepRaceSource{workloads: []*source.Workload{w}}}
 	store := manager.store.(*mocks.MockStore)
 	status := &types.WorkloadStatus{ID: w.ID, Running: true, Healthy: true, Nodename: "fake"}
-	require.NoError(t, store.SetWorkloadStatus(t.Context(), status, 0))
+	require.NoError(t, store.SetWorkloadStatus(t.Context(), status))
 
 	manager.checkAllWorkloads(t.Context())
 
@@ -95,7 +95,7 @@ func TestHealthCheckSamplesAWorkloadStartingMidSweep(t *testing.T) {
 	manager.source = src
 	w := &source.Workload{ID: "Misato", CgroupPath: t.TempDir(), Running: true}
 	status := &types.WorkloadStatus{ID: w.ID, Running: true, Healthy: true, Nodename: "fake"}
-	require.NoError(t, manager.store.SetWorkloadStatus(t.Context(), status, 0))
+	require.NoError(t, manager.store.SetWorkloadStatus(t.Context(), status))
 	manager.store = &sweepRaceStore{Store: manager.store, src: src, starting: w}
 
 	manager.checkAllWorkloads(t.Context())
