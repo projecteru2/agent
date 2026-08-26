@@ -15,7 +15,7 @@ func PipeEvents(ctx context.Context, reporter *Reporter, eventType string, watch
 	errChan := make(chan error, 1)
 
 	ctx, cancel := context.WithCancel(ctx)
-	reporter.Attach(func(ID, action string) {
+	detach := reporter.Attach(func(ID, action string) {
 		select {
 		case eventChan <- &types.WorkloadEventMessage{ID: ID, Type: eventType, Action: action, TimeNano: time.Now().UnixNano()}:
 		case <-ctx.Done():
@@ -30,10 +30,6 @@ func PipeEvents(ctx context.Context, reporter *Reporter, eventType string, watch
 	}
 
 	go func() {
-		defer cancel()
-		defer close(eventChan)
-		defer close(errChan)
-
 		var wg sync.WaitGroup
 		for _, watch := range watchers {
 			wg.Go(func() {
@@ -43,6 +39,10 @@ func PipeEvents(ctx context.Context, reporter *Reporter, eventType string, watch
 			})
 		}
 		wg.Wait()
+		cancel()
+		detach()
+		close(eventChan)
+		close(errChan)
 	}()
 
 	return eventChan, errChan

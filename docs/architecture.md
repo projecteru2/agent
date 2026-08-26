@@ -39,6 +39,8 @@ On shutdown the behaviour depends on the signal:
 - `SIGINT`, `SIGTERM`, `SIGQUIT` — the agent calls `SetNodeStatus` with a ttl of `-1`, which removes the status. Core sees the node leave immediately.
 - `SIGUSR1` — the agent exits without touching the status. This is the restart path, and it is why the systemd unit sets `RestartKillSignal=SIGUSR1`.
 
+The final removal waits for any in-flight heartbeat write and prevents another report from starting, so an older heartbeat cannot restore the status after the removal.
+
 ## Workload manager
 
 `manager/workload` owns everything about the workloads on the node.
@@ -48,13 +50,13 @@ On shutdown the behaviour depends on the signal:
 **Event watch.** It subscribes to the runtime's event stream, filtered to the same set of workloads, and handles two actions:
 
 - `start` — fetch status; forward and sample if running; if the workload is already healthy, report it, otherwise start a backoff retry task that re-checks it until it becomes healthy or the attempts run out. A second `start` for the same workload cancels the previous task.
-- `die` — fetch status and report it.
+- `die` — stop local sampling and forwarding, then fetch and report the stopped status; if the runtime already deleted the record, the id alone is enough to report it gone.
 
 If the stream errors the manager waits `global_connection_timeout` and resubscribes, so a runtime daemon restart is survivable.
 
-**Health sweep.** Every `healthcheck.interval` seconds it lists **all** workloads, stopped ones included, and re-checks each. Listing all of them is deliberate: an event-driven check that returns late must not be the last word on a workload the die event already buried.
+**Health sweep.** Every `healthcheck.interval` seconds it lists **all** runtime workloads, stopped ones included, and the workloads core still considers running on this node. It re-checks every runtime workload, stops local sampling and forwarding for stopped ones, and reports a core-running workload missing from the runtime as gone. The next sweep therefore repairs both a delete missed while the event stream reconnects and a stale running check that finishes after a die event.
 
-**Metrics.** Each running workload gets one sampling goroutine, started when the workload is first seen running and cancelled on its die event. The sampler reads the workload's cgroup v2 files and its netns counters directly, so a tick costs a handful of small file reads and no call to any daemon. See [metrics](metrics.md).
+**Metrics.** Each running workload gets one sampling goroutine, started when the workload is first seen running and cancelled when a die event or health sweep observes it stopped. The sampler reads the workload's cgroup v2 files and its netns counters directly, so a tick costs a handful of small file reads and no call to any daemon. See [metrics](metrics.md).
 
 **Logs.** A workload's output reaches the agent one of two ways, and the source decides which.
 
@@ -86,4 +88,4 @@ Both the event path and the sweep report through `store.Store`. The core store s
 
 ## Concurrency
 
-Health checks for one workload are serialised by a per-id compare-and-swap lock, so an event-driven check and a sweep check cannot run against the same workload at once. Metrics sampling is deduplicated the same way: starting a sampler for a workload cancels the one already running for that id. Everything else is plain goroutines; the process has no worker pool and no `init()`.
+Health probes for one workload are deduplicated by a per-id compare-and-swap lock. Sampling and log forwarding have one task per workload under their own locks; repeated starts leave the task in place, while a die event or stopped health result removes it. Everything else is plain goroutines; the process has no worker pool and no `init()`.

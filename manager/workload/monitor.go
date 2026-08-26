@@ -104,8 +104,7 @@ func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.Workload
 func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEventMessage) {
 	logger := log.WithFunc("workload.handleWorkloadDie").WithField("ID", event.ID)
 	logger.Debug(ctx, "handling die")
-	m.stopCollecting(event.ID)
-	m.stopForwarding(event.ID)
+	m.stop(event.ID)
 
 	status, err := m.goneStatus(ctx, event.ID)
 	if err != nil {
@@ -118,8 +117,6 @@ func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEv
 	}
 }
 
-// goneStatus falls back to the id alone: a workload deleted out of band is one no runtime can describe,
-// and leaving it unreported keeps core calling it running for ever.
 func (m *Manager) goneStatus(ctx context.Context, ID string) (*types.WorkloadStatus, error) {
 	w, err := m.source.Get(ctx, ID)
 	if err != nil {

@@ -43,6 +43,10 @@ type forgetfulSource struct {
 	source.Source
 }
 
+func (f *forgetfulSource) List(context.Context) ([]*source.Workload, error) {
+	return nil, nil
+}
+
 func (f *forgetfulSource) Get(context.Context, string) (*source.Workload, error) {
 	return nil, errors.New("no runtime on this node knows this workload")
 }

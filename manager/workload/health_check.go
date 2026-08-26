@@ -3,6 +3,7 @@ package workload
 import (
 	"context"
 	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/projecteru2/core/log"
@@ -28,7 +29,6 @@ func (m *Manager) healthCheck(ctx context.Context) {
 	}
 }
 
-// checkAllWorkloads lists stopped workloads too, so a late check cannot resurrect a dead one.
 func (m *Manager) checkAllWorkloads(ctx context.Context) {
 	logger := log.WithFunc("workload.checkAllWorkloads")
 	logger.Debug(ctx, "health check begin")
@@ -38,9 +38,23 @@ func (m *Manager) checkAllWorkloads(ctx context.Context) {
 		return
 	}
 
-	for _, w := range workloads {
-		go m.checkOneWorkload(ctx, w)
+	runningIDs, err := m.store.ListRunningWorkloadIDs(ctx)
+	if err != nil {
+		logger.Error(ctx, err, "failed to list running workloads from core")
 	}
+
+	listed := make(map[string]struct{}, len(workloads))
+	var wg sync.WaitGroup
+	for _, w := range workloads {
+		listed[w.ID] = struct{}{}
+		wg.Go(func() { m.checkOneWorkload(ctx, w) })
+	}
+	for _, ID := range runningIDs {
+		if _, ok := listed[ID]; !ok {
+			wg.Go(func() { m.handleWorkloadDie(ctx, &types.WorkloadEventMessage{ID: ID}) })
+		}
+	}
+	wg.Wait()
 }
 
 func (m *Manager) checkOneWorkload(ctx context.Context, w *source.Workload) bool {
@@ -52,6 +66,8 @@ func (m *Manager) checkOneWorkload(ctx context.Context, w *source.Workload) bool
 	}
 	if status.Running {
 		m.start(ctx, w)
+	} else {
+		m.stop(w.ID)
 	}
 
 	if err = m.setWorkloadStatus(ctx, status); err != nil {
