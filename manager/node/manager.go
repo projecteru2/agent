@@ -10,7 +10,6 @@ import (
 	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/store"
 	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
 )
 
 type Manager struct {
@@ -45,12 +44,8 @@ func (m *Manager) Exit(ctx context.Context) error {
 	logger := log.WithFunc("node.Exit").WithField("hostname", m.config.HostName)
 	logger.Info(ctx, "remove node status")
 
-	var err error
-	utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		// a negative ttl removes the node status
-		err = m.setNodeStatus(ctx, -1)
-	})
-	if err != nil {
+	// a negative ttl removes the node status
+	if err := m.setNodeStatus(ctx, -1); err != nil {
 		logger.Error(ctx, err, "failed to remove node status")
 		return err
 	}

@@ -58,6 +58,25 @@ func TestExitLeavesTheDeleteAsTheLastNodeStatusWrite(t *testing.T) {
 	assert.Equal(t, []int64{180, -1}, statusStore.statusWrites())
 }
 
+func TestExitLeavesTheRemovalBudgetToTheStore(t *testing.T) {
+	statusStore := newBudgetStatusStore()
+	manager := &Manager{
+		config: &types.Config{GlobalConnectionTimeout: time.Second},
+		store:  statusStore,
+	}
+
+	reportDone := make(chan error, 1)
+	go func() { reportDone <- manager.setNodeStatus(t.Context(), 180) }()
+	<-statusStore.entered
+
+	exitDone := make(chan error, 1)
+	go func() { exitDone <- manager.Exit(t.Context()) }()
+	close(statusStore.release)
+
+	assert.NoError(t, <-reportDone)
+	assert.NoError(t, <-exitDone)
+}
+
 func TestExitRemovesNodeStatus(t *testing.T) {
 	manager := newMockNodeManager(t)
 	store := manager.store.(*storemocks.MockStore)
@@ -140,6 +159,28 @@ func (s *orderedStatusStore) statusWrites() []int64 {
 
 func newOrderedStatusStore() *orderedStatusStore {
 	return &orderedStatusStore{entered: make(chan struct{}), release: make(chan struct{})}
+}
+
+type budgetStatusStore struct {
+	store.Store
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (s *budgetStatusStore) SetNodeStatus(ctx context.Context, ttl int64) error {
+	if ttl >= 0 {
+		close(s.entered)
+		<-s.release
+		return nil
+	}
+	if _, ok := ctx.Deadline(); ok {
+		return errors.New("the removal inherited an outer deadline")
+	}
+	return nil
+}
+
+func newBudgetStatusStore() *budgetStatusStore {
+	return &budgetStatusStore{entered: make(chan struct{}), release: make(chan struct{})}
 }
 
 type retryingStatusStore struct {
