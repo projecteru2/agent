@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/projecteru2/core/log"
@@ -89,37 +88,10 @@ func (c *Cocoon) Refresh(ID string) (*source.Workload, error) {
 }
 
 func (c *Cocoon) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage, <-chan error) {
-	eventChan := make(chan *types.WorkloadEventMessage)
-	errChan := make(chan error, 1)
-
-	ctx, cancel := context.WithCancel(ctx)
-	c.reporter.Attach(func(ID, action string) {
-		select {
-		case eventChan <- &types.WorkloadEventMessage{ID: ID, Type: eventType, Action: action, TimeNano: time.Now().UnixNano()}:
-		case <-ctx.Done():
-		}
-	})
-
-	go func() {
-		defer cancel()
-		defer close(eventChan)
-		defer close(errChan)
-
-		var wg sync.WaitGroup
-		wg.Go(func() { c.watchDaemon(ctx) })
-		wg.Go(func() {
-			if err := c.dir.Watch(ctx, c.reporter); err != nil {
-				cancel()
-				select {
-				case errChan <- err:
-				default:
-				}
-			}
-		})
-		wg.Wait()
-	}()
-
-	return eventChan, errChan
+	return source.PipeEvents(ctx, c.reporter, eventType,
+		func(ctx context.Context) error { return c.dir.Watch(ctx, c.reporter) },
+		func(ctx context.Context) error { c.watchDaemon(ctx); return nil },
+	)
 }
 
 // Alive reports whether the vm scopes can still answer, which is what the daemon being optional means.

@@ -11,24 +11,15 @@ import (
 	"github.com/projecteru2/agent/utils"
 )
 
-var eventHandler = NewEventHandler()
-
-func (m *Manager) initMonitor(ctx context.Context) (<-chan *types.WorkloadEventMessage, <-chan error) {
-	eventHandler.Handle(common.StatusStart, m.handleWorkloadStart)
-	eventHandler.Handle(common.StatusDie, m.handleWorkloadDie)
-
-	return m.source.Events(ctx)
-}
-
 func (m *Manager) watchEvent(ctx context.Context, eventChan <-chan *types.WorkloadEventMessage) {
 	log.WithFunc("workload.watchEvent").Info(ctx, "status watch start")
-	eventHandler.Watch(ctx, eventChan)
+	m.events.Watch(ctx, eventChan)
 }
 
 func (m *Manager) monitor(ctx context.Context) {
 	logger := log.WithFunc("workload.monitor")
 	for {
-		eventChan, errChan := m.initMonitor(ctx)
+		eventChan, errChan := m.source.Events(ctx)
 		go m.watchEvent(ctx, eventChan)
 		select {
 		case <-ctx.Done():

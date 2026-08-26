@@ -3,8 +3,6 @@ package systemd
 import (
 	"context"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/coreos/go-systemd/v22/dbus"
 	"github.com/projecteru2/core/log"
@@ -90,44 +88,10 @@ func (s *Systemd) Get(ctx context.Context, ID string) (*source.Workload, error) 
 }
 
 func (s *Systemd) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage, <-chan error) {
-	eventChan := make(chan *types.WorkloadEventMessage)
-	errChan := make(chan error, 1)
-
-	ctx, cancel := context.WithCancel(ctx)
-	s.reporter.Attach(func(ID, action string) {
-		select {
-		case eventChan <- &types.WorkloadEventMessage{ID: ID, Type: eventType, Action: action, TimeNano: time.Now().UnixNano()}:
-		case <-ctx.Done():
-		}
-	})
-	fail := func(err error) {
-		cancel()
-		select {
-		case errChan <- err:
-		default:
-		}
-	}
-
-	go func() {
-		defer cancel()
-		defer close(eventChan)
-		defer close(errChan)
-
-		var wg sync.WaitGroup
-		wg.Go(func() {
-			if err := s.dir.Watch(ctx, s.reporter); err != nil {
-				fail(err)
-			}
-		})
-		wg.Go(func() {
-			if err := s.watchUnits(ctx); err != nil {
-				fail(err)
-			}
-		})
-		wg.Wait()
-	}()
-
-	return eventChan, errChan
+	return source.PipeEvents(ctx, s.reporter, eventType,
+		func(ctx context.Context) error { return s.dir.Watch(ctx, s.reporter) },
+		s.watchUnits,
+	)
 }
 
 func (s *Systemd) Alive(ctx context.Context) bool {

@@ -137,10 +137,6 @@ func (config *Config) Prepare(ctx context.Context, c *cli.Command) {
 		config.CheckOnlyMine = true
 	}
 	config.Store = cmp.Or(c.String("store"), config.Store)
-	config.PidFile = cmp.Or(config.PidFile, "./agent.pid")
-	config.HealthCheck.Interval = cmp.Or(config.HealthCheck.Interval, 60)
-	config.HealthCheck.Timeout = cmp.Or(config.HealthCheck.Timeout, 10)
-	config.HealthCheck.CacheTTL = cmp.Or(config.HealthCheck.CacheTTL, 300)
 	if containerd := config.Runtimes.Containerd; containerd != nil {
 		containerd.Socket = cmp.Or(containerd.Socket, common.ContainerdSocket)
 		containerd.Namespace = cmp.Or(containerd.Namespace, common.ContainerdNamespace)

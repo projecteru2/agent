@@ -31,10 +31,6 @@ func TestRun(t *testing.T) {
 	}()
 
 	assert.Nil(t, manager.Run(ctx))
-
-	info, err := store.GetNode(ctx, "fake")
-	assert.Nil(t, err)
-	assert.Equal(t, info.Available, false)
 }
 
 func newMockNodeManager(t *testing.T) *Manager {

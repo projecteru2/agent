@@ -18,13 +18,3 @@ func NewDirWatcher(string) (*DirWatcher, error) {
 func (d *DirWatcher) Run(context.Context, func(name string, created bool)) error {
 	return errNoInotify
 }
-
-type FileWatcher struct{}
-
-func NewFileWatcher(string) (*FileWatcher, error) {
-	return nil, errNoInotify
-}
-
-func (f *FileWatcher) Run(context.Context, func()) error {
-	return errNoInotify
-}
