@@ -35,10 +35,15 @@ const (
 type vmStatus struct {
 	Name  string `json:"name"`
 	State string `json:"state"`
+	Live  *bool  `json:"live"`
 }
 
 func (s vmStatus) running() bool {
 	return s.State == stateRunning
+}
+
+func (s vmStatus) unsure() bool {
+	return s.running() && s.Live != nil && !*s.Live
 }
 
 type vmsResponse struct {
@@ -100,6 +105,9 @@ func (d *daemon) vms(ctx context.Context) (map[string]bool, error) {
 	}
 	live := make(map[string]bool, len(body.VMs))
 	for _, vm := range body.VMs {
+		if vm.unsure() {
+			continue
+		}
 		live[vm.Name] = vm.running()
 	}
 	return live, nil
@@ -158,6 +166,9 @@ func dispatch(event string, data []byte, handle changeFunc) error {
 			return err
 		}
 		for _, vm := range body.VMs {
+			if vm.unsure() {
+				continue
+			}
 			handle(vm.Name, vm.running(), false)
 		}
 	case changeEvent:
@@ -165,7 +176,9 @@ func dispatch(event string, data []byte, handle changeFunc) error {
 		if err := json.Unmarshal(data, &msg); err != nil {
 			return err
 		}
-		handle(msg.Status.Name, msg.Status.running(), msg.Kind == changeDeleted)
+		if gone := msg.Kind == changeDeleted; gone || !msg.Status.unsure() {
+			handle(msg.Status.Name, msg.Status.running(), gone)
+		}
 	}
 	return nil
 }
