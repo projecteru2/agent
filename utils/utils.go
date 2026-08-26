@@ -22,10 +22,7 @@ import (
 // CgroupRoot is where the unified cgroup v2 hierarchy is mounted.
 const CgroupRoot = "/sys/fs/cgroup"
 
-var (
-	dockerized bool
-	once       sync.Once
-)
+var isDockerized = sync.OnceValue(func() bool { return os.Getenv(common.DOCKERIZED) != "" })
 
 func WritePid(ctx context.Context, path string) {
 	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
@@ -78,16 +75,9 @@ func ReplaceNonUtf8(str string) string {
 	return string(v)
 }
 
-func IsDockerized() bool {
-	once.Do(func() {
-		dockerized = os.Getenv(common.DOCKERIZED) != ""
-	})
-	return dockerized
-}
-
 // ProcRoot returns where this agent reads the host's procfs.
 func ProcRoot() string {
-	if IsDockerized() {
+	if isDockerized() {
 		return "/hostProc"
 	}
 	return "/proc"

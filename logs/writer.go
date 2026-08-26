@@ -183,8 +183,7 @@ func (w *Writer) checkError(ctx context.Context, err error) {
 	}
 }
 
-// deadlineConn bounds a write, so a target that accepts the connection and then
-// stops reading is retried like a down one instead of blocking the node's forwarding.
+// deadlineConn bounds a write, so a target that accepts and then stops reading is retried like a down one.
 type deadlineConn struct {
 	net.Conn
 	timeout time.Duration

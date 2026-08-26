@@ -131,7 +131,7 @@ func TestRingKeepsTheLastBytes(t *testing.T) {
 func fakeReader(t *testing.T, body string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "fake-journalctl")
-	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+body), 0o700); err != nil { //nolint:gosec // a test fixture the test itself executes
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+body), 0o700); err != nil {
 		t.Fatalf("write fake reader: %v", err)
 	}
 	return path

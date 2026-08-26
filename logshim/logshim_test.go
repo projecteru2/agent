@@ -48,7 +48,6 @@ func TestRunSignalsReadinessBeforeItReads(t *testing.T) {
 
 func TestRunSplitsALineLongerThanTheBuffer(t *testing.T) {
 	sender := &fakeJournal{}
-	// a progress bar redraws with \r and never terminates a line, so the reader must cut it up itself
 	blob := strings.Repeat("x", lineMax+lineMax/2)
 	task := task{id: "myapp_web_EAXPcM", stdout: strings.NewReader(blob), stderr: empty(), ready: &fakePipe{}}
 

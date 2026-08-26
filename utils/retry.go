@@ -31,7 +31,7 @@ func NewRetryTask(ctx context.Context, maxAttempts int, f RetryFunc) *RetryTask 
 }
 
 func (r *RetryTask) Run(ctx context.Context) error {
-	logger := log.WithFunc("utils.RetryTask.Run")
+	logger := log.WithFunc("utils.Run")
 	logger.Debug(ctx, "start")
 	defer r.Stop()
 

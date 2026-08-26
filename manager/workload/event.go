@@ -47,8 +47,7 @@ func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventM
 	}
 }
 
-// serialQueue runs the work submitted for one key in submission order, one task at a time,
-// without making the submitter wait for the key that is busy.
+// serialQueue runs one key's tasks in submission order, without making a submitter wait for a busy key.
 type serialQueue struct {
 	mu      sync.Mutex
 	pending map[string][]func()

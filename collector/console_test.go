@@ -180,7 +180,6 @@ func listenAt(t *testing.T, path string) net.Listener {
 	return ln
 }
 
-// socketConsole serves one payload per connection, so a payload list is a list of vm lifetimes.
 func socketConsole(t *testing.T, payloads ...string) string {
 	t.Helper()
 	path := filepath.Join(shortDir(t), "c")
@@ -188,7 +187,6 @@ func socketConsole(t *testing.T, payloads ...string) string {
 	return path
 }
 
-// shortDir keeps a socket path inside the 104 byte sockaddr_un limit, which a test name blows past.
 func shortDir(t *testing.T) string {
 	t.Helper()
 	dir, err := os.MkdirTemp("", "eru")

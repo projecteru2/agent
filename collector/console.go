@@ -52,7 +52,7 @@ func NewConsole(workloadID, appname string, path pathFunc) *Console {
 }
 
 // Read follows the console until ctx is done, reconnecting so a vm that restarts comes back on its own.
-func (c *Console) Read(ctx context.Context, handle func(*Entry)) {
+func (c *Console) Read(ctx context.Context, handle EntryHandler) {
 	logger := log.WithFunc("collector.Read").WithField("ID", c.workloadID)
 
 	backoff := consoleRetryMin
@@ -81,7 +81,7 @@ func (c *Console) Read(ctx context.Context, handle func(*Entry)) {
 }
 
 // pump reads one console session, reporting whether it delivered a line so a retry can back off.
-func (c *Console) pump(ctx context.Context, handle func(*Entry)) (bool, error) {
+func (c *Console) pump(ctx context.Context, handle EntryHandler) (bool, error) {
 	conn, err := c.open(ctx)
 	if err != nil {
 		return false, err
@@ -124,7 +124,7 @@ func (c *Console) open(ctx context.Context) (io.ReadCloser, error) {
 	}
 }
 
-func (c *Console) emit(line string, handle func(*Entry)) {
+func (c *Console) emit(line string, handle EntryHandler) {
 	handle(&Entry{WorkloadID: c.workloadID, Stream: common.StreamConsole, Data: line, Time: time.Now()})
 	// journald holds the history core reads back over ssh, the same way it does for a container
 	if err := c.send(line, journal.PriInfo, c.vars); err != nil {

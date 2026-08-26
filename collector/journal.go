@@ -39,6 +39,8 @@ type Entry struct {
 	Time       time.Time
 }
 
+type EntryHandler func(*Entry)
+
 type journalRecord struct {
 	Cursor    string          `json:"__CURSOR"`
 	Realtime  string          `json:"__REALTIME_TIMESTAMP"`
@@ -73,7 +75,7 @@ func NewJournal(stateDir string) *Journal {
 }
 
 // Read follows the journal until ctx is done, calling handle for every eru workload line.
-func (j *Journal) Read(ctx context.Context, handle func(*Entry)) error {
+func (j *Journal) Read(ctx context.Context, handle EntryHandler) error {
 	err := j.read(ctx, handle)
 	if ctx.Err() != nil {
 		// a stop is not a reader failure, whatever the child made of being killed
@@ -82,7 +84,7 @@ func (j *Journal) Read(ctx context.Context, handle func(*Entry)) error {
 	return err
 }
 
-func (j *Journal) read(ctx context.Context, handle func(*Entry)) error {
+func (j *Journal) read(ctx context.Context, handle EntryHandler) error {
 	logger := log.WithFunc("collector.read")
 	// journald speaks a binary format only libsystemd reads, so its own tool is the reader
 	logger.Debugf(ctx, "forwarding workload logs needs %s on this node", j.binary)

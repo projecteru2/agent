@@ -110,7 +110,6 @@ func (f *File) Workload(running bool) *source.Workload {
 	}
 }
 
-// IDFromFile returns the workload id a meta file's name carries.
 func IDFromFile(name string) (string, bool) {
 	return strings.CutSuffix(name, suffix)
 }
