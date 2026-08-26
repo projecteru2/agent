@@ -21,7 +21,9 @@ const (
 	journalBinary = "journalctl"
 	cursorFile    = "journal.cursor"
 
-	defaultStream = "stdout"
+	defaultStream  = "stdout"
+	stderrStream   = "stderr"
+	stderrPriority = "3"
 
 	cursorFlushInterval = 5 * time.Second
 	pipeWaitDelay       = time.Second
@@ -45,6 +47,7 @@ type journalRecord struct {
 	Cursor    string          `json:"__CURSOR"`
 	Realtime  string          `json:"__REALTIME_TIMESTAMP"`
 	Message   json.RawMessage `json:"MESSAGE"`
+	Priority  string          `json:"PRIORITY"`
 	Unit      string          `json:"_SYSTEMD_UNIT"`
 	EruID     string          `json:"ERU_ID"`
 	EruStream string          `json:"ERU_STREAM"`
@@ -54,6 +57,9 @@ func (r *journalRecord) entry() *Entry {
 	stream := r.EruStream
 	if stream == "" {
 		stream = defaultStream
+		if r.Priority == stderrPriority {
+			stream = stderrStream
+		}
 	}
 	return &Entry{
 		WorkloadID: r.EruID,

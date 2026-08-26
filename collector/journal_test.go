@@ -46,6 +46,12 @@ func TestJournalRecordWithoutATimestampIsStampedOnRead(t *testing.T) {
 	assert.False(t, entries[3].Time.Before(before))
 }
 
+func TestJournalRecordMapsStderrPriority(t *testing.T) {
+	assert.Equal(t, "stderr", (&journalRecord{Priority: "3"}).entry().Stream)
+	assert.Equal(t, "stdout", (&journalRecord{Priority: "6"}).entry().Stream)
+	assert.Equal(t, "console", (&journalRecord{Priority: "3", EruStream: "console"}).entry().Stream)
+}
+
 func TestJournalArgsFollowFromTheSavedCursor(t *testing.T) {
 	assert.Equal(t, []string{
 		"--follow", "--output=json", "--no-pager", "--lines=0", "SYSLOG_IDENTIFIER=eru",
