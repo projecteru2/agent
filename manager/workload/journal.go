@@ -125,7 +125,7 @@ func (m *Manager) forward(ctx context.Context, entry *collector.Entry) {
 		Datetime:   entry.Time.Format(common.DateTimeFormat),
 		Extra:      target.extra,
 	}
-	m.logBroadcaster.logC <- l
+	m.logBroadcaster.broadcast(ctx, l)
 	if err := target.writer.Write(ctx, l); err != nil {
 		logger := log.WithFunc("workload.forward").WithField("ID", w.ID)
 		logger.Errorf(ctx, err, "%s workload %s write failed", w.Meta.Appname, w.Meta.Entrypoint)

@@ -109,7 +109,6 @@ func TestReconnect(t *testing.T) {
 	writer, err := NewWriter(ctx, addr, false)
 	assert.NoError(t, err)
 	assert.Nil(t, writer.enc)
-	assert.Equal(t, writer.needReconnect, true)
 
 	tcpL, err := net.Listen("tcp", ":34567")
 	assert.NoError(t, err)

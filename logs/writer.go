@@ -24,12 +24,11 @@ const (
 )
 
 type Writer struct {
-	mu            sync.RWMutex
-	addr          string
-	scheme        string
-	stdout        bool
-	enc           Encoder
-	needReconnect bool
+	mu     sync.RWMutex
+	addr   string
+	scheme string
+	stdout bool
+	enc    Encoder
 }
 
 func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, err error) {
@@ -54,7 +53,6 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 		return nil, err
 	case err != nil:
 		logger.Errorf(ctx, err, "failed to create writer encoder for %s, will retry", addr)
-		writer.needReconnect = true
 	default:
 		logger.Infof(ctx, "create writer for %s success", addr)
 	}
@@ -74,7 +72,6 @@ func (w *Writer) Write(ctx context.Context, logline *types.Log) error {
 	w.withLock(func() {
 		if w.enc == nil {
 			err = common.ErrConnecting
-			w.needReconnect = true
 			return
 		}
 		err = w.enc.Encode(logline)
@@ -130,11 +127,11 @@ func (w *Writer) createEncoder(ctx context.Context) (enc Encoder, err error) {
 }
 
 func (w *Writer) reconnect(ctx context.Context) {
-	needReconnect := false
+	connected := false
 	w.withRLock(func() {
-		needReconnect = w.needReconnect
+		connected = w.enc != nil
 	})
-	if !needReconnect {
+	if connected {
 		return
 	}
 	logger := log.WithFunc("logs.reconnect")
@@ -144,7 +141,6 @@ func (w *Writer) reconnect(ctx context.Context) {
 	if err == nil {
 		w.withLock(func() {
 			w.enc = enc
-			w.needReconnect = false
 		})
 		logger.Debugf(ctx, "connected to %s", w.addr)
 		return
@@ -177,7 +173,6 @@ func (w *Writer) checkError(ctx context.Context, err error) {
 			if w.enc != nil {
 				_ = w.enc.Close()
 				w.enc = nil
-				w.needReconnect = true
 			}
 		})
 	}

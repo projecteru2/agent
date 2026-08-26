@@ -11,16 +11,12 @@ import (
 	"github.com/projecteru2/agent/utils"
 )
 
-func (m *Manager) watchEvent(ctx context.Context, eventChan <-chan *types.WorkloadEventMessage) {
-	log.WithFunc("workload.watchEvent").Info(ctx, "status watch start")
-	m.events.Watch(ctx, eventChan)
-}
-
 func (m *Manager) monitor(ctx context.Context) {
 	logger := log.WithFunc("workload.monitor")
 	for {
 		eventChan, errChan := m.source.Events(ctx)
-		go m.watchEvent(ctx, eventChan)
+		logger.Info(ctx, "status watch start")
+		go m.events.Watch(ctx, eventChan)
 		select {
 		case <-ctx.Done():
 			logger.Info(ctx, "context canceled, stop monitoring")

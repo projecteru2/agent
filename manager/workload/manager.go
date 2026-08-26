@@ -70,8 +70,6 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 }
 
 func (m *Manager) Run(ctx context.Context) error {
-	go m.logBroadcaster.run(ctx)
-
 	// watching before the initial load means an event raised during it is handled, not missed
 	go m.monitor(ctx)
 
