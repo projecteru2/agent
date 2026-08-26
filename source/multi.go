@@ -62,11 +62,12 @@ func (m *Multi) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage,
 		for _, src := range m.sources {
 			events, errs := src.Events(ctx)
 			wg.Go(func() {
-				for {
+				for events != nil || errs != nil {
 					select {
 					case event, ok := <-events:
 						if !ok {
-							return
+							events = nil
+							continue
 						}
 						select {
 						case eventChan <- event:
@@ -74,13 +75,15 @@ func (m *Multi) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage,
 							return
 						}
 					case err, ok := <-errs:
-						if ok {
-							select {
-							case errChan <- err:
-							default:
-							}
-							cancel()
+						if !ok {
+							errs = nil
+							continue
 						}
+						select {
+						case errChan <- err:
+						default:
+						}
+						cancel()
 						return
 					case <-ctx.Done():
 						return

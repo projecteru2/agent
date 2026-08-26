@@ -118,6 +118,19 @@ func TestMultiStopsEveryRuntimeWhenOneFails(t *testing.T) {
 	assert.ErrorIs(t, got, errBroken)
 }
 
+func TestMultiDeliversTheErrorWhenBothChannelsClose(t *testing.T) {
+	for range 100 {
+		multi := &Multi{sources: []Source{&closedFailureSource{}, &fakeSource{}}}
+		_, errs := multi.Events(t.Context())
+		select {
+		case err := <-errs:
+			assert.ErrorIs(t, err, errBroken)
+		case <-time.After(5 * time.Second):
+			t.Fatal("the merged stream swallowed the failure")
+		}
+	}
+}
+
 type fakeSource struct {
 	workloads []*Workload
 	event     string
@@ -162,4 +175,17 @@ func (f *fakeSource) Events(ctx context.Context) (<-chan *types.WorkloadEventMes
 
 func (f *fakeSource) Alive(context.Context) bool {
 	return f.alive
+}
+
+type closedFailureSource struct {
+	fakeSource
+}
+
+func (f *closedFailureSource) Events(context.Context) (<-chan *types.WorkloadEventMessage, <-chan error) {
+	events := make(chan *types.WorkloadEventMessage)
+	errs := make(chan error, 1)
+	errs <- errBroken
+	close(events)
+	close(errs)
+	return events, errs
 }
