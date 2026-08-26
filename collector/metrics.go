@@ -240,7 +240,7 @@ func (m *MetricsClient) setVec(name, label string, value float64) {
 		return
 	}
 	if m.statsd != "" {
-		m.data[label+"."+g.statsd] = value
+		m.data[coreutils.CleanStatsdMetrics(label)+"."+g.statsd] = value
 	}
 	g.vector.WithLabelValues(label).Set(value)
 }
