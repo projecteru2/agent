@@ -115,6 +115,7 @@ func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {
 	if task, ok := m.collecting[w.ID]; ok {
 		select {
 		case <-task.done:
+			task.cancel()
 		default:
 			return
 		}
