@@ -91,7 +91,7 @@ func NewMetricsClient(statsd, hostname string, w *source.Workload, unsupported [
 
 	labelPairs := make([]string, 0, len(w.Meta.Labels))
 	for k, v := range w.Meta.Labels {
-		if strings.HasPrefix(k, cluster.ERUMark) || strings.HasPrefix(k, cluster.LabelMeta) {
+		if strings.HasPrefix(k, cluster.ERUMark) || strings.HasPrefix(k, "eru.") {
 			continue
 		}
 		labelPairs = append(labelPairs, fmt.Sprintf("%s=%s", k, v))
@@ -106,7 +106,7 @@ func NewMetricsClient(statsd, hostname string, w *source.Workload, unsupported [
 	}
 
 	tag := fmt.Sprintf("%s.%s", hostname, coreutils.ShortID(w.ID))
-	endpoint := fmt.Sprintf("%s.%s", w.Meta.Appname, w.Meta.Entrypoint)
+	endpoint := fmt.Sprintf("%s.%s", coreutils.CleanStatsdMetrics(w.Meta.Appname), coreutils.CleanStatsdMetrics(w.Meta.Entrypoint))
 
 	metricsClient := &MetricsClient{
 		statsd: statsd,

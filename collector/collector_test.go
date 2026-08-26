@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -67,6 +68,23 @@ func TestCollectAdoptsTheMetadataItReReadsAfterAFailure(t *testing.T) {
 	t.Cleanup(func() { removeMetricsClient(w.ID) })
 
 	assert.Eventually(t, func() bool { return sampling(w.ID) }, sampleTimeout, samplePoll)
+}
+
+func TestMetricsClientScrubsEruInternals(t *testing.T) {
+	w := &source.Workload{ID: "scrub", Meta: source.Meta{
+		Appname:    "my.app",
+		Entrypoint: "web",
+		Labels:     map[string]string{"eru.network.calico": "10.0.0.5", "ERU": "1", "team": "infra"},
+	}}
+	client := NewMetricsClient("127.0.0.1:8125", "node", w, nil)
+	defer removeMetricsClient(w.ID)
+
+	assert.Contains(t, client.prefix, "my-app.web")
+	descs := make(chan *prometheus.Desc, 1)
+	client.collectors[0].Describe(descs)
+	desc := (<-descs).String()
+	assert.Contains(t, desc, "team=infra")
+	assert.NotContains(t, desc, "eru.network")
 }
 
 func TestPublishSkipsAStepAcrossACounterReset(t *testing.T) {
