@@ -111,6 +111,9 @@ func (s *Systemd) watchUnits(ctx context.Context) error {
 	updates := make(chan *dbus.PropertiesUpdate, signalDepth)
 	errs := make(chan error, signalDepth)
 	s.conn.SetPropertiesSubscriber(updates, errs)
+	if err := s.relist(ctx); err != nil {
+		return err
+	}
 
 	for {
 		select {
