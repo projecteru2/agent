@@ -248,7 +248,7 @@ func (c *Collector) publishIO(ctx context.Context, client *MetricsClient, prev, 
 		client.IOServicedWrite(path, float64(dev.WriteIOs))
 
 		old, ok := before[key]
-		if !ok || dev.ReadBytes < old.ReadBytes || dev.WriteBytes < old.WriteBytes {
+		if !ok || dev.rewound(old) {
 			continue
 		}
 		client.IOServiceBytesReadPerSecond(path, float64(dev.ReadBytes-old.ReadBytes)/step)
@@ -281,7 +281,7 @@ func publishNet(client *MetricsClient, prev, next []netStat, step float64) {
 
 	for _, nic := range next {
 		old, ok := before[nic.Name]
-		if !ok || nic.BytesSent < old.BytesSent || nic.BytesRecv < old.BytesRecv {
+		if !ok || nic.rewound(old) {
 			continue
 		}
 		client.BytesSent(nic.Name, float64(nic.BytesSent-old.BytesSent)/step)

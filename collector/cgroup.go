@@ -39,6 +39,11 @@ type ioStat struct {
 	WriteIOs   uint64
 }
 
+func (s ioStat) rewound(old ioStat) bool {
+	return s.ReadBytes < old.ReadBytes || s.WriteBytes < old.WriteBytes ||
+		s.ReadIOs < old.ReadIOs || s.WriteIOs < old.WriteIOs
+}
+
 type cgroup struct {
 	path string
 }

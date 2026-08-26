@@ -26,6 +26,13 @@ func (s *netStat) mirror() {
 	s.DropIn, s.DropOut = s.DropOut, s.DropIn
 }
 
+func (s *netStat) rewound(old netStat) bool {
+	return s.BytesSent < old.BytesSent || s.BytesRecv < old.BytesRecv ||
+		s.PacketsSent < old.PacketsSent || s.PacketsRecv < old.PacketsRecv ||
+		s.ErrIn < old.ErrIn || s.ErrOut < old.ErrOut ||
+		s.DropIn < old.DropIn || s.DropOut < old.DropOut
+}
+
 func netStatsFromProc(procRoot string, pid int, iface string, mirrored bool) ([]netStat, error) {
 	lines, err := readLines(filepath.Join(procRoot, strconv.Itoa(pid), "net", "dev"))
 	if err != nil {

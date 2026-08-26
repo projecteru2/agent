@@ -100,6 +100,18 @@ func TestPublishSkipsAStepAcrossACounterReset(t *testing.T) {
 	assert.Positive(t, testutil.ToFloat64(client.gauges["cpu_host_usage"].plain))
 }
 
+func TestRewoundCatchesACounterTheBytesOutran(t *testing.T) {
+	oldNic := netStat{BytesSent: 100, PacketsSent: 1000, DropIn: 5}
+	assert.False(t, (&netStat{BytesSent: 100, PacketsSent: 1000, DropIn: 5}).rewound(oldNic))
+	assert.True(t, (&netStat{BytesSent: 200, PacketsSent: 1000}).rewound(oldNic))
+	assert.True(t, (&netStat{BytesSent: 200, PacketsSent: 17, DropIn: 5}).rewound(oldNic))
+	assert.False(t, (&netStat{BytesSent: 200, PacketsSent: 1200, DropIn: 5}).rewound(oldNic))
+
+	oldDev := ioStat{ReadBytes: 100, ReadIOs: 10}
+	assert.True(t, ioStat{ReadBytes: 200, ReadIOs: 3}.rewound(oldDev))
+	assert.False(t, ioStat{ReadBytes: 200, ReadIOs: 12}.rewound(oldDev))
+}
+
 func TestPublishIOSkipsTheRateOfADeviceItJustMet(t *testing.T) {
 	w := &source.Workload{ID: "first-write-to-a-new-device", Meta: source.Meta{Appname: "app", Entrypoint: "web"}}
 	client := NewMetricsClient("", "node", w, nil)
