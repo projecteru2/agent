@@ -21,9 +21,6 @@ import (
 const (
 	envContainerID = "CONTAINER_ID"
 
-	streamStdout = "stdout"
-	streamStderr = "stderr"
-
 	stdoutFD = 3
 	stderrFD = 4
 	readyFD  = 5
@@ -50,8 +47,8 @@ func Command() *cli.Command {
 			signal.Ignore(syscall.SIGTERM)
 			return run(journal.Send, task{
 				id:     os.Getenv(envContainerID),
-				stdout: os.NewFile(stdoutFD, streamStdout),
-				stderr: os.NewFile(stderrFD, streamStderr),
+				stdout: os.NewFile(stdoutFD, common.StreamStdout),
+				stderr: os.NewFile(stderrFD, common.StreamStderr),
 				ready:  os.NewFile(readyFD, "ready"),
 			})
 		},
@@ -63,8 +60,8 @@ func run(send sendFunc, t task) error {
 		return err
 	}
 
-	stdout := &stream{send: send, id: t.id, name: streamStdout, priority: journal.PriInfo}
-	stderr := &stream{send: send, id: t.id, name: streamStderr, priority: journal.PriErr}
+	stdout := &stream{send: send, id: t.id, name: common.StreamStdout, priority: journal.PriInfo}
+	stderr := &stream{send: send, id: t.id, name: common.StreamStderr, priority: journal.PriErr}
 
 	var wg sync.WaitGroup
 	wg.Go(func() { stdout.pump(t.stdout) })

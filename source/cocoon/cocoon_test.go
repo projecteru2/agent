@@ -52,10 +52,18 @@ func TestVMStatusIsUnsureWhenTheVMMIsNotSeen(t *testing.T) {
 	assert.False(t, vmStatus{State: "stopped", Live: &dead}.unsure())
 }
 
+func TestVMStatusTrustsALiveVMMOverADriftedRecord(t *testing.T) {
+	live := true
+	assert.True(t, vmStatus{State: "stopped", Live: &live}.running())
+	assert.True(t, vmStatus{State: "created", Live: &live}.running())
+	assert.True(t, vmStatus{State: "running"}.running())
+	assert.False(t, vmStatus{State: "stopped"}.running())
+}
+
 func TestWatchDaemonSkipsAChangeItCannotVouchFor(t *testing.T) {
 	socket := startDaemon(t, stream(
 		fmt.Sprintf(changeFrame, "MODIFIED", vmWorkload, "running", false),
-		fmt.Sprintf(changeFrame, "ADDED", otherWorkload, "stopped", true),
+		fmt.Sprintf(changeFrame, "ADDED", otherWorkload, "stopped", false),
 	))
 
 	events := watch(t, newCocoon(t, socket, t.TempDir()))

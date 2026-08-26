@@ -63,6 +63,33 @@ func (m *Manager) checkAllWorkloads(ctx context.Context) {
 		}
 	}
 	wg.Wait()
+
+	for _, ID := range runningIDs {
+		listed[ID] = struct{}{}
+	}
+	for ID := range m.localTaskIDs() {
+		if _, ok := listed[ID]; ok {
+			continue
+		}
+		if _, err := m.source.Get(ctx, ID); err != nil {
+			m.stop(ID)
+		}
+	}
+}
+
+func (m *Manager) localTaskIDs() map[string]struct{} {
+	IDs := map[string]struct{}{}
+	m.collectMutex.Lock()
+	for ID := range m.collecting {
+		IDs[ID] = struct{}{}
+	}
+	m.collectMutex.Unlock()
+	m.logMutex.RLock()
+	for _, target := range m.logTargets {
+		IDs[target.workload.ID] = struct{}{}
+	}
+	m.logMutex.RUnlock()
+	return IDs
 }
 
 func (m *Manager) reconcile(ctx context.Context, ID string) {

@@ -1,7 +1,7 @@
 package systemd
 
 import (
-	"regexp"
+	"strings"
 
 	"github.com/projecteru2/agent/source/meta"
 )
@@ -12,17 +12,19 @@ const (
 	unitPattern = unitPrefix + "*" + unitSuffix
 )
 
-// workloadUnit excludes what else eru runs under the prefix, eru-agent.service and eru-core.service.
-var workloadUnit = regexp.MustCompile("^" + unitPrefix + "(" + meta.IDPattern + ")" + regexp.QuoteMeta(unitSuffix) + "$")
-
 func unitOf(ID string) string {
 	return unitPrefix + ID + unitSuffix
 }
 
+// workloadIDFromUnit rejects what else eru runs under the prefix, eru-agent.service and eru-core.service.
 func workloadIDFromUnit(name string) (string, bool) {
-	match := workloadUnit.FindStringSubmatch(name)
-	if match == nil {
+	ID, ok := strings.CutPrefix(name, unitPrefix)
+	if !ok {
 		return "", false
 	}
-	return match[1], true
+	ID, ok = strings.CutSuffix(ID, unitSuffix)
+	if !ok || !meta.IsID(ID) {
+		return "", false
+	}
+	return ID, true
 }

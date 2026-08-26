@@ -76,10 +76,8 @@ func (c *Containerd) workload(ctx context.Context, ID string, labels map[string]
 			CoreID:      labels[cluster.LabelCoreID],
 			Labels:      labels,
 			HealthCheck: meta.HealthCheck,
-			Publish:     meta.Publish,
 			Networks:    nets,
 		},
-		Log:     source.Log{JournalIdentifier: common.JournalIdentifier},
 		LocalIP: localIP,
 	}, nil
 }

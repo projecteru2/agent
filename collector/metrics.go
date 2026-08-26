@@ -217,8 +217,7 @@ func (m *MetricsClient) Send(ctx context.Context) error {
 		return err
 	}
 	for k, v := range m.data {
-		key := fmt.Sprintf("%s.%s", m.prefix, k)
-		m.statsdClient.Gauge(key, v)
+		m.statsdClient.Gauge(m.prefix+"."+k, v)
 		delete(m.data, k)
 	}
 	return nil
@@ -241,7 +240,7 @@ func (m *MetricsClient) setVec(name, label string, value float64) {
 		return
 	}
 	if m.statsd != "" {
-		m.data[label+"."+g.statsd] = value
+		m.data[coreutils.CleanStatsdMetrics(label)+"."+g.statsd] = value
 	}
 	g.vector.WithLabelValues(label).Set(value)
 }

@@ -3,6 +3,7 @@ package workload
 import (
 	"cmp"
 	"context"
+	"errors"
 	"time"
 
 	"github.com/projecteru2/core/log"
@@ -50,7 +51,7 @@ func (m *Manager) forwardConsole(ctx context.Context, w *source.Workload) {
 
 func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 	logger := log.WithFunc("workload.startForwarding").WithField("ID", w.ID)
-	if m.forwarding(w.ID) {
+	if m.forwardedWorkload(w.ID) != nil {
 		return
 	}
 
@@ -73,13 +74,6 @@ func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 		return
 	}
 	logger.Infof(ctx, "forwarding %s logs from the journal", w.Meta.Appname)
-}
-
-func (m *Manager) forwarding(ID string) bool {
-	m.logMutex.RLock()
-	defer m.logMutex.RUnlock()
-	_, ok := m.logTargets[ID]
-	return ok
 }
 
 func (m *Manager) registerTarget(w *source.Workload, target *logTarget) bool {
@@ -135,7 +129,7 @@ func (m *Manager) forward(ctx context.Context, entry *collector.Entry) {
 		Extra:      target.extra,
 	}
 	m.logBroadcaster.broadcast(ctx, l)
-	if err := target.writer.Write(ctx, l); err != nil {
+	if err := target.writer.Write(ctx, l); err != nil && !errors.Is(err, common.ErrConnecting) {
 		logger := log.WithFunc("workload.forward").WithField("ID", w.ID)
 		logger.Errorf(ctx, err, "%s workload %s write failed", w.Meta.Appname, w.Meta.Entrypoint)
 	}

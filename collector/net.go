@@ -26,6 +26,13 @@ func (s *netStat) mirror() {
 	s.DropIn, s.DropOut = s.DropOut, s.DropIn
 }
 
+func (s *netStat) rewound(old netStat) bool {
+	return s.BytesSent < old.BytesSent || s.BytesRecv < old.BytesRecv ||
+		s.PacketsSent < old.PacketsSent || s.PacketsRecv < old.PacketsRecv ||
+		s.ErrIn < old.ErrIn || s.ErrOut < old.ErrOut ||
+		s.DropIn < old.DropIn || s.DropOut < old.DropOut
+}
+
 func netStatsFromProc(procRoot string, pid int, iface string, mirrored bool) ([]netStat, error) {
 	lines, err := readLines(filepath.Join(procRoot, strconv.Itoa(pid), "net", "dev"))
 	if err != nil {
@@ -41,12 +48,16 @@ func netStatsFromProc(procRoot string, pid int, iface string, mirrored bool) ([]
 		if !ok {
 			continue
 		}
+		trimmed := strings.TrimSpace(name)
+		if iface != "" && trimmed != iface {
+			continue
+		}
 		fields := strings.Fields(counters)
 		if len(fields) < 12 {
 			continue
 		}
 		stat := netStat{
-			Name:        strings.TrimSpace(name),
+			Name:        trimmed,
 			BytesRecv:   parseUint(fields[0]),
 			PacketsRecv: parseUint(fields[1]),
 			ErrIn:       parseUint(fields[2]),
@@ -55,9 +66,6 @@ func netStatsFromProc(procRoot string, pid int, iface string, mirrored bool) ([]
 			PacketsSent: parseUint(fields[9]),
 			ErrOut:      parseUint(fields[10]),
 			DropOut:     parseUint(fields[11]),
-		}
-		if iface != "" && stat.Name != iface {
-			continue
 		}
 		if mirrored {
 			stat.mirror()

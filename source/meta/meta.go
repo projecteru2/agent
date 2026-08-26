@@ -17,9 +17,6 @@ import (
 )
 
 const (
-	// IDPattern is the shape of a workload id, so nothing else eru names on a node is taken for one.
-	IDPattern = "[0-9a-f]{32}"
-
 	KindProcess Kind = "process"
 	KindVM      Kind = "vm"
 
@@ -29,16 +26,16 @@ const (
 var (
 	errOtherKind = errors.New("meta file of another runtime")
 
-	workloadID = regexp.MustCompile("^" + IDPattern + "$")
+	// workloadID is the shape of a workload id, so nothing else eru names on a node is taken for one.
+	workloadID = regexp.MustCompile("^[0-9a-f]{32}$")
 )
 
 // Kind is the runtime the workload a meta file describes belongs to.
 type Kind string
 
 type logSource struct {
-	JournalUnit       string `json:"journal_unit"`
-	JournalIdentifier string `json:"journal_identifier"`
-	ConsoleSocket     string `json:"console_socket"`
+	JournalUnit   string `json:"journal_unit"`
+	ConsoleSocket string `json:"console_socket"`
 }
 
 type healthCheck struct {
@@ -72,7 +69,6 @@ type File struct {
 	CoreID      string            `json:"coreid"`
 	Labels      map[string]string `json:"labels"`
 	HealthCheck *healthCheck      `json:"healthcheck"`
-	Publish     []string          `json:"publish"`
 	Networks    map[string]string `json:"networks"`
 	Cgroup      string            `json:"cgroup"`
 	NetnsPID    int               `json:"netns_pid"`
@@ -93,13 +89,11 @@ func (f *File) Workload(running bool) *source.Workload {
 			CoreID:      f.CoreID,
 			Labels:      f.Labels,
 			HealthCheck: f.HealthCheck.coreHealthCheck(),
-			Publish:     f.Publish,
 			Networks:    f.Networks,
 		},
 		Log: source.Log{
-			JournalUnit:       f.Log.JournalUnit,
-			JournalIdentifier: f.Log.JournalIdentifier,
-			ConsoleSocket:     f.Log.ConsoleSocket,
+			JournalUnit:   f.Log.JournalUnit,
+			ConsoleSocket: f.Log.ConsoleSocket,
 		},
 		CgroupPath:        f.Cgroup,
 		NetnsPID:          f.NetnsPID,

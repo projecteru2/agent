@@ -89,6 +89,35 @@ func TestHealthCheckKeepsAWorkloadTheListingMissed(t *testing.T) {
 	manager.stop(w.ID)
 }
 
+func TestHealthCheckStopsAnOrphanedLocalTask(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	manager.source = &forgetfulSource{}
+	w := &source.Workload{
+		ID:         "Kaworu",
+		CgroupPath: t.TempDir(),
+		Running:    true,
+		Log:        source.Log{JournalUnit: "eru-Kaworu.service"},
+	}
+	manager.start(t.Context(), w)
+
+	manager.checkAllWorkloads(t.Context())
+
+	assert.Empty(t, manager.collecting)
+	assert.Empty(t, manager.logTargets)
+}
+
+func TestHealthCheckSparesAnOrphanTheRuntimeStillKnows(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	w := &source.Workload{ID: "Misato", CgroupPath: t.TempDir(), Running: true}
+	manager.source = &blindListSource{sweepRaceSource{workloads: []*source.Workload{w}}}
+	manager.start(t.Context(), w)
+
+	manager.checkAllWorkloads(t.Context())
+
+	assert.NotNil(t, manager.collecting[w.ID])
+	manager.stop(w.ID)
+}
+
 func TestHealthCheckSamplesAWorkloadStartingMidSweep(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	src := &sweepRaceSource{}

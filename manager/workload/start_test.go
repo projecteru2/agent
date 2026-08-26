@@ -6,10 +6,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/projecteru2/agent/collector"
+	"github.com/projecteru2/agent/manager"
 	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
 )
 
 func TestStartCollectingLeavesARunningSamplerAlone(t *testing.T) {
@@ -88,12 +87,5 @@ func TestStartForwardingForwardsAgainAfterTheWorkloadDied(t *testing.T) {
 func managerForStart(t *testing.T) *Manager {
 	t.Helper()
 	config := &types.Config{Metrics: types.MetricsConfig{Step: 10}}
-
-	return &Manager{
-		config:     config,
-		collector:  collector.New(t.Context(), config),
-		forwards:   utils.NewHashBackends(nil),
-		collecting: map[string]*collectTask{},
-		logTargets: map[string]*logTarget{},
-	}
+	return NewManager(t.Context(), config, &manager.Clients{})
 }

@@ -21,8 +21,6 @@ const (
 	journalBinary = "journalctl"
 	cursorFile    = "journal.cursor"
 
-	defaultStream  = "stdout"
-	stderrStream   = "stderr"
 	stderrPriority = "3"
 
 	cursorFlushInterval = 5 * time.Second
@@ -56,9 +54,9 @@ type journalRecord struct {
 func (r *journalRecord) entry() *Entry {
 	stream := r.EruStream
 	if stream == "" {
-		stream = defaultStream
+		stream = common.StreamStdout
 		if r.Priority == stderrPriority {
-			stream = stderrStream
+			stream = common.StreamStderr
 		}
 	}
 	return &Entry{
@@ -191,7 +189,7 @@ func (r *ring) String() string {
 }
 
 func args(cursor string) []string {
-	args := []string{"--follow", "--output=json", "--no-pager"}
+	args := []string{"--follow", "--output=json", "--no-pager", "--all"}
 	if cursor == "" {
 		args = append(args, "--lines=0")
 	} else {

@@ -40,7 +40,6 @@ func TestReadRendersAProcessWorkload(t *testing.T) {
 		CoreID:      "core-1",
 		Labels:      map[string]string{"eru.build": "1"},
 		HealthCheck: &coretypes.HealthCheck{TCPPorts: []string{"80"}, HTTPPort: "80", HTTPURL: "/healthz", HTTPCode: 200},
-		Publish:     []string{"80"},
 		Networks:    map[string]string{"eru-cni": "10.0.0.5"},
 	}, w.Meta)
 }

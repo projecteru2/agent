@@ -38,9 +38,12 @@ func ReplaceNonUtf8(str string) string {
 	if str == "" {
 		return str
 	}
+	if utf8.ValidString(str) && !strings.Contains(str, string(utf8.RuneError)) {
+		return str
+	}
 
 	// U+FFFD may be a legitimate rune, escape it before validating
-	if strings.ContainsRune(str, utf8.RuneError) {
+	if strings.Contains(str, string(utf8.RuneError)) {
 		str = strings.ReplaceAll(str, string(utf8.RuneError), "\\xef\\xbf\\xbd")
 	}
 

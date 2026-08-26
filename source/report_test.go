@@ -69,18 +69,6 @@ func TestReportWithoutASubscriptionOnlyRemembers(t *testing.T) {
 	assert.True(t, r.Known(oneWorkload))
 }
 
-func TestForgetLetsAWorkloadBeReportedAgain(t *testing.T) {
-	r, emitted := attached()
-
-	r.Report(oneWorkload, common.StatusStart)
-	r.Report(oneWorkload, common.StatusStart)
-	r.Forget(oneWorkload)
-	assert.False(t, r.Known(oneWorkload))
-
-	r.Report(oneWorkload, common.StatusStart)
-	assert.Equal(t, []string{common.StatusStart, common.StatusStart}, *emitted)
-}
-
 func TestOldSubscriptionCannotDetachItsReplacement(t *testing.T) {
 	r := NewReporter()
 	oldDetach := r.Attach(func(string, string) {})

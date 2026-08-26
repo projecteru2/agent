@@ -50,7 +50,7 @@ func TestCollectRetriesAfterAFailedSample(t *testing.T) {
 
 	assert.Never(t, func() bool { return sampling(w.ID) }, sampleSettle, samplePoll)
 
-	restoreCgroupFile(t, dir, "memory.current")
+	copyCgroupFile(t, dir, "memory.current")
 	assert.Eventually(t, func() bool { return sampling(w.ID) }, sampleTimeout, samplePoll)
 }
 
@@ -98,6 +98,18 @@ func TestPublishSkipsAStepAcrossACounterReset(t *testing.T) {
 
 	c.publish(t.Context(), client, &sample{cpu: cpuStat{Usage: 1}}, &sample{cpu: cpuStat{Usage: 2}})
 	assert.Positive(t, testutil.ToFloat64(client.gauges["cpu_host_usage"].plain))
+}
+
+func TestRewoundCatchesACounterTheBytesOutran(t *testing.T) {
+	oldNic := netStat{BytesSent: 100, PacketsSent: 1000, DropIn: 5}
+	assert.False(t, (&netStat{BytesSent: 100, PacketsSent: 1000, DropIn: 5}).rewound(oldNic))
+	assert.True(t, (&netStat{BytesSent: 200, PacketsSent: 1000}).rewound(oldNic))
+	assert.True(t, (&netStat{BytesSent: 200, PacketsSent: 17, DropIn: 5}).rewound(oldNic))
+	assert.False(t, (&netStat{BytesSent: 200, PacketsSent: 1200, DropIn: 5}).rewound(oldNic))
+
+	oldDev := ioStat{ReadBytes: 100, ReadIOs: 10}
+	assert.True(t, ioStat{ReadBytes: 200, ReadIOs: 3}.rewound(oldDev))
+	assert.False(t, ioStat{ReadBytes: 200, ReadIOs: 12}.rewound(oldDev))
 }
 
 func TestPublishIOSkipsTheRateOfADeviceItJustMet(t *testing.T) {
@@ -174,14 +186,12 @@ func cgroupWithout(t *testing.T, missing string) string {
 		if entry.Name() == missing {
 			continue
 		}
-		body, err := os.ReadFile(filepath.Join("testdata/cgroup", entry.Name()))
-		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(filepath.Join(dir, entry.Name()), body, 0o600))
+		copyCgroupFile(t, dir, entry.Name())
 	}
 	return dir
 }
 
-func restoreCgroupFile(t *testing.T, dir, name string) {
+func copyCgroupFile(t *testing.T, dir, name string) {
 	t.Helper()
 	body, err := os.ReadFile(filepath.Join("testdata/cgroup", name))
 	require.NoError(t, err)

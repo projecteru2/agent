@@ -36,15 +36,13 @@ type Meta struct {
 	CoreID      string
 	Labels      map[string]string
 	HealthCheck *coretypes.HealthCheck
-	Publish     []string
 	Networks    map[string]string
 }
 
-// Log locates a workload's output: a journal unit, a journal identifier field or a vm console.
+// Log locates a workload's output: a journal unit or a vm console.
 type Log struct {
-	JournalUnit       string
-	JournalIdentifier string
-	ConsoleSocket     string
+	JournalUnit   string
+	ConsoleSocket string
 }
 
 // Workload is everything a source knows about one workload.

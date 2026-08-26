@@ -95,6 +95,22 @@ func TestHandleWorkloadDieStopsLocalTasksRestartedDuringStatusWrite(t *testing.T
 	assert.Empty(t, manager.logTargets)
 }
 
+func TestHandleWorkloadDieRestartsAWorkloadReportedDeadByMistake(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	w := &source.Workload{ID: "Rei", CgroupPath: t.TempDir(), Running: true}
+	manager.source = &lateSource{w: w}
+	store := manager.store.(*mocks.MockStore)
+	manager.start(t.Context(), w)
+
+	manager.handleWorkloadDie(t.Context(), &types.WorkloadEventMessage{ID: w.ID, Action: "die"})
+
+	status := store.GetMockWorkloadStatus(w.ID)
+	require.NotNil(t, status)
+	assert.True(t, status.Running)
+	assert.NotNil(t, manager.collecting[w.ID])
+	manager.stop(w.ID)
+}
+
 func TestHandleWorkloadStartRetriesAGetTheRuntimeCannotAnswerYet(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	w := &source.Workload{ID: "Rei", CgroupPath: t.TempDir(), Running: true}

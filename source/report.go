@@ -83,14 +83,6 @@ func (r *Reporter) Known(ID string) bool {
 	return ok
 }
 
-// Forget stops tracking a workload that went away, so it is reported again when it comes back.
-func (r *Reporter) Forget(ID string) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	delete(r.last, ID)
-}
-
 // ActionOf turns a runtime's liveness answer into the event action the manager handles.
 func ActionOf(running bool) string {
 	if running {

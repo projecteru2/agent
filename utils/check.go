@@ -16,11 +16,30 @@ func CheckHTTP(ctx context.Context, ID, url string, code int, timeout time.Durat
 	}
 	logger := log.WithFunc("utils.CheckHTTP").WithField("ID", ID).WithField("url", url).WithField("code", code)
 	logger.Debug(ctx, "checking health via http")
-	if !checkOneURL(ctx, url, code, timeout) {
-		logger.Info(ctx, "http health check failed")
+
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		logger.Error(ctx, err, "failed to build request")
 		return false
 	}
-	return true
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		logger.Debugf(ctx, "http health check failed: %v", err)
+		return false
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if code == 0 {
+		if resp.StatusCode >= 500 {
+			logger.Debugf(ctx, "http health check failed with %d", resp.StatusCode)
+		}
+		return resp.StatusCode < 500 && resp.StatusCode >= 200
+	}
+	if resp.StatusCode != code {
+		logger.Warnf(ctx, "unexpected status, want %d, got %d", code, resp.StatusCode)
+	}
+	return resp.StatusCode == code
 }
 
 // CheckTCP reports whether every backend accepts a TCP connection.
@@ -36,29 +55,4 @@ func CheckTCP(ctx context.Context, ID string, backends []string, timeout time.Du
 		_ = conn.Close()
 	}
 	return true
-}
-
-func checkOneURL(ctx context.Context, url string, expectedCode int, timeout time.Duration) bool {
-	logger := log.WithFunc("utils.checkOneURL").WithField("url", url)
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		logger.Error(ctx, err, "failed to build request")
-		return false
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		logger.Error(ctx, err, "failed to check")
-		return false
-	}
-	defer func() { _ = resp.Body.Close() }()
-	if expectedCode == 0 {
-		return resp.StatusCode < 500 && resp.StatusCode >= 200
-	}
-	if resp.StatusCode != expectedCode {
-		logger.Warnf(ctx, "unexpected status, want %d, got %d", expectedCode, resp.StatusCode)
-	}
-	return resp.StatusCode == expectedCode
 }

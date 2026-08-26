@@ -230,15 +230,14 @@ func (c *Collector) publish(ctx context.Context, client *MetricsClient, prev, ne
 }
 
 func (c *Collector) publishIO(ctx context.Context, client *MetricsClient, prev, next []ioStat, step float64) {
-	before := make(map[string]ioStat, len(prev))
+	before := make(map[device]ioStat, len(prev))
 	for _, dev := range prev {
-		if path, err := c.devicePath(dev.Major, dev.Minor); err == nil {
-			before[path] = dev
-		}
+		before[device{major: dev.Major, minor: dev.Minor}] = dev
 	}
 
 	for _, dev := range next {
-		path, err := c.devicePath(dev.Major, dev.Minor)
+		key := device{major: dev.Major, minor: dev.Minor}
+		path, err := c.devicePath(key)
 		if err != nil {
 			log.WithFunc("collector.publishIO").Debugf(ctx, "no device node for %d:%d", dev.Major, dev.Minor)
 			continue
@@ -248,8 +247,8 @@ func (c *Collector) publishIO(ctx context.Context, client *MetricsClient, prev, 
 		client.IOServicedRead(path, float64(dev.ReadIOs))
 		client.IOServicedWrite(path, float64(dev.WriteIOs))
 
-		old, ok := before[path]
-		if !ok {
+		old, ok := before[key]
+		if !ok || dev.rewound(old) {
 			continue
 		}
 		client.IOServiceBytesReadPerSecond(path, float64(dev.ReadBytes-old.ReadBytes)/step)
@@ -260,15 +259,13 @@ func (c *Collector) publishIO(ctx context.Context, client *MetricsClient, prev, 
 }
 
 // devicePath caches the /dev walk so a tick costs a map lookup per device.
-func (c *Collector) devicePath(major, minor uint64) (string, error) {
-	key := device{major: major, minor: minor}
-
+func (c *Collector) devicePath(key device) (string, error) {
 	c.devicesMutex.Lock()
 	defer c.devicesMutex.Unlock()
 	if path, ok := c.devices[key]; ok {
 		return path, nil
 	}
-	path, err := utils.GetDevicePath(major, minor)
+	path, err := utils.GetDevicePath(key.major, key.minor)
 	if err != nil {
 		return "", err
 	}
@@ -284,7 +281,7 @@ func publishNet(client *MetricsClient, prev, next []netStat, step float64) {
 
 	for _, nic := range next {
 		old, ok := before[nic.Name]
-		if !ok {
+		if !ok || nic.rewound(old) {
 			continue
 		}
 		client.BytesSent(nic.Name, float64(nic.BytesSent-old.BytesSent)/step)
