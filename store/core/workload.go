@@ -9,14 +9,11 @@ import (
 	pb "github.com/projecteru2/core/rpc/gen"
 
 	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
 )
 
 func (c *Store) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
-	var workloads *pb.Workloads
-	var err error
-	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		workloads, err = c.GetClient().ListNodeWorkloads(ctx, &pb.GetNodeOptions{Nodename: c.config.HostName})
+	workloads, err := call(ctx, c, func(ctx context.Context) (*pb.Workloads, error) {
+		return c.GetClient().ListNodeWorkloads(ctx, &pb.GetNodeOptions{Nodename: c.config.HostName})
 	})
 	if err != nil {
 		return nil, err
@@ -54,11 +51,9 @@ func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadSta
 		Status: []*pb.WorkloadStatus{statusPb},
 	}
 
-	var err error
-	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		_, err = c.GetClient().SetWorkloadsStatus(ctx, opts)
+	_, err := call(ctx, c, func(ctx context.Context) (*pb.WorkloadsStatus, error) {
+		return c.GetClient().SetWorkloadsStatus(ctx, opts)
 	})
-
 	if err != nil {
 		c.cache.Delete(status.ID)
 	} else {

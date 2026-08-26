@@ -6,17 +6,12 @@ import (
 	pb "github.com/projecteru2/core/rpc/gen"
 
 	"github.com/projecteru2/agent/types"
-	"github.com/projecteru2/agent/utils"
 )
 
 func (c *Store) GetNode(ctx context.Context, nodename string) (*types.Node, error) {
-	var resp *pb.Node
-	var err error
-
-	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		resp, err = c.GetClient().GetNode(ctx, &pb.GetNodeOptions{Nodename: nodename})
+	resp, err := call(ctx, c, func(ctx context.Context) (*pb.Node, error) {
+		return c.GetClient().GetNode(ctx, &pb.GetNodeOptions{Nodename: nodename})
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -29,10 +24,8 @@ func (c *Store) SetNodeStatus(ctx context.Context, ttl int64) error {
 		Nodename: c.config.HostName,
 		Ttl:      ttl,
 	}
-	var err error
-	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		_, err = c.GetClient().SetNodeStatus(ctx, opts)
+	_, err := call(ctx, c, func(ctx context.Context) (*pb.Empty, error) {
+		return c.GetClient().SetNodeStatus(ctx, opts)
 	})
-
 	return err
 }

@@ -4,15 +4,11 @@ import (
 	"context"
 
 	pb "github.com/projecteru2/core/rpc/gen"
-
-	"github.com/projecteru2/agent/utils"
 )
 
 func (c *Store) GetIdentifier(ctx context.Context) string {
-	var resp *pb.CoreInfo
-	var err error
-	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		resp, err = c.GetClient().Info(ctx, &pb.Empty{})
+	resp, err := call(ctx, c, func(ctx context.Context) (*pb.CoreInfo, error) {
+		return c.GetClient().Info(ctx, &pb.Empty{})
 	})
 	if err != nil {
 		return ""
