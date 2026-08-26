@@ -17,19 +17,20 @@ type Encoder interface {
 }
 
 type StreamEncoder struct {
-	*json.Encoder
 	wt io.WriteCloser
 }
 
 func NewStreamEncoder(wt io.WriteCloser) *StreamEncoder {
-	return &StreamEncoder{
-		Encoder: json.NewEncoder(wt),
-		wt:      wt,
-	}
+	return &StreamEncoder{wt: wt}
 }
 
 func (e *StreamEncoder) Encode(logline *types.Log) error {
-	return e.Encoder.Encode(logline)
+	data, err := json.Marshal(logline)
+	if err != nil {
+		return err
+	}
+	_, err = e.wt.Write(append(data, '\n'))
+	return err
 }
 
 func (e *StreamEncoder) Close() error {

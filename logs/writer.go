@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/projecteru2/core/log"
@@ -167,15 +168,19 @@ func (w *Writer) keepalive(ctx context.Context) {
 }
 
 func (w *Writer) checkError(ctx context.Context, err error) {
-	if err != nil && !errors.Is(err, common.ErrConnecting) {
-		log.WithFunc("logs.checkError").Error(ctx, err, "failed to send log")
-		w.withLock(func() {
-			if w.enc != nil {
-				_ = w.enc.Close()
-				w.enc = nil
-			}
-		})
+	if err == nil || errors.Is(err, common.ErrConnecting) {
+		return
 	}
+	log.WithFunc("logs.checkError").Error(ctx, err, "failed to send log")
+	if errors.Is(err, syscall.EMSGSIZE) {
+		return
+	}
+	w.withLock(func() {
+		if w.enc != nil {
+			_ = w.enc.Close()
+			w.enc = nil
+		}
+	})
 }
 
 // deadlineConn bounds a write, so a target that accepts and then stops reading is retried like a down one.
