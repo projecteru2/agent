@@ -93,9 +93,9 @@ func (c *Console) pump(ctx context.Context, handle func(*Entry)) (bool, error) {
 	delivered := false
 	reader := bufio.NewReaderSize(conn, scanBufferSize)
 	for {
-		line, err := reader.ReadString('\n')
-		if line = strings.TrimRight(line, "\r\n"); line != "" {
-			c.emit(line, handle)
+		line, _, err := reader.ReadLine()
+		if text := strings.TrimRight(string(line), "\r"); text != "" {
+			c.emit(text, handle)
 			delivered = true
 		}
 		if err != nil {

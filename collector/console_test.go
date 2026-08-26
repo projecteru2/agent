@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -56,6 +57,15 @@ func TestConsoleEmitsATrailingLineWithoutANewline(t *testing.T) {
 	entries, _ := readConsole(t, console)
 
 	assert.Equal(t, "no newline here", nextEntry(t, entries).Data)
+}
+
+func TestConsoleCutsALineLongerThanTheReadBuffer(t *testing.T) {
+	blob := strings.Repeat("x", scanBufferSize+scanBufferSize/2)
+	console := NewConsole(consoleWorkload, consoleAppname, at(socketConsole(t, blob)))
+	entries, _ := readConsole(t, console)
+
+	assert.Len(t, nextEntry(t, entries).Data, scanBufferSize)
+	assert.Len(t, nextEntry(t, entries).Data, scanBufferSize/2)
 }
 
 func TestConsoleReconnectsWhenTheVMComesBack(t *testing.T) {
