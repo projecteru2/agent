@@ -42,6 +42,7 @@ func TestGetAppInfo(t *testing.T) {
 func TestReplaceNonUtf8(t *testing.T) {
 	str := "test, 1\x00\xff\x01\xbb\xfd\xff\xfd\n"
 	assert.Equal(t, "test, 1\\x00\\xff\\x01\\xbb\\xfd\\xff\\xfd\n", ReplaceNonUtf8(str))
+	assert.Equal(t, "a\\xef\\xbf\\xbdb", ReplaceNonUtf8("a�b"))
 
 	data := []byte{
 		0x7b, 0x0a, 0x20, 0x20, 0x22, 0x41, 0x44, 0x44, 0x52, 0x22, 0x3a, 0x20, 0x22, 0x31, 0x30, 0x2e,
