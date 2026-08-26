@@ -106,10 +106,14 @@ func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter
 	}
 }
 
-// start forwards the workload's output and samples it, both idempotent per workload.
 func (m *Manager) start(ctx context.Context, w *source.Workload) {
 	m.startCollecting(ctx, w)
 	m.startForwarding(ctx, w)
+}
+
+func (m *Manager) stop(ID string) {
+	m.stopCollecting(ID)
+	m.stopForwarding(ID)
 }
 
 func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {

@@ -1,13 +1,18 @@
 package workload
 
 import (
+	"context"
+	"errors"
+	"slices"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/projecteru2/agent/source"
+	"github.com/projecteru2/agent/store"
 	"github.com/projecteru2/agent/store/mocks"
+	"github.com/projecteru2/agent/types"
 )
 
 func TestHealthCheck(t *testing.T) {
@@ -15,12 +20,11 @@ func TestHealthCheck(t *testing.T) {
 	ctx := t.Context()
 	manager.checkAllWorkloads(ctx)
 	store := manager.store.(*mocks.MockStore)
-	time.Sleep(2 * time.Second)
 
 	assertInitStatus(t, store)
 }
 
-func TestCheckOneWorkloadStartsTheSamplerAStartEventMissed(t *testing.T) {
+func TestCheckOneWorkloadRepairsMissedEvents(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	w := &source.Workload{ID: "Rei", CgroupPath: t.TempDir()}
 
@@ -30,4 +34,83 @@ func TestCheckOneWorkloadStartsTheSamplerAStartEventMissed(t *testing.T) {
 	w.Running = true
 	manager.checkOneWorkload(t.Context(), w)
 	assert.NotNil(t, manager.collecting[w.ID])
+	assert.NotEmpty(t, manager.logTargets)
+
+	w.Running = false
+	manager.checkOneWorkload(t.Context(), w)
+	assert.Empty(t, manager.collecting)
+	assert.Empty(t, manager.logTargets)
+}
+
+func TestHealthCheckReportsCoreRunningWorkloadMissingFromRuntime(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	manager.source = &forgetfulSource{}
+	store := manager.store.(*mocks.MockStore)
+	w := &source.Workload{
+		ID:         "Kaworu",
+		Meta:       source.Meta{Appname: "nerv", Entrypoint: "eva3"},
+		CgroupPath: t.TempDir(),
+		Running:    true,
+	}
+	manager.start(t.Context(), w)
+	status := &types.WorkloadStatus{
+		ID:         w.ID,
+		Running:    true,
+		Healthy:    true,
+		Appname:    "nerv",
+		Nodename:   "fake",
+		Entrypoint: "eva3",
+	}
+	require.NoError(t, store.SetWorkloadStatus(t.Context(), status, 0))
+
+	manager.checkAllWorkloads(t.Context())
+
+	got := store.GetMockWorkloadStatus(status.ID)
+	require.NotNil(t, got)
+	assert.False(t, got.Running)
+	assert.Empty(t, manager.collecting)
+	assert.Empty(t, manager.logTargets)
+}
+
+func TestHealthCheckSamplesAWorkloadStartingMidSweep(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	src := &sweepRaceSource{}
+	manager.source = src
+	w := &source.Workload{ID: "Misato", CgroupPath: t.TempDir(), Running: true}
+	status := &types.WorkloadStatus{ID: w.ID, Running: true, Healthy: true, Nodename: "fake"}
+	require.NoError(t, manager.store.SetWorkloadStatus(t.Context(), status, 0))
+	manager.store = &sweepRaceStore{Store: manager.store, src: src, starting: w}
+
+	manager.checkAllWorkloads(t.Context())
+
+	assert.NotNil(t, manager.collecting[w.ID])
+	assert.NotEmpty(t, manager.logTargets)
+}
+
+type sweepRaceSource struct {
+	source.Source
+	workloads []*source.Workload
+}
+
+func (s *sweepRaceSource) List(context.Context) ([]*source.Workload, error) {
+	return s.workloads, nil
+}
+
+func (s *sweepRaceSource) Get(_ context.Context, ID string) (*source.Workload, error) {
+	if i := slices.IndexFunc(s.workloads, func(w *source.Workload) bool { return w.ID == ID }); i >= 0 {
+		return s.workloads[i], nil
+	}
+	return nil, errors.New("unknown workload")
+}
+
+type sweepRaceStore struct {
+	store.Store
+	src      *sweepRaceSource
+	starting *source.Workload
+}
+
+func (s *sweepRaceStore) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
+	IDs, err := s.Store.ListRunningWorkloadIDs(ctx)
+	s.src.workloads = append(s.src.workloads, s.starting)
+	return IDs, err
 }

@@ -81,6 +81,18 @@ func TestForgetLetsAWorkloadBeReportedAgain(t *testing.T) {
 	assert.Equal(t, []string{common.StatusStart, common.StatusStart}, *emitted)
 }
 
+func TestOldSubscriptionCannotDetachItsReplacement(t *testing.T) {
+	r := NewReporter()
+	oldDetach := r.Attach(func(string, string) {})
+	var emitted []string
+	r.Attach(func(_, action string) { emitted = append(emitted, action) })
+
+	oldDetach()
+	r.Report(oneWorkload, common.StatusStart)
+
+	assert.Equal(t, []string{common.StatusStart}, emitted)
+}
+
 func TestActionOf(t *testing.T) {
 	assert.Equal(t, common.StatusStart, ActionOf(true))
 	assert.Equal(t, common.StatusDie, ActionOf(false))

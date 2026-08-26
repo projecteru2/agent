@@ -12,6 +12,25 @@ import (
 	"github.com/projecteru2/agent/utils"
 )
 
+func (c *Store) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
+	var workloads *pb.Workloads
+	var err error
+	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
+		workloads, err = c.GetClient().ListNodeWorkloads(ctx, &pb.GetNodeOptions{Nodename: c.config.HostName})
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	IDs := make([]string, 0, len(workloads.GetWorkloads()))
+	for _, workload := range workloads.GetWorkloads() {
+		if workload.GetStatus().GetRunning() {
+			IDs = append(IDs, workload.GetId())
+		}
+	}
+	return IDs, nil
+}
+
 func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus, ttl int64) error {
 	workloadStatus := fmt.Sprintf("%+v", status)
 	if ttl == 0 {

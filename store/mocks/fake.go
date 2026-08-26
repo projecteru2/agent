@@ -3,6 +3,7 @@ package mocks
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/projecteru2/core/log"
@@ -24,6 +25,19 @@ func (m *MockStore) GetMockWorkloadStatus(ID string) *types.WorkloadStatus {
 	m.Lock()
 	defer m.Unlock()
 	return m.workloadStatus[ID]
+}
+
+func (m *MockStore) ListRunningWorkloadIDs(context.Context) ([]string, error) {
+	m.Lock()
+	defer m.Unlock()
+	running := make([]string, 0, len(m.workloadStatus))
+	for ID, status := range m.workloadStatus {
+		if status.Running {
+			running = append(running, ID)
+		}
+	}
+	slices.Sort(running)
+	return running, nil
 }
 
 func (m *MockStore) init() {
@@ -66,6 +80,10 @@ func NewFakeStore() store.Store {
 		nodename := "fake"
 		m.Lock()
 		defer m.Unlock()
+		if ttl < 0 {
+			delete(m.nodeStatus, nodename)
+			return nil
+		}
 		if status, ok := m.nodeStatus[nodename]; ok {
 			status.Alive = true
 		} else {

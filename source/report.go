@@ -11,44 +11,53 @@ type EmitFunc func(ID, action string)
 
 // Reporter drops the state changes that repeat what a source last said about a workload.
 type Reporter struct {
-	mutex sync.Mutex
-	emit  EmitFunc
-	last  map[string]string
+	mutex        sync.Mutex
+	emit         EmitFunc
+	subscription uint64
+	last         map[string]string
 }
 
 func NewReporter() *Reporter {
 	return &Reporter{last: map[string]string{}}
 }
 
-func (r *Reporter) Attach(emit EmitFunc) {
+func (r *Reporter) Attach(emit EmitFunc) func() {
 	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
+	r.subscription++
+	subscription := r.subscription
 	r.emit = emit
+	r.mutex.Unlock()
+
+	return func() {
+		r.mutex.Lock()
+		defer r.mutex.Unlock()
+		if r.subscription == subscription {
+			r.emit = nil
+		}
+	}
 }
 
 // Report emits action unless it is what this workload was last reported as.
 func (r *Reporter) Report(ID, action string) {
 	r.mutex.Lock()
-	emit, moved := r.emit, r.last[ID] != action
-	r.last[ID] = action
-	r.mutex.Unlock()
+	defer r.mutex.Unlock()
 
-	if moved && emit != nil {
-		emit(ID, action)
+	moved := r.last[ID] != action
+	r.last[ID] = action
+	if moved && r.emit != nil {
+		r.emit(ID, action)
 	}
 }
 
 // Note records what a listing found: news about a workload already tracked, and a starting point for one that is not.
 func (r *Reporter) Note(ID, action string) {
 	r.mutex.Lock()
-	last, known := r.last[ID]
-	emit := r.emit
-	r.last[ID] = action
-	r.mutex.Unlock()
+	defer r.mutex.Unlock()
 
-	if known && last != action && emit != nil {
-		emit(ID, action)
+	last, known := r.last[ID]
+	r.last[ID] = action
+	if known && last != action && r.emit != nil {
+		r.emit(ID, action)
 	}
 }
 

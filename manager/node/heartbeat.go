@@ -48,7 +48,7 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 
 	if err := utils.BackoffRetry(ctx, reportAttempts, func() (err error) {
 		utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
-			if err = m.store.SetNodeStatus(ctx, ttl); err != nil {
+			if err = m.setNodeStatus(ctx, ttl); err != nil {
 				logger.Error(ctx, err, "failed to set node status")
 			}
 		})

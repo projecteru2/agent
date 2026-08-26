@@ -2,6 +2,7 @@ package node
 
 import (
 	"context"
+	"sync"
 
 	"github.com/projecteru2/core/log"
 
@@ -16,6 +17,9 @@ type Manager struct {
 	config *types.Config
 	store  store.Store
 	source source.Source
+
+	statusMutex sync.Mutex
+	exiting     bool
 }
 
 func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
@@ -44,11 +48,24 @@ func (m *Manager) Exit(ctx context.Context) error {
 	var err error
 	utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
 		// a negative ttl removes the node status
-		err = m.store.SetNodeStatus(ctx, -1)
+		err = m.setNodeStatus(ctx, -1)
 	})
 	if err != nil {
 		logger.Error(ctx, err, "failed to remove node status")
 		return err
 	}
 	return nil
+}
+
+func (m *Manager) setNodeStatus(ctx context.Context, ttl int64) error {
+	m.statusMutex.Lock()
+	defer m.statusMutex.Unlock()
+
+	if m.exiting && ttl >= 0 {
+		return nil
+	}
+	if ttl < 0 {
+		m.exiting = true
+	}
+	return m.store.SetNodeStatus(ctx, ttl)
 }
