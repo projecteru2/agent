@@ -10,12 +10,14 @@ Precedence is: flag or environment variable, then the YAML file, then the built-
 |---|---|---|
 | `pid` | `/tmp/agent.pid` | File the agent writes its pid to at startup and removes on exit |
 | `core` | required | Addresses of the `eru-core` gRPC endpoints; the agent load balances across them |
-| `heartbeat_interval` | `60` | Seconds between node status reports; `0` disables the heartbeat entirely |
+| `heartbeat_interval` | `60` | Seconds between node status reports |
 | `check_only_mine` | `false` | Ignore workloads that belong to another node (see [runtimes](runtimes.md)) |
 | `store` | `grpc` | `grpc` talks to core, `mocks` uses an in-memory fake for development |
 | `meta_dir` | `/run/eru/workloads` | Directory core writes workload metadata into over ssh, one `<id>.json` per workload |
 | `state_dir` | `/var/lib/eru-agent` | Directory the agent keeps what it must survive a restart in, currently the journal cursor |
 | `global_connection_timeout` | `5s` | Timeout for every call to core and to a runtime daemon |
+
+`heartbeat_interval`, `healthcheck.interval`, `healthcheck.timeout`, `metrics.step` and `global_connection_timeout` must all be positive: the agent names the offending key and refuses to start rather than silently disabling a loop or crashing a ticker.
 
 ## `auth`
 
@@ -88,7 +90,7 @@ log:
   stdout: false
 ```
 
-`forwards` is a list of targets. Supported schemes are `tcp://`, `udp://` and `journal://`; a target with any other scheme is accepted and silently discards, with a warning at startup. Each workload is pinned to one target by hashing its id, so several targets share the load without duplicating lines. A target that is down is retried every 30 seconds in the background while its lines are dropped.
+`forwards` is a list of targets. Supported schemes are `tcp://`, `udp://` and `journal://`; a target with any other scheme is accepted and silently discards, with a warning at startup. Each workload is pinned to one target by hashing its id, so several targets share the load without duplicating lines. A target that is down is retried every 30 seconds in the background while its lines are dropped; a line too large for a udp datagram loses only itself.
 
 A VM's output is its serial console, so the agent reads the console its meta file names, one goroutine per VM, forwarding each line and writing it to journald so the history is there too. Every other runtime logs to journald natively, and the agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` for the whole node, resuming from the cursor it saved under `state_dir`. That path needs `journalctl` on the node, and needs every eru workload to log under the `eru` syslog identifier: process units get it from core's `systemd-run`, containers from `eru-agent log-shim`.
 
@@ -148,6 +150,6 @@ Every flag has an environment variable. `--core-endpoint` and the two list flags
 Two environment variables have no flag:
 
 - `AGENT_IN_DOCKER` — set by the container image; makes the agent read host process state from `/hostProc`
-- `ERU_AGENT_EXPERIMENTAL_FILTER` — set to `label` to filter workloads by label instead of by environment variable when `check_only_mine` is on
+- `ERU_AGENT_EXPERIMENTAL_FILTER` — set to `label` to push the `check_only_mine` ownership filter into the containerd query instead of checking each listed workload agent-side
 
 The agent prints its effective configuration to stdout at startup, so the fastest way to check what an override did is to read the first lines of its log.
