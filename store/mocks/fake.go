@@ -21,40 +21,6 @@ type MockStore struct {
 	nodeInfo       map[string]*types.Node
 }
 
-func (m *MockStore) GetMockWorkloadStatus(ID string) *types.WorkloadStatus {
-	m.Lock()
-	defer m.Unlock()
-	return m.workloadStatus[ID]
-}
-
-func (m *MockStore) ListRunningWorkloadIDs(context.Context) ([]string, error) {
-	m.Lock()
-	defer m.Unlock()
-	running := make([]string, 0, len(m.workloadStatus))
-	for ID, status := range m.workloadStatus {
-		if status.Running {
-			running = append(running, ID)
-		}
-	}
-	slices.Sort(running)
-	return running, nil
-}
-
-func (m *MockStore) init() {
-	m.workloadStatus = map[string]*types.WorkloadStatus{}
-	m.nodeStatus = map[string]*types.NodeStatus{}
-	m.nodeInfo = map[string]*types.Node{
-		"fake": {
-			Name:     "fake",
-			Endpoint: "eva://127.0.0.1:6666",
-		},
-		"faker": {
-			Name:     "faker",
-			Endpoint: "eva://127.0.0.1:6667",
-		},
-	}
-}
-
 func NewFakeStore() store.Store {
 	logger := log.WithFunc("mocks.NewFakeStore")
 	m := &MockStore{}
@@ -118,4 +84,38 @@ func NewFakeStore() store.Store {
 	m.On("GetIdentifier", mock.Anything).Return("fake-identifier")
 
 	return m
+}
+
+func (m *MockStore) GetMockWorkloadStatus(ID string) *types.WorkloadStatus {
+	m.Lock()
+	defer m.Unlock()
+	return m.workloadStatus[ID]
+}
+
+func (m *MockStore) ListRunningWorkloadIDs(context.Context) ([]string, error) {
+	m.Lock()
+	defer m.Unlock()
+	running := make([]string, 0, len(m.workloadStatus))
+	for ID, status := range m.workloadStatus {
+		if status.Running {
+			running = append(running, ID)
+		}
+	}
+	slices.Sort(running)
+	return running, nil
+}
+
+func (m *MockStore) init() {
+	m.workloadStatus = map[string]*types.WorkloadStatus{}
+	m.nodeStatus = map[string]*types.NodeStatus{}
+	m.nodeInfo = map[string]*types.Node{
+		"fake": {
+			Name:     "fake",
+			Endpoint: "eva://127.0.0.1:6666",
+		},
+		"faker": {
+			Name:     "faker",
+			Endpoint: "eva://127.0.0.1:6667",
+		},
+	}
 }

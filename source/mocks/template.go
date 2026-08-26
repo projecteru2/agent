@@ -24,6 +24,36 @@ type Nerv struct {
 	daemonRunning bool
 }
 
+func FromTemplate() source.Source {
+	n := &Nerv{}
+	n.init()
+	n.On("List", mock.Anything).Return(func(ctx context.Context) []*source.Workload {
+		var IDs []string
+		n.withLock(func() { IDs = slices.Collect(maps.Keys(n.workloads)) })
+
+		workloads := make([]*source.Workload, 0, len(IDs))
+		for _, ID := range IDs {
+			workloads = append(workloads, n.snapshot(ID))
+		}
+		return workloads
+	}, nil)
+	n.On("Get", mock.Anything, mock.Anything).Return(func(ctx context.Context, ID string) *source.Workload {
+		return n.snapshot(ID)
+	}, nil)
+	n.On("Events", mock.Anything).Return(func(ctx context.Context) <-chan *types.WorkloadEventMessage {
+		return n.msgChan
+	}, func(ctx context.Context) <-chan error {
+		return n.errChan
+	})
+	n.On("Alive", mock.Anything).Return(func(ctx context.Context) bool {
+		var running bool
+		n.withLock(func() { running = n.daemonRunning })
+		return running
+	})
+
+	return n
+}
+
 // StartEvents starts the events: Shinji 400%, Asuka starts, Asuka dies, Rei dies
 func (n *Nerv) StartEvents() {
 	n.msgChan <- &types.WorkloadEventMessage{
@@ -104,34 +134,4 @@ func (n *Nerv) withLock(f func()) {
 	n.Lock()
 	defer n.Unlock()
 	f()
-}
-
-func FromTemplate() source.Source {
-	n := &Nerv{}
-	n.init()
-	n.On("List", mock.Anything).Return(func(ctx context.Context) []*source.Workload {
-		var IDs []string
-		n.withLock(func() { IDs = slices.Collect(maps.Keys(n.workloads)) })
-
-		workloads := make([]*source.Workload, 0, len(IDs))
-		for _, ID := range IDs {
-			workloads = append(workloads, n.snapshot(ID))
-		}
-		return workloads
-	}, nil)
-	n.On("Get", mock.Anything, mock.Anything).Return(func(ctx context.Context, ID string) *source.Workload {
-		return n.snapshot(ID)
-	}, nil)
-	n.On("Events", mock.Anything).Return(func(ctx context.Context) <-chan *types.WorkloadEventMessage {
-		return n.msgChan
-	}, func(ctx context.Context) <-chan error {
-		return n.errChan
-	})
-	n.On("Alive", mock.Anything).Return(func(ctx context.Context) bool {
-		var running bool
-		n.withLock(func() { running = n.daemonRunning })
-		return running
-	})
-
-	return n
 }
