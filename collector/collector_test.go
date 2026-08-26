@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -66,6 +67,34 @@ func TestCollectAdoptsTheMetadataItReReadsAfterAFailure(t *testing.T) {
 	t.Cleanup(func() { removeMetricsClient(w.ID) })
 
 	assert.Eventually(t, func() bool { return sampling(w.ID) }, sampleTimeout, samplePoll)
+}
+
+func TestPublishSkipsAStepAcrossACounterReset(t *testing.T) {
+	w := &source.Workload{ID: "restarted-in-place", Meta: source.Meta{Appname: "app", Entrypoint: "web"}}
+	client := NewMetricsClient("", "node", w, nil)
+	defer removeMetricsClient(w.ID)
+	c := &Collector{config: &types.Config{Metrics: types.MetricsConfig{Step: sampleStep}}, cpuCores: 1}
+
+	c.publish(t.Context(), client, &sample{cpu: cpuStat{Usage: 100}}, &sample{cpu: cpuStat{Usage: 1}})
+	assert.Zero(t, testutil.ToFloat64(client.gauges["cpu_host_usage"].plain))
+
+	c.publish(t.Context(), client, &sample{cpu: cpuStat{Usage: 1}}, &sample{cpu: cpuStat{Usage: 2}})
+	assert.Positive(t, testutil.ToFloat64(client.gauges["cpu_host_usage"].plain))
+}
+
+func TestPublishIOSkipsTheRateOfADeviceItJustMet(t *testing.T) {
+	w := &source.Workload{ID: "first-write-to-a-new-device", Meta: source.Meta{Appname: "app", Entrypoint: "web"}}
+	client := NewMetricsClient("", "node", w, nil)
+	defer removeMetricsClient(w.ID)
+	c := &Collector{config: &types.Config{Metrics: types.MetricsConfig{Step: sampleStep}}}
+	c.devices = map[device]string{{major: 8, minor: 16}: "sdb"}
+
+	c.publishIO(t.Context(), client, nil, []ioStat{{Major: 8, Minor: 16, WriteBytes: 1 << 30}}, sampleStep)
+
+	write := client.gauges["io_service_bytes_write"].vector.WithLabelValues("sdb")
+	rate := client.gauges["io_service_bytes_write_per_second"].vector.WithLabelValues("sdb")
+	assert.Positive(t, testutil.ToFloat64(write))
+	assert.Zero(t, testutil.ToFloat64(rate))
 }
 
 func TestNetStatsSkipTheHostLookupForAVMBeforeItsFirstStart(t *testing.T) {

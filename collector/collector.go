@@ -200,6 +200,9 @@ func (c *Collector) netStats(ctx context.Context, w *source.Workload) []netStat 
 }
 
 func (c *Collector) publish(ctx context.Context, client *MetricsClient, prev, next *sample) {
+	if next.cpu.Usage < prev.cpu.Usage {
+		return
+	}
 	step := float64(c.config.Metrics.Step)
 
 	deltaUsage := next.cpu.Usage - prev.cpu.Usage
@@ -249,7 +252,10 @@ func (c *Collector) publishIO(ctx context.Context, client *MetricsClient, prev, 
 		client.IOServicedRead(path, float64(dev.ReadIOs))
 		client.IOServicedWrite(path, float64(dev.WriteIOs))
 
-		old := before[path]
+		old, ok := before[path]
+		if !ok {
+			continue
+		}
 		client.IOServiceBytesReadPerSecond(path, float64(dev.ReadBytes-old.ReadBytes)/step)
 		client.IOServiceBytesWritePerSecond(path, float64(dev.WriteBytes-old.WriteBytes)/step)
 		client.IOServicedReadPerSecond(path, float64(dev.ReadIOs-old.ReadIOs)/step)
