@@ -1,12 +1,16 @@
 package workload
 
 import (
+	"context"
+	"errors"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/projecteru2/agent/source"
+	"github.com/projecteru2/agent/store"
 	"github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
 )
@@ -66,4 +70,47 @@ func TestHealthCheckReportsCoreRunningWorkloadMissingFromRuntime(t *testing.T) {
 	assert.False(t, got.Running)
 	assert.Empty(t, manager.collecting)
 	assert.Empty(t, manager.logTargets)
+}
+
+func TestHealthCheckSamplesAWorkloadStartingMidSweep(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	src := &sweepRaceSource{}
+	manager.source = src
+	w := &source.Workload{ID: "Misato", CgroupPath: t.TempDir(), Running: true}
+	status := &types.WorkloadStatus{ID: w.ID, Running: true, Healthy: true, Nodename: "fake"}
+	require.NoError(t, manager.store.SetWorkloadStatus(t.Context(), status, 0))
+	manager.store = &sweepRaceStore{Store: manager.store, src: src, starting: w}
+
+	manager.checkAllWorkloads(t.Context())
+
+	assert.NotNil(t, manager.collecting[w.ID])
+	assert.NotEmpty(t, manager.logTargets)
+}
+
+type sweepRaceSource struct {
+	source.Source
+	workloads []*source.Workload
+}
+
+func (s *sweepRaceSource) List(context.Context) ([]*source.Workload, error) {
+	return s.workloads, nil
+}
+
+func (s *sweepRaceSource) Get(_ context.Context, ID string) (*source.Workload, error) {
+	if i := slices.IndexFunc(s.workloads, func(w *source.Workload) bool { return w.ID == ID }); i >= 0 {
+		return s.workloads[i], nil
+	}
+	return nil, errors.New("unknown workload")
+}
+
+type sweepRaceStore struct {
+	store.Store
+	src      *sweepRaceSource
+	starting *source.Workload
+}
+
+func (s *sweepRaceStore) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
+	IDs, err := s.Store.ListRunningWorkloadIDs(ctx)
+	s.src.workloads = append(s.src.workloads, s.starting)
+	return IDs, err
 }

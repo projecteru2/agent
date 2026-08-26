@@ -32,15 +32,15 @@ func (m *Manager) healthCheck(ctx context.Context) {
 func (m *Manager) checkAllWorkloads(ctx context.Context) {
 	logger := log.WithFunc("workload.checkAllWorkloads")
 	logger.Debug(ctx, "health check begin")
+	runningIDs, err := m.store.ListRunningWorkloadIDs(ctx)
+	if err != nil {
+		logger.Error(ctx, err, "failed to list running workloads from core")
+	}
+
 	workloads, err := m.source.List(ctx)
 	if err != nil {
 		logger.Error(ctx, err, "failed to list workloads")
 		return
-	}
-
-	runningIDs, err := m.store.ListRunningWorkloadIDs(ctx)
-	if err != nil {
-		logger.Error(ctx, err, "failed to list running workloads from core")
 	}
 
 	listed := make(map[string]struct{}, len(workloads))
