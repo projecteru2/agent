@@ -3,6 +3,7 @@ package workload
 import (
 	"cmp"
 	"context"
+	"errors"
 	"time"
 
 	"github.com/projecteru2/core/log"
@@ -135,7 +136,7 @@ func (m *Manager) forward(ctx context.Context, entry *collector.Entry) {
 		Extra:      target.extra,
 	}
 	m.logBroadcaster.broadcast(ctx, l)
-	if err := target.writer.Write(ctx, l); err != nil {
+	if err := target.writer.Write(ctx, l); err != nil && !errors.Is(err, common.ErrConnecting) {
 		logger := log.WithFunc("workload.forward").WithField("ID", w.ID)
 		logger.Errorf(ctx, err, "%s workload %s write failed", w.Meta.Appname, w.Meta.Entrypoint)
 	}
