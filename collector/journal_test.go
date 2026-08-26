@@ -105,6 +105,21 @@ func TestJournalReadDoesNotBlameTheReaderWhenTheContextEnds(t *testing.T) {
 	}
 }
 
+func TestJournalReadStopsWhenARecordExceedsTheLineLimit(t *testing.T) {
+	j := NewJournal(filepath.Join(t.TempDir(), "state"))
+	j.binary = fakeReader(t, "head -c 2097152 /dev/zero | tr '\\0' 'x'\necho\nsleep 30\n")
+
+	done := make(chan error, 1)
+	go func() { done <- j.Read(t.Context(), func(*Entry) { t.Error("no entry is expected") }) }()
+
+	select {
+	case err := <-done:
+		require.Error(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for the reader to stop")
+	}
+}
+
 func TestRingKeepsTheLastBytes(t *testing.T) {
 	r := &ring{limit: 4}
 

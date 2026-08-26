@@ -24,6 +24,7 @@ const (
 	defaultStream = "stdout"
 
 	cursorFlushInterval = 5 * time.Second
+	pipeWaitDelay       = time.Second
 	scanBufferSize      = 64 << 10
 	scanLineMax         = 1 << 20
 	stderrMax           = 4 << 10
@@ -88,6 +89,7 @@ func (j *Journal) read(ctx context.Context, handle func(*Entry)) error {
 
 	cursor := j.loadCursor(ctx)
 	cmd := exec.CommandContext(ctx, j.binary, args(cursor)...) //nolint:gosec // the arguments are the agent's own match list and its saved cursor
+	cmd.WaitDelay = pipeWaitDelay
 	stderr := &ring{limit: stderrMax}
 	cmd.Stderr = stderr
 	stdout, err := cmd.StdoutPipe()
@@ -121,6 +123,7 @@ func (j *Journal) read(ctx context.Context, handle func(*Entry)) error {
 		}
 	}
 	if err := scanner.Err(); err != nil {
+		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
 		return err
 	}
