@@ -3,7 +3,10 @@ package core
 import (
 	"context"
 	"fmt"
+	"maps"
 	"math/rand/v2"
+	"slices"
+	"strings"
 	"time"
 
 	pb "github.com/projecteru2/core/rpc/gen"
@@ -29,7 +32,7 @@ func (c *Store) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
 }
 
 func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error {
-	workloadStatus := fmt.Sprintf("%+v", status)
+	workloadStatus := statusKey(status)
 	if cached, ok := c.cache.Get(status.ID); ok && cached == workloadStatus {
 		return nil
 	}
@@ -60,6 +63,16 @@ func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadSta
 		c.cache.Set(status.ID, workloadStatus, getCacheTTL(c.config.HealthCheck.CacheTTL))
 	}
 	return err
+}
+
+func statusKey(status *types.WorkloadStatus) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s\x00%t\x00%t\x00%s\x00%s\x00%s\x00", status.ID, status.Running, status.Healthy, status.Appname, status.Entrypoint, status.Nodename)
+	b.Write(status.Extension)
+	for _, k := range slices.Sorted(maps.Keys(status.Networks)) {
+		fmt.Fprintf(&b, "\x00%s=%s", k, status.Networks[k])
+	}
+	return b.String()
 }
 
 func getCacheTTL(ttl int64) time.Duration {

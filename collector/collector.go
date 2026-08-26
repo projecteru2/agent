@@ -230,11 +230,9 @@ func (c *Collector) publish(ctx context.Context, client *MetricsClient, prev, ne
 }
 
 func (c *Collector) publishIO(ctx context.Context, client *MetricsClient, prev, next []ioStat, step float64) {
-	before := make(map[string]ioStat, len(prev))
+	before := make(map[device]ioStat, len(prev))
 	for _, dev := range prev {
-		if path, err := c.devicePath(dev.Major, dev.Minor); err == nil {
-			before[path] = dev
-		}
+		before[device{major: dev.Major, minor: dev.Minor}] = dev
 	}
 
 	for _, dev := range next {
@@ -248,7 +246,7 @@ func (c *Collector) publishIO(ctx context.Context, client *MetricsClient, prev, 
 		client.IOServicedRead(path, float64(dev.ReadIOs))
 		client.IOServicedWrite(path, float64(dev.WriteIOs))
 
-		old, ok := before[path]
+		old, ok := before[device{major: dev.Major, minor: dev.Minor}]
 		if !ok {
 			continue
 		}

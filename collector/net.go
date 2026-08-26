@@ -41,12 +41,16 @@ func netStatsFromProc(procRoot string, pid int, iface string, mirrored bool) ([]
 		if !ok {
 			continue
 		}
+		trimmed := strings.TrimSpace(name)
+		if iface != "" && trimmed != iface {
+			continue
+		}
 		fields := strings.Fields(counters)
 		if len(fields) < 12 {
 			continue
 		}
 		stat := netStat{
-			Name:        strings.TrimSpace(name),
+			Name:        trimmed,
 			BytesRecv:   parseUint(fields[0]),
 			PacketsRecv: parseUint(fields[1]),
 			ErrIn:       parseUint(fields[2]),
@@ -55,9 +59,6 @@ func netStatsFromProc(procRoot string, pid int, iface string, mirrored bool) ([]
 			PacketsSent: parseUint(fields[9]),
 			ErrOut:      parseUint(fields[10]),
 			DropOut:     parseUint(fields[11]),
-		}
-		if iface != "" && stat.Name != iface {
-			continue
 		}
 		if mirrored {
 			stat.mirror()

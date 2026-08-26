@@ -49,7 +49,7 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 	switch {
 	case errors.Is(err, common.ErrInvalidScheme):
 		logger.Infof(ctx, "create an empty writer for %s success", addr)
-		writer.enc = NewStreamEncoder(discard{})
+		return &Writer{stdout: stdout}, nil
 	case errors.Is(err, common.ErrJournalDisabled):
 		return nil, err
 	case err != nil:
@@ -194,14 +194,4 @@ func (c *deadlineConn) Write(p []byte) (int, error) {
 		return 0, err
 	}
 	return c.Conn.Write(p)
-}
-
-type discard struct{}
-
-func (d discard) Write([]byte) (n int, err error) {
-	return 0, nil
-}
-
-func (d discard) Close() error {
-	return nil
 }
