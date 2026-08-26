@@ -75,17 +75,17 @@ func (m *Manager) reconcile(ctx context.Context, ID string) {
 
 func (m *Manager) checkOneWorkload(ctx context.Context, w *source.Workload) bool {
 	logger := log.WithFunc("workload.checkOneWorkload").WithField("ID", w.ID)
-	status, err := m.workloadStatus(ctx, w)
-	if err != nil {
-		logger.Error(ctx, err, "failed to get status of workload")
-		return false
-	}
-	if status.Running {
+	if w.Running {
 		m.start(ctx, w)
 	} else {
 		m.stop(w.ID)
 	}
 
+	status, err := m.workloadStatus(ctx, w)
+	if err != nil {
+		logger.Error(ctx, err, "failed to get status of workload")
+		return false
+	}
 	if err = m.setWorkloadStatus(ctx, status); err != nil {
 		logger.Error(ctx, err, "update workload status failed")
 	}

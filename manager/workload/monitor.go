@@ -79,21 +79,8 @@ func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.Workload
 		return
 	}
 
-	if w.Running {
-		m.start(ctx, w)
-	}
-
-	status, err := m.workloadStatus(ctx, w)
-	if err != nil {
-		logger.Error(ctx, err, "failed to get workload status")
-		return
-	}
-	if !status.Healthy {
+	if !m.checkOneWorkload(ctx, w) {
 		m.checkOneWorkloadWithBackoffRetry(ctx, event.ID)
-		return
-	}
-	if err := m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL()); err != nil {
-		logger.Error(ctx, err, "failed to update workload status")
 	}
 }
 
@@ -108,7 +95,7 @@ func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEv
 		return
 	}
 
-	if err := m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL()); err != nil {
+	if err := m.setWorkloadStatus(ctx, status); err != nil {
 		logger.Error(ctx, err, "failed to update workload status")
 	}
 }
