@@ -50,10 +50,7 @@ func (m *Manager) forwardConsole(ctx context.Context, w *source.Workload) {
 
 func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 	logger := log.WithFunc("workload.startForwarding").WithField("ID", w.ID)
-
-	m.logMutex.Lock()
-	defer m.logMutex.Unlock()
-	if _, ok := m.logTargets[w.ID]; ok {
+	if m.forwarding(w.ID) {
 		return
 	}
 
@@ -65,17 +62,36 @@ func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 		logger.Errorf(ctx, err, "create log forward %s failed", transfer)
 		return
 	}
-
-	target := &logTarget{workload: w, writer: writer, extra: w.LogFields(), cancel: cancel}
-	for _, key := range logKeys(w) {
-		m.logTargets[key] = target
+	if !m.registerTarget(w, &logTarget{workload: w, writer: writer, extra: w.LogFields(), cancel: cancel}) {
+		cancel()
+		return
 	}
+
 	if w.Log.ConsoleSocket != "" {
 		go m.forwardConsole(ctx, w)
 		logger.Infof(ctx, "forwarding %s logs from the console at %s", w.Meta.Appname, w.Log.ConsoleSocket)
 		return
 	}
 	logger.Infof(ctx, "forwarding %s logs from the journal", w.Meta.Appname)
+}
+
+func (m *Manager) forwarding(ID string) bool {
+	m.logMutex.RLock()
+	defer m.logMutex.RUnlock()
+	_, ok := m.logTargets[ID]
+	return ok
+}
+
+func (m *Manager) registerTarget(w *source.Workload, target *logTarget) bool {
+	m.logMutex.Lock()
+	defer m.logMutex.Unlock()
+	if _, ok := m.logTargets[w.ID]; ok {
+		return false
+	}
+	for _, key := range logKeys(w) {
+		m.logTargets[key] = target
+	}
+	return true
 }
 
 func (m *Manager) stopForwarding(ID string) {

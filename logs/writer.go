@@ -19,6 +19,7 @@ const (
 
 	keepaliveInterval = time.Second * 30
 	closeWaitInterval = time.Second * 5
+	dialTimeout       = time.Second * 5
 	writeTimeout      = time.Second * 5
 )
 
@@ -108,7 +109,7 @@ func (w *Writer) withRLock(f func()) {
 }
 
 func (w *Writer) createStreamEncoder(network string) (Encoder, error) {
-	conn, err := net.Dial(network, w.addr)
+	conn, err := net.DialTimeout(network, w.addr, dialTimeout)
 	if err != nil {
 		return nil, err
 	}
