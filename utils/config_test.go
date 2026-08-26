@@ -76,9 +76,9 @@ func TestLoadConfigLetsTheFileOverrideDefaults(t *testing.T) {
 }
 
 func TestLoadConfigLetsAnExplicitZeroInTheFileWin(t *testing.T) {
-	config, err := LoadConfig(writeConfig(t, minimalConfig+"heartbeat_interval: 0\n"))
+	config, err := LoadConfig(writeConfig(t, minimalConfig+"healthcheck:\n    cache_ttl: 0\n"))
 	assert.NoError(t, err)
-	assert.Equal(t, 0, config.HeartbeatInterval)
+	assert.Zero(t, config.HealthCheck.CacheTTL)
 }
 
 func TestLoadConfigRejectsBadInput(t *testing.T) {
@@ -90,6 +90,9 @@ func TestLoadConfigRejectsBadInput(t *testing.T) {
 		{"required field set to null", "core:\n"},
 		{"file is not a mapping", "test\n"},
 		{"malformed yaml", "pid: \"/tmp/agent.pid\"\n  broken\n"},
+		{"zero heartbeat interval", minimalConfig + "heartbeat_interval: 0\n"},
+		{"zero metrics step", minimalConfig + "metrics:\n    step: 0\n"},
+		{"negative healthcheck interval", minimalConfig + "healthcheck:\n    interval: -1\n"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

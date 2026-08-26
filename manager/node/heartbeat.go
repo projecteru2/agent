@@ -15,9 +15,6 @@ const (
 )
 
 func (m *Manager) heartbeat(ctx context.Context) {
-	if m.config.HeartbeatInterval <= 0 {
-		return
-	}
 	go m.nodeStatusReport(ctx)
 
 	tick := time.NewTicker(time.Duration(m.config.HeartbeatInterval) * time.Second)
