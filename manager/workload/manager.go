@@ -120,8 +120,13 @@ func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {
 	m.collectMutex.Lock()
 	defer m.collectMutex.Unlock()
 
-	if _, ok := m.collecting[w.ID]; ok {
-		return
+	if task, ok := m.collecting[w.ID]; ok {
+		select {
+		case <-task.done:
+			delete(m.collecting, w.ID)
+		default:
+			return
+		}
 	}
 
 	sampleCtx, cancel := context.WithCancel(ctx)
