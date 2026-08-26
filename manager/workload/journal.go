@@ -94,6 +94,15 @@ func (m *Manager) registerTarget(w *source.Workload, target *logTarget) bool {
 	return true
 }
 
+func (m *Manager) forwardedWorkload(ID string) *source.Workload {
+	m.logMutex.RLock()
+	defer m.logMutex.RUnlock()
+	if target, ok := m.logTargets[ID]; ok {
+		return target.workload
+	}
+	return nil
+}
+
 func (m *Manager) stopForwarding(ID string) {
 	m.logMutex.Lock()
 	defer m.logMutex.Unlock()

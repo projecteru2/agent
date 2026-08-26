@@ -7,6 +7,7 @@ import (
 	"github.com/projecteru2/core/log"
 
 	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 )
@@ -77,7 +78,8 @@ func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.Workload
 	logger.Debug(ctx, "handling start")
 	w, err := m.source.Get(ctx, event.ID)
 	if err != nil {
-		logger.Error(ctx, err, "failed to get workload")
+		logger.Error(ctx, err, "failed to get workload, will retry")
+		m.checkOneWorkloadWithBackoffRetry(ctx, event.ID)
 		return
 	}
 
@@ -89,9 +91,10 @@ func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.Workload
 func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEventMessage) {
 	logger := log.WithFunc("workload.handleWorkloadDie").WithField("ID", event.ID)
 	logger.Debug(ctx, "handling die")
+	forwarded := m.forwardedWorkload(event.ID)
 	m.stop(event.ID)
 
-	status, err := m.goneStatus(ctx, event.ID)
+	status, err := m.goneStatus(ctx, event.ID, forwarded)
 	if err != nil {
 		logger.Error(ctx, err, "failed to get workload status")
 		return
@@ -102,11 +105,16 @@ func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEv
 	}
 }
 
-func (m *Manager) goneStatus(ctx context.Context, ID string) (*types.WorkloadStatus, error) {
+func (m *Manager) goneStatus(ctx context.Context, ID string, forwarded *source.Workload) (*types.WorkloadStatus, error) {
 	w, err := m.source.Get(ctx, ID)
 	if err != nil {
 		log.WithFunc("workload.goneStatus").WithField("ID", ID).Warnf(ctx, "no runtime knows it any more, reporting it gone: %v", err)
-		return &types.WorkloadStatus{ID: ID, Nodename: m.config.HostName}, nil
+		status := &types.WorkloadStatus{ID: ID, Nodename: m.config.HostName}
+		if forwarded != nil {
+			status.Appname = forwarded.Meta.Appname
+			status.Entrypoint = forwarded.Meta.Entrypoint
+		}
+		return status, nil
 	}
 	return m.workloadStatus(ctx, w)
 }
