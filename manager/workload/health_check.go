@@ -51,10 +51,18 @@ func (m *Manager) checkAllWorkloads(ctx context.Context) {
 	}
 	for _, ID := range runningIDs {
 		if _, ok := listed[ID]; !ok {
-			wg.Go(func() { m.handleWorkloadDie(ctx, &types.WorkloadEventMessage{ID: ID}) })
+			wg.Go(func() { m.reconcile(ctx, ID) })
 		}
 	}
 	wg.Wait()
+}
+
+func (m *Manager) reconcile(ctx context.Context, ID string) {
+	if w, err := m.source.Get(ctx, ID); err == nil {
+		m.checkOneWorkload(ctx, w)
+		return
+	}
+	m.handleWorkloadDie(ctx, &types.WorkloadEventMessage{ID: ID})
 }
 
 func (m *Manager) checkOneWorkload(ctx context.Context, w *source.Workload) bool {
