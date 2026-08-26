@@ -9,15 +9,16 @@ import (
 	"github.com/projecteru2/core/log"
 )
 
-// CheckHTTP reports whether every backend answers with the expected status code.
-func CheckHTTP(ctx context.Context, ID string, backends []string, code int, timeout time.Duration) bool {
-	logger := log.WithFunc("utils.CheckHTTP").WithField("ID", ID).WithField("backends", backends).WithField("code", code)
-	for _, backend := range backends {
-		logger.Debug(ctx, "checking health via http")
-		if !checkOneURL(ctx, backend, code, timeout) {
-			logger.Info(ctx, "http health check failed")
-			return false
-		}
+// CheckHTTP reports whether url answers with the expected status code; an empty url passes.
+func CheckHTTP(ctx context.Context, ID, url string, code int, timeout time.Duration) bool {
+	if url == "" {
+		return true
+	}
+	logger := log.WithFunc("utils.CheckHTTP").WithField("ID", ID).WithField("url", url).WithField("code", code)
+	logger.Debug(ctx, "checking health via http")
+	if !checkOneURL(ctx, url, code, timeout) {
+		logger.Info(ctx, "http health check failed")
+		return false
 	}
 	return true
 }

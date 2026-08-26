@@ -55,7 +55,7 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 	})
 	m.startingWorkloads[ID] = retryTask
 	go func() {
-		if err := retryTask.Run(ctx); err != nil {
+		if err := retryTask.Run(); err != nil {
 			logger.Debug(ctx, "workload still not healthy")
 		}
 		m.forgetRetryTask(ID, retryTask)

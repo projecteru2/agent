@@ -13,7 +13,6 @@ import (
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/source"
-	"github.com/projecteru2/agent/utils"
 )
 
 const (
@@ -51,7 +50,7 @@ func readSpec(raw typeurl.Any) (spec, error) {
 
 // workload maps the labels and runtime spec core wrote at create time onto one workload.
 func (c *Containerd) workload(ctx context.Context, ID string, labels map[string]string, s spec) (*source.Workload, error) {
-	appname, entrypoint, ident, err := utils.GetAppInfo(ID)
+	appname, entrypoint, ident, err := coreutils.ParseWorkloadName(ID)
 	if err != nil {
 		return nil, err
 	}

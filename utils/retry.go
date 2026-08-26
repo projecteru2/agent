@@ -30,9 +30,9 @@ func NewRetryTask(ctx context.Context, maxAttempts int, f RetryFunc) *RetryTask 
 	}
 }
 
-func (r *RetryTask) Run(ctx context.Context) error {
+func (r *RetryTask) Run() error {
 	logger := log.WithFunc("utils.Run")
-	logger.Debug(ctx, "start")
+	logger.Debug(r.ctx, "start")
 	defer r.Stop()
 
 	var err error
@@ -43,14 +43,14 @@ func (r *RetryTask) Run(ctx context.Context) error {
 	for range r.maxAttempts {
 		select {
 		case <-r.ctx.Done():
-			logger.Debug(ctx, "abort")
+			logger.Debug(r.ctx, "abort")
 			return r.ctx.Err()
 		case <-timer.C:
 			err = r.fn()
 			if err == nil {
 				return nil
 			}
-			logger.Debugf(ctx, "will retry after %v seconds", interval)
+			logger.Debugf(r.ctx, "will retry after %v seconds", interval)
 			timer.Reset(time.Duration(interval) * time.Second)
 			interval *= 2
 		}
@@ -64,7 +64,5 @@ func (r *RetryTask) Stop() {
 
 // BackoffRetry runs f up to maxAttempts times, doubling the wait after each failure.
 func BackoffRetry(ctx context.Context, maxAttempts int, f RetryFunc) error {
-	retryTask := NewRetryTask(ctx, maxAttempts, f)
-	defer retryTask.Stop()
-	return retryTask.Run(ctx)
+	return NewRetryTask(ctx, maxAttempts, f).Run()
 }

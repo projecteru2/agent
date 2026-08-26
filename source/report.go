@@ -61,6 +61,20 @@ func (r *Reporter) Note(ID, action string) {
 	}
 }
 
+func (r *Reporter) Gone(ID string) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	last, known := r.last[ID]
+	if !known {
+		return
+	}
+	if last != common.StatusDie && r.emit != nil {
+		r.emit(ID, common.StatusDie)
+	}
+	delete(r.last, ID)
+}
+
 func (r *Reporter) Known(ID string) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()

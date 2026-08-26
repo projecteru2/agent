@@ -14,7 +14,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/projecteru2/core/log"
-	coreutils "github.com/projecteru2/core/utils"
 
 	"github.com/projecteru2/agent/common"
 )
@@ -28,10 +27,6 @@ func WritePid(ctx context.Context, path string) {
 	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
 		log.Fatalf(ctx, err, "save pid file %s", path)
 	}
-}
-
-func GetAppInfo(containerName string) (name, entrypoint, ident string, err error) {
-	return coreutils.ParseWorkloadName(containerName)
 }
 
 func UseLabelAsFilter() bool {

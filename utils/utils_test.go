@@ -24,20 +24,6 @@ func TestWritePid(t *testing.T) {
 	assert.Equal(t, strconv.Itoa(os.Getpid()), string(content))
 }
 
-func TestGetAppInfo(t *testing.T) {
-	containerName := "eru-stats_api_EAXPcM"
-	name, entrypoint, ident, err := GetAppInfo(containerName)
-	assert.NoError(t, err)
-
-	assert.Equal(t, name, "eru-stats")
-	assert.Equal(t, entrypoint, "api")
-	assert.Equal(t, ident, "EAXPcM")
-
-	containerName = "api_EAXPcM"
-	_, _, _, err = GetAppInfo(containerName)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid workload name")
-}
 
 func TestReplaceNonUtf8(t *testing.T) {
 	str := "test, 1\x00\xff\x01\xbb\xfd\xff\xfd\n"

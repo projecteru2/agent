@@ -11,7 +11,6 @@ import (
 
 	"github.com/projecteru2/core/log"
 
-	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/source/meta"
 	"github.com/projecteru2/agent/types"
@@ -117,7 +116,7 @@ func (c *Cocoon) watchDaemon(ctx context.Context) {
 				return
 			}
 			if gone {
-				c.forget(ID)
+				c.reporter.Gone(ID)
 				return
 			}
 			c.reporter.Report(ID, source.ActionOf(running))
@@ -133,13 +132,6 @@ func (c *Cocoon) watchDaemon(ctx context.Context) {
 		case <-time.After(c.config.GlobalConnectionTimeout):
 		}
 	}
-}
-
-func (c *Cocoon) forget(ID string) {
-	if c.reporter.Known(ID) {
-		c.reporter.Report(ID, common.StatusDie)
-	}
-	c.reporter.Forget(ID)
 }
 
 func (c *Cocoon) liveness(ctx context.Context) map[string]bool {

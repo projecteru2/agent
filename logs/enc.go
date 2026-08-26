@@ -54,7 +54,7 @@ func (c *JournalEncoder) Encode(logline *types.Log) error {
 	}
 
 	vars := map[string]string{
-		"SYSLOG_IDENTIFIER": logline.Name,
+		common.FieldIdentifier: logline.Name,
 		"ID":                logline.ID,
 		"TYPE":              logline.Type,
 		"ENTRY_POINT":       logline.EntryPoint,

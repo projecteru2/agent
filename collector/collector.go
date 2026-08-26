@@ -138,11 +138,7 @@ func (c *Collector) Collect(ctx context.Context, w *source.Workload, refresh ref
 }
 
 func (c *Collector) clientFor(w *source.Workload, first *sample) *MetricsClient {
-	addr := ""
-	if c.transfers.Len() > 0 {
-		addr = c.transfers.Get(w.ID, 0)
-	}
-	return NewMetricsClient(addr, c.hostname, w, first.unsupported())
+	return NewMetricsClient(c.transfers.Get(w.ID, 0), c.hostname, w, first.unsupported())
 }
 
 func (c *Collector) sample(ctx context.Context, w *source.Workload) (*sample, error) {
@@ -188,7 +184,7 @@ func (c *Collector) netStats(ctx context.Context, w *source.Workload) []netStat 
 	case w.HostIfaceMirrored:
 		return nil
 	case w.HostIface != "":
-		stats, err = netStatsFromIface(sysNetRoot, w.HostIface, w.HostIfaceMirrored)
+		stats, err = netStatsFromIface(sysNetRoot, w.HostIface)
 	default:
 		return nil
 	}
