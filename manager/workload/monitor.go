@@ -7,7 +7,6 @@ import (
 	"github.com/projecteru2/core/log"
 
 	"github.com/projecteru2/agent/common"
-	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 )
@@ -94,29 +93,22 @@ func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEv
 	forwarded := m.forwardedWorkload(event.ID)
 	m.stop(event.ID)
 
-	status, err := m.goneStatus(ctx, event.ID, forwarded)
-	if err != nil {
-		logger.Error(ctx, err, "failed to get workload status")
+	if w, err := m.source.Get(ctx, event.ID); err == nil {
+		m.checkOneWorkload(ctx, w)
+		if !w.Running {
+			m.stop(event.ID)
+		}
 		return
+	}
+
+	logger.Warn(ctx, "no runtime knows it any more, reporting it gone")
+	status := &types.WorkloadStatus{ID: event.ID, Nodename: m.config.HostName}
+	if forwarded != nil {
+		status.Appname = forwarded.Meta.Appname
+		status.Entrypoint = forwarded.Meta.Entrypoint
 	}
 	if err := m.setWorkloadStatus(ctx, status); err != nil {
 		logger.Error(ctx, err, "failed to update workload status")
 	}
-	if !status.Running {
-		m.stop(event.ID)
-	}
-}
-
-func (m *Manager) goneStatus(ctx context.Context, ID string, forwarded *source.Workload) (*types.WorkloadStatus, error) {
-	w, err := m.source.Get(ctx, ID)
-	if err != nil {
-		log.WithFunc("workload.goneStatus").WithField("ID", ID).Warnf(ctx, "no runtime knows it any more, reporting it gone: %v", err)
-		status := &types.WorkloadStatus{ID: ID, Nodename: m.config.HostName}
-		if forwarded != nil {
-			status.Appname = forwarded.Meta.Appname
-			status.Entrypoint = forwarded.Meta.Entrypoint
-		}
-		return status, nil
-	}
-	return m.workloadStatus(ctx, w)
+	m.stop(event.ID)
 }
