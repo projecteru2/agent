@@ -93,7 +93,8 @@ func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEv
 	forwarded := m.forwardedWorkload(event.ID)
 	m.stop(event.ID)
 
-	if w, err := m.source.Get(ctx, event.ID); err == nil {
+	w, err := m.source.Get(ctx, event.ID)
+	if err == nil {
 		m.checkOneWorkload(ctx, w)
 		if !w.Running {
 			m.stop(event.ID)
@@ -101,7 +102,7 @@ func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEv
 		return
 	}
 
-	logger.Warn(ctx, "no runtime knows it any more, reporting it gone")
+	logger.Warnf(ctx, "no runtime knows it any more, reporting it gone: %v", err)
 	status := &types.WorkloadStatus{ID: event.ID, Nodename: m.config.HostName}
 	if forwarded != nil {
 		status.Appname = forwarded.Meta.Appname

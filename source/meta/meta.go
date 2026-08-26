@@ -17,9 +17,6 @@ import (
 )
 
 const (
-	// IDPattern is the shape of a workload id, so nothing else eru names on a node is taken for one.
-	IDPattern = "[0-9a-f]{32}"
-
 	KindProcess Kind = "process"
 	KindVM      Kind = "vm"
 
@@ -29,7 +26,8 @@ const (
 var (
 	errOtherKind = errors.New("meta file of another runtime")
 
-	workloadID = regexp.MustCompile("^" + IDPattern + "$")
+	// workloadID is the shape of a workload id, so nothing else eru names on a node is taken for one.
+	workloadID = regexp.MustCompile("^[0-9a-f]{32}$")
 )
 
 // Kind is the runtime the workload a meta file describes belongs to.

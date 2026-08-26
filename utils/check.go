@@ -31,6 +31,9 @@ func CheckHTTP(ctx context.Context, ID, url string, code int, timeout time.Durat
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if code == 0 {
+		if resp.StatusCode >= 500 {
+			logger.Debugf(ctx, "http health check failed with %d", resp.StatusCode)
+		}
 		return resp.StatusCode < 500 && resp.StatusCode >= 200
 	}
 	if resp.StatusCode != code {
