@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/projecteru2/core/log"
@@ -19,10 +20,17 @@ func (m *Manager) healthCheck(ctx context.Context) {
 	tick := time.NewTicker(time.Duration(m.config.HealthCheck.Interval) * time.Second)
 	defer tick.Stop()
 
+	var sweeping atomic.Bool
 	for {
 		select {
 		case <-tick.C:
-			go m.checkAllWorkloads(ctx)
+			if !sweeping.CompareAndSwap(false, true) {
+				continue
+			}
+			go func() {
+				defer sweeping.Store(false)
+				m.checkAllWorkloads(ctx)
+			}()
 		case <-ctx.Done():
 			return
 		}
