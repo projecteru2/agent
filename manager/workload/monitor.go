@@ -99,9 +99,11 @@ func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEv
 		logger.Error(ctx, err, "failed to get workload status")
 		return
 	}
-
 	if err := m.setWorkloadStatus(ctx, status); err != nil {
 		logger.Error(ctx, err, "failed to update workload status")
+	}
+	if !status.Running {
+		m.stop(event.ID)
 	}
 }
 

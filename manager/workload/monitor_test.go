@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/projecteru2/agent/source"
+	"github.com/projecteru2/agent/store"
 	"github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
 )
@@ -61,6 +62,39 @@ func TestHandleWorkloadDieCarriesTheForwardedMeta(t *testing.T) {
 	assert.Equal(t, "eva3", status.Entrypoint)
 }
 
+func TestHandleWorkloadDieStopsLocalTasksRestartedDuringStatusWrite(t *testing.T) {
+	ctx := t.Context()
+	manager := newMockWorkloadManager(t)
+	manager.source = &forgetfulSource{}
+	statusStore := &blockingStatusStore{
+		Store:   manager.store,
+		started: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	manager.store = statusStore
+	w := &source.Workload{ID: "Rei", CgroupPath: t.TempDir(), Running: true}
+	manager.start(ctx, w)
+	t.Cleanup(func() { manager.stop(w.ID) })
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		manager.handleWorkloadDie(ctx, &types.WorkloadEventMessage{ID: w.ID, Action: "die"})
+	}()
+
+	<-statusStore.started
+	assert.Empty(t, manager.collecting)
+	assert.Empty(t, manager.logTargets)
+	assert.True(t, manager.checkOneWorkload(ctx, w))
+	assert.NotEmpty(t, manager.collecting)
+	assert.NotEmpty(t, manager.logTargets)
+	close(statusStore.release)
+	<-done
+
+	assert.Empty(t, manager.collecting)
+	assert.Empty(t, manager.logTargets)
+}
+
 func TestHandleWorkloadStartRetriesAGetTheRuntimeCannotAnswerYet(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	w := &source.Workload{ID: "Rei", CgroupPath: t.TempDir(), Running: true}
@@ -104,4 +138,23 @@ func (s *lateSource) Get(context.Context, string) (*source.Workload, error) {
 		return nil, errors.New("unit not loaded yet")
 	}
 	return s.w, nil
+}
+
+type blockingStatusStore struct {
+	store.Store
+	started chan struct{}
+	release chan struct{}
+}
+
+func (s *blockingStatusStore) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error {
+	if status.Running {
+		return s.Store.SetWorkloadStatus(ctx, status)
+	}
+	close(s.started)
+	select {
+	case <-s.release:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	return s.Store.SetWorkloadStatus(ctx, status)
 }
