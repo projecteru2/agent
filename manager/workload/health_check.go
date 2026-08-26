@@ -3,6 +3,8 @@ package workload
 import (
 	"context"
 	"encoding/json"
+	"maps"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -63,6 +65,30 @@ func (m *Manager) checkAllWorkloads(ctx context.Context) {
 		}
 	}
 	wg.Wait()
+
+	for _, ID := range runningIDs {
+		listed[ID] = struct{}{}
+	}
+	for _, ID := range m.localTaskIDs() {
+		if _, ok := listed[ID]; !ok {
+			m.stop(ID)
+		}
+	}
+}
+
+func (m *Manager) localTaskIDs() []string {
+	IDs := map[string]struct{}{}
+	m.collectMutex.Lock()
+	for ID := range m.collecting {
+		IDs[ID] = struct{}{}
+	}
+	m.collectMutex.Unlock()
+	m.logMutex.RLock()
+	for _, target := range m.logTargets {
+		IDs[target.workload.ID] = struct{}{}
+	}
+	m.logMutex.RUnlock()
+	return slices.Collect(maps.Keys(IDs))
 }
 
 func (m *Manager) reconcile(ctx context.Context, ID string) {

@@ -89,6 +89,23 @@ func TestHealthCheckKeepsAWorkloadTheListingMissed(t *testing.T) {
 	manager.stop(w.ID)
 }
 
+func TestHealthCheckStopsAnOrphanedLocalTask(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	manager.source = &forgetfulSource{}
+	w := &source.Workload{
+		ID:         "Kaworu",
+		CgroupPath: t.TempDir(),
+		Running:    true,
+		Log:        source.Log{JournalUnit: "eru-Kaworu.service"},
+	}
+	manager.start(t.Context(), w)
+
+	manager.checkAllWorkloads(t.Context())
+
+	assert.Empty(t, manager.collecting)
+	assert.Empty(t, manager.logTargets)
+}
+
 func TestHealthCheckSamplesAWorkloadStartingMidSweep(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	src := &sweepRaceSource{}
