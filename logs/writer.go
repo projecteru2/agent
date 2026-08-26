@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/projecteru2/core/log"
@@ -19,16 +20,16 @@ const (
 
 	keepaliveInterval = time.Second * 30
 	closeWaitInterval = time.Second * 5
+	dialTimeout       = time.Second * 5
 	writeTimeout      = time.Second * 5
 )
 
 type Writer struct {
-	mu            sync.RWMutex
-	addr          string
-	scheme        string
-	stdout        bool
-	enc           Encoder
-	needReconnect bool
+	mu     sync.RWMutex
+	addr   string
+	scheme string
+	stdout bool
+	enc    Encoder
 }
 
 func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, err error) {
@@ -53,7 +54,6 @@ func NewWriter(ctx context.Context, addr string, stdout bool) (writer *Writer, e
 		return nil, err
 	case err != nil:
 		logger.Errorf(ctx, err, "failed to create writer encoder for %s, will retry", addr)
-		writer.needReconnect = true
 	default:
 		logger.Infof(ctx, "create writer for %s success", addr)
 	}
@@ -73,7 +73,6 @@ func (w *Writer) Write(ctx context.Context, logline *types.Log) error {
 	w.withLock(func() {
 		if w.enc == nil {
 			err = common.ErrConnecting
-			w.needReconnect = true
 			return
 		}
 		err = w.enc.Encode(logline)
@@ -108,7 +107,7 @@ func (w *Writer) withRLock(f func()) {
 }
 
 func (w *Writer) createStreamEncoder(network string) (Encoder, error) {
-	conn, err := net.Dial(network, w.addr)
+	conn, err := net.DialTimeout(network, w.addr, dialTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -129,11 +128,11 @@ func (w *Writer) createEncoder(ctx context.Context) (enc Encoder, err error) {
 }
 
 func (w *Writer) reconnect(ctx context.Context) {
-	needReconnect := false
+	connected := false
 	w.withRLock(func() {
-		needReconnect = w.needReconnect
+		connected = w.enc != nil
 	})
-	if !needReconnect {
+	if connected {
 		return
 	}
 	logger := log.WithFunc("logs.reconnect")
@@ -143,7 +142,6 @@ func (w *Writer) reconnect(ctx context.Context) {
 	if err == nil {
 		w.withLock(func() {
 			w.enc = enc
-			w.needReconnect = false
 		})
 		logger.Debugf(ctx, "connected to %s", w.addr)
 		return
@@ -170,20 +168,22 @@ func (w *Writer) keepalive(ctx context.Context) {
 }
 
 func (w *Writer) checkError(ctx context.Context, err error) {
-	if err != nil && !errors.Is(err, common.ErrConnecting) {
-		log.WithFunc("logs.checkError").Error(ctx, err, "failed to send log")
-		w.withLock(func() {
-			if w.enc != nil {
-				_ = w.enc.Close()
-				w.enc = nil
-				w.needReconnect = true
-			}
-		})
+	if err == nil || errors.Is(err, common.ErrConnecting) {
+		return
 	}
+	log.WithFunc("logs.checkError").Error(ctx, err, "failed to send log")
+	if errors.Is(err, syscall.EMSGSIZE) {
+		return
+	}
+	w.withLock(func() {
+		if w.enc != nil {
+			_ = w.enc.Close()
+			w.enc = nil
+		}
+	})
 }
 
-// deadlineConn bounds a write, so a target that accepts the connection and then
-// stops reading is retried like a down one instead of blocking the node's forwarding.
+// deadlineConn bounds a write, so a target that accepts and then stops reading is retried like a down one.
 type deadlineConn struct {
 	net.Conn
 	timeout time.Duration

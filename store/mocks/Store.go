@@ -158,74 +158,6 @@ func (_c *Store_GetNode_Call) RunAndReturn(run func(ctx context.Context, nodenam
 	return _c
 }
 
-// GetNodeStatus provides a mock function for the type Store
-func (_mock *Store) GetNodeStatus(ctx context.Context, nodename string) (*types.NodeStatus, error) {
-	ret := _mock.Called(ctx, nodename)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetNodeStatus")
-	}
-
-	var r0 *types.NodeStatus
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*types.NodeStatus, error)); ok {
-		return returnFunc(ctx, nodename)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *types.NodeStatus); ok {
-		r0 = returnFunc(ctx, nodename)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.NodeStatus)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, nodename)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// Store_GetNodeStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetNodeStatus'
-type Store_GetNodeStatus_Call struct {
-	*mock.Call
-}
-
-// GetNodeStatus is a helper method to define mock.On call
-//   - ctx context.Context
-//   - nodename string
-func (_e *Store_Expecter) GetNodeStatus(ctx any, nodename any) *Store_GetNodeStatus_Call {
-	return &Store_GetNodeStatus_Call{Call: _e.mock.On("GetNodeStatus", ctx, nodename)}
-}
-
-func (_c *Store_GetNodeStatus_Call) Run(run func(ctx context.Context, nodename string)) *Store_GetNodeStatus_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 string
-		if args[1] != nil {
-			arg1 = args[1].(string)
-		}
-		run(
-			arg0,
-			arg1,
-		)
-	})
-	return _c
-}
-
-func (_c *Store_GetNodeStatus_Call) Return(nodeStatus *types.NodeStatus, err error) *Store_GetNodeStatus_Call {
-	_c.Call.Return(nodeStatus, err)
-	return _c
-}
-
-func (_c *Store_GetNodeStatus_Call) RunAndReturn(run func(ctx context.Context, nodename string) (*types.NodeStatus, error)) *Store_GetNodeStatus_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ListRunningWorkloadIDs provides a mock function for the type Store
 func (_mock *Store) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
 	ret := _mock.Called(ctx)
@@ -346,16 +278,16 @@ func (_c *Store_SetNodeStatus_Call) RunAndReturn(run func(ctx context.Context, t
 }
 
 // SetWorkloadStatus provides a mock function for the type Store
-func (_mock *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus, ttl int64) error {
-	ret := _mock.Called(ctx, status, ttl)
+func (_mock *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error {
+	ret := _mock.Called(ctx, status)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetWorkloadStatus")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *types.WorkloadStatus, int64) error); ok {
-		r0 = returnFunc(ctx, status, ttl)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *types.WorkloadStatus) error); ok {
+		r0 = returnFunc(ctx, status)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -370,12 +302,11 @@ type Store_SetWorkloadStatus_Call struct {
 // SetWorkloadStatus is a helper method to define mock.On call
 //   - ctx context.Context
 //   - status *types.WorkloadStatus
-//   - ttl int64
-func (_e *Store_Expecter) SetWorkloadStatus(ctx any, status any, ttl any) *Store_SetWorkloadStatus_Call {
-	return &Store_SetWorkloadStatus_Call{Call: _e.mock.On("SetWorkloadStatus", ctx, status, ttl)}
+func (_e *Store_Expecter) SetWorkloadStatus(ctx any, status any) *Store_SetWorkloadStatus_Call {
+	return &Store_SetWorkloadStatus_Call{Call: _e.mock.On("SetWorkloadStatus", ctx, status)}
 }
 
-func (_c *Store_SetWorkloadStatus_Call) Run(run func(ctx context.Context, status *types.WorkloadStatus, ttl int64)) *Store_SetWorkloadStatus_Call {
+func (_c *Store_SetWorkloadStatus_Call) Run(run func(ctx context.Context, status *types.WorkloadStatus)) *Store_SetWorkloadStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -385,14 +316,9 @@ func (_c *Store_SetWorkloadStatus_Call) Run(run func(ctx context.Context, status
 		if args[1] != nil {
 			arg1 = args[1].(*types.WorkloadStatus)
 		}
-		var arg2 int64
-		if args[2] != nil {
-			arg2 = args[2].(int64)
-		}
 		run(
 			arg0,
 			arg1,
-			arg2,
 		)
 	})
 	return _c
@@ -403,7 +329,7 @@ func (_c *Store_SetWorkloadStatus_Call) Return(err error) *Store_SetWorkloadStat
 	return _c
 }
 
-func (_c *Store_SetWorkloadStatus_Call) RunAndReturn(run func(ctx context.Context, status *types.WorkloadStatus, ttl int64) error) *Store_SetWorkloadStatus_Call {
+func (_c *Store_SetWorkloadStatus_Call) RunAndReturn(run func(ctx context.Context, status *types.WorkloadStatus) error) *Store_SetWorkloadStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

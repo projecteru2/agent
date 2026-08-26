@@ -14,7 +14,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/projecteru2/core/log"
-	coreutils "github.com/projecteru2/core/utils"
 
 	"github.com/projecteru2/agent/common"
 )
@@ -22,10 +21,7 @@ import (
 // CgroupRoot is where the unified cgroup v2 hierarchy is mounted.
 const CgroupRoot = "/sys/fs/cgroup"
 
-var (
-	dockerized bool
-	once       sync.Once
-)
+var isDockerized = sync.OnceValue(func() bool { return os.Getenv(common.DOCKERIZED) != "" })
 
 func WritePid(ctx context.Context, path string) {
 	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
@@ -33,17 +29,8 @@ func WritePid(ctx context.Context, path string) {
 	}
 }
 
-func GetAppInfo(containerName string) (name, entrypoint, ident string, err error) {
-	return coreutils.ParseWorkloadName(containerName)
-}
-
 func UseLabelAsFilter() bool {
 	return os.Getenv("ERU_AGENT_EXPERIMENTAL_FILTER") == "label"
-}
-
-// GetMaxAttemptsByTTL is fixed: core owns status expiry, so every call site passes a zero ttl.
-func GetMaxAttemptsByTTL(ttl int64) int {
-	return 5
 }
 
 // ReplaceNonUtf8 replaces non-utf8 characters in \x format.
@@ -54,7 +41,7 @@ func ReplaceNonUtf8(str string) string {
 
 	// U+FFFD may be a legitimate rune, escape it before validating
 	if strings.ContainsRune(str, utf8.RuneError) {
-		str = strings.ReplaceAll(str, string(utf8.RuneError), "\\xff\\xfd")
+		str = strings.ReplaceAll(str, string(utf8.RuneError), "\\xef\\xbf\\xbd")
 	}
 
 	if utf8.ValidString(str) {
@@ -78,16 +65,9 @@ func ReplaceNonUtf8(str string) string {
 	return string(v)
 }
 
-func IsDockerized() bool {
-	once.Do(func() {
-		dockerized = os.Getenv(common.DOCKERIZED) != ""
-	})
-	return dockerized
-}
-
 // ProcRoot returns where this agent reads the host's procfs.
 func ProcRoot() string {
-	if IsDockerized() {
+	if isDockerized() {
 		return "/hostProc"
 	}
 	return "/proc"

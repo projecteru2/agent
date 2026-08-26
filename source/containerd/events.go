@@ -13,8 +13,6 @@ import (
 	"github.com/projecteru2/agent/types"
 )
 
-const eventType = "container"
-
 var eventTopics = []string{"/tasks/start", "/tasks/exit", "/containers/delete", "/containers/update"}
 
 // eventFilters ors one term per topic, anding the namespace onto each: the exchange carries every namespace.
@@ -93,5 +91,5 @@ func translate(ctx context.Context, envelope *events.Envelope) *types.WorkloadEv
 	default:
 		return nil
 	}
-	return &types.WorkloadEventMessage{ID: ID, Type: eventType, Action: action, TimeNano: envelope.Timestamp.UnixNano()}
+	return &types.WorkloadEventMessage{ID: ID, Action: action}
 }

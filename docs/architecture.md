@@ -1,6 +1,6 @@
 # Architecture
 
-The agent is one process with two independent managers and an HTTP server. Both managers ask `manager.NewClients` for the same two things — the core store and the runtime source — and the clients behind it are per-process singletons, so there is one connection pool to core and one connection to the runtime daemon no matter how many managers want them. If either manager's `Run` returns an error the process cancels its context and exits.
+The agent is one process with two independent managers and an HTTP server. `main` calls `manager.NewClients` once — it dials the core store and every runtime the node hosts — and hands the same pair to both managers, so there is one connection pool to core and one connection to the runtime daemon no matter how many managers want them. If either manager's `Run` returns an error the process cancels its context and exits.
 
 Everything runtime-specific lives in a **source**: it lists the workloads the node runs, streams their state changes and answers whether its daemon is alive. Everything else — the metrics sampler, the health prober — is a runtime-agnostic **collector** that reads Linux files. A source hands a collector a `source.Workload`: the id, the metadata core wrote at create time, the workload's cgroup directory, the pid whose network namespace to read (or a host interface), and where its log lines are. No collector makes an IPC call.
 
@@ -39,7 +39,7 @@ On shutdown the behaviour depends on the signal:
 - `SIGINT`, `SIGTERM`, `SIGQUIT` — the agent calls `SetNodeStatus` with a ttl of `-1`, which removes the status. Core sees the node leave immediately.
 - `SIGUSR1` — the agent exits without touching the status. This is the restart path, and it is why the systemd unit sets `RestartKillSignal=SIGUSR1`.
 
-The final removal waits for any in-flight heartbeat write and prevents another report from starting, so an older heartbeat cannot restore the status after the removal.
+The final removal waits for any in-flight heartbeat write and prevents another report from starting, so an older heartbeat cannot restore the status after the removal. The store bounds each write itself, so the removal gets a full timeout budget even after waiting out a slow heartbeat.
 
 ## Workload manager
 
@@ -49,18 +49,18 @@ The final removal waits for any in-flight heartbeat write and prevents another r
 
 **Event watch.** It subscribes to the runtime's event stream, filtered to the same set of workloads, and handles two actions:
 
-- `start` — fetch status; forward and sample if running; if the workload is already healthy, report it, otherwise start a backoff retry task that re-checks it until it becomes healthy or the attempts run out. A second `start` for the same workload cancels the previous task.
+- `start` — fetch the workload and run the same check the sweep uses: forwarding and sampling start before the health probe so no early log line is lost, and the status — healthy or not — is reported at once. An unhealthy result arms a backoff retry task that re-checks until it becomes healthy or the attempts run out; a second `start` for the same workload cancels the previous task.
 - `die` — stop local sampling and forwarding, then fetch and report the stopped status; if the runtime already deleted the record, the id alone is enough to report it gone.
 
 If the stream errors the manager waits `global_connection_timeout` and resubscribes, so a runtime daemon restart is survivable.
 
-**Health sweep.** Every `healthcheck.interval` seconds it lists **all** runtime workloads, stopped ones included, and the workloads core still considers running on this node. It re-checks every runtime workload, stops local sampling and forwarding for stopped ones, and reports a core-running workload missing from the runtime as gone. The next sweep therefore repairs both a delete missed while the event stream reconnects and a stale running check that finishes after a die event.
+**Health sweep.** Every `healthcheck.interval` seconds it lists **all** runtime workloads, stopped ones included, and the workloads core still considers running on this node. It re-checks every runtime workload and stops local sampling and forwarding for stopped ones. A core-running workload missing from the listing is asked for once more by id: a runtime that still knows it gets the normal check, and only one that denies it is reported gone, so a transient inspect failure cannot bury a live workload. The next sweep therefore repairs both a delete missed while the event stream reconnects and a stale running check that finishes after a die event. A tick that finds the previous sweep still running is skipped.
 
 **Metrics.** Each running workload gets one sampling goroutine, started when the workload is first seen running and cancelled when a die event or health sweep observes it stopped. The sampler reads the workload's cgroup v2 files and its netns counters directly, so a tick costs a handful of small file reads and no call to any daemon. See [metrics](metrics.md).
 
 **Logs.** A workload's output reaches the agent one of two ways, and the source decides which.
 
-- **Console** — a VM's output is its serial console, which Cloud Hypervisor serves as a unix socket for a UEFI guest and as a PTY for a direct-boot one. One goroutine per VM stays blocked reading it, forwarding every line and writing it to journald under the same fields the log shim uses, so `journalctl ERU_ID=<id>` answers for a VM exactly as it does for a container. A console that is not there yet, or that went away with its VM, is retried on a capped backoff; the reader picks the VM up again when it comes back. The journal reader skips what it finds under `ERU_STREAM=console`, since the reader that wrote those lines already forwarded them.
+- **Console** — a VM's output is its serial console, which Cloud Hypervisor serves as a unix socket for a UEFI guest and as a PTY for a direct-boot one. One goroutine per VM stays blocked reading it, forwarding every line and writing it to journald under the same fields the log shim uses, so `journalctl ERU_ID=<id>` answers for a VM exactly as it does for a container. A line is cut at the 64KB read buffer — the same bound the log shim applies — so a guest spraying an endless unterminated line cannot push a record past the journal reader's limit. A console that is not there yet, or that went away with its VM, is retried on a capped backoff; the reader picks the VM up again when it comes back. The journal reader skips what it finds under `ERU_STREAM=console`, since the reader that wrote those lines already forwarded them.
 - **Journal** — every other runtime logs to journald. The agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` child process for the whole node, and routes each record to a workload by its `ERU_ID` field or by the unit that emitted it. One term, not two: journald ors terms with `+`, but `-u` is an option rather than a term, so `-u 'eru-*' + SYSLOG_IDENTIFIER=eru` is rejected. Everything eru runs therefore carries the same identifier — process units get `SyslogIdentifier=eru` from core's `systemd-run`, containers get it from `eru-agent log-shim`, which containerd execs once per task. One reader per node replaces one attach per workload, and a cursor persisted under `state_dir` means an agent restart resumes where it stopped instead of losing the lines in between. journald's format is only readable through libsystemd, so the system tool is the reader; the agent logs that requirement at debug level on startup.
 
 Either way, each line becomes the same JSON record:
@@ -80,7 +80,7 @@ Either way, each line becomes the same JSON record:
 
 The record goes to two places: the configured forwarder for that workload, and the in-process broadcaster that serves `/log/`. Non-utf8 bytes are escaped as `\xNN` so a binary blob on stdout cannot corrupt the stream.
 
-**Log broadcaster.** `GET /log/?app=<name>` hijacks the connection and subscribes to every record whose `name` matches. Records are written to all subscribers of an app before the next record is processed, so a subscriber sees the lines in order. A subscriber whose connection breaks is cancelled and dropped.
+**Log broadcaster.** `GET /log/?app=<name>` hijacks the connection and subscribes to every record whose `name` matches. Each reader broadcasts its lines in order, and one workload's lines come from one reader, so a subscriber sees a workload's lines in order. A subscriber whose connection breaks — detected by a read on the hijacked socket — is cancelled and dropped.
 
 ## Status reporting
 

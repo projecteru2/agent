@@ -24,24 +24,10 @@ func TestWritePid(t *testing.T) {
 	assert.Equal(t, strconv.Itoa(os.Getpid()), string(content))
 }
 
-func TestGetAppInfo(t *testing.T) {
-	containerName := "eru-stats_api_EAXPcM"
-	name, entrypoint, ident, err := GetAppInfo(containerName)
-	assert.NoError(t, err)
-
-	assert.Equal(t, name, "eru-stats")
-	assert.Equal(t, entrypoint, "api")
-	assert.Equal(t, ident, "EAXPcM")
-
-	containerName = "api_EAXPcM"
-	_, _, _, err = GetAppInfo(containerName)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid workload name")
-}
-
 func TestReplaceNonUtf8(t *testing.T) {
 	str := "test, 1\x00\xff\x01\xbb\xfd\xff\xfd\n"
 	assert.Equal(t, "test, 1\\x00\\xff\\x01\\xbb\\xfd\\xff\\xfd\n", ReplaceNonUtf8(str))
+	assert.Equal(t, "a\\xef\\xbf\\xbdb", ReplaceNonUtf8("a�b"))
 
 	data := []byte{
 		0x7b, 0x0a, 0x20, 0x20, 0x22, 0x41, 0x44, 0x44, 0x52, 0x22, 0x3a, 0x20, 0x22, 0x31, 0x30, 0x2e,
@@ -77,10 +63,6 @@ func TestUseLabelAsFilter(t *testing.T) {
 	assert.Equal(t, UseLabelAsFilter(), false)
 	t.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", "label")
 	assert.Equal(t, UseLabelAsFilter(), true)
-}
-
-func TestGetMaxAttemptsByTTL(t *testing.T) {
-	assert.Equal(t, GetMaxAttemptsByTTL(0), 5)
 }
 
 func TestGetIP(t *testing.T) {

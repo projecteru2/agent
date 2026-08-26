@@ -3,6 +3,7 @@ package logs
 import (
 	"errors"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -89,6 +90,15 @@ func TestNewWriters(t *testing.T) {
 	time.Sleep(closeWaitInterval + 2*time.Second)
 }
 
+func TestWriteKeepsTheEncoderWhenADatagramIsTooBig(t *testing.T) {
+	ctx := t.Context()
+	w, err := NewWriter(ctx, "udp://127.0.0.1:23456", false)
+	require.NoError(t, err)
+
+	assert.Error(t, w.Write(ctx, &types.Log{Data: strings.Repeat("x", 128<<10)}))
+	assert.NoError(t, w.Write(ctx, &types.Log{Data: "small"}))
+}
+
 func TestDeadlineConnFailsAWriteNobodyReads(t *testing.T) {
 	client, server := net.Pipe()
 	defer func() { _ = client.Close() }()
@@ -109,7 +119,6 @@ func TestReconnect(t *testing.T) {
 	writer, err := NewWriter(ctx, addr, false)
 	assert.NoError(t, err)
 	assert.Nil(t, writer.enc)
-	assert.Equal(t, writer.needReconnect, true)
 
 	tcpL, err := net.Listen("tcp", ":34567")
 	assert.NoError(t, err)

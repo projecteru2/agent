@@ -14,7 +14,7 @@ import (
 
 func TestStartCollectingLeavesARunningSamplerAlone(t *testing.T) {
 	m := managerForStart(t)
-	w := &source.Workload{ID: "Rei"}
+	w := &source.Workload{ID: "Rei", CgroupPath: t.TempDir()}
 
 	m.startCollecting(t.Context(), w)
 	first := m.collecting[w.ID]
@@ -24,11 +24,27 @@ func TestStartCollectingLeavesARunningSamplerAlone(t *testing.T) {
 		m.startCollecting(t.Context(), w)
 	}
 	assert.Same(t, first, m.collecting[w.ID])
+	m.stopCollecting(w.ID)
+}
+
+func TestStartCollectingRestartsASamplerThatReturned(t *testing.T) {
+	m := managerForStart(t)
+	w := &source.Workload{ID: "Rei"}
+
+	m.startCollecting(t.Context(), w)
+	first := m.collecting[w.ID]
+	require.NotNil(t, first)
+	<-first.done
+
+	w.CgroupPath = t.TempDir()
+	m.startCollecting(t.Context(), w)
+	assert.NotSame(t, first, m.collecting[w.ID])
+	m.stopCollecting(w.ID)
 }
 
 func TestStartCollectingStartsAgainAfterTheWorkloadDied(t *testing.T) {
 	m := managerForStart(t)
-	w := &source.Workload{ID: "Rei"}
+	w := &source.Workload{ID: "Rei", CgroupPath: t.TempDir()}
 
 	m.startCollecting(t.Context(), w)
 	first := m.collecting[w.ID]

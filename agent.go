@@ -15,6 +15,7 @@ import (
 
 	"github.com/projecteru2/agent/api"
 	"github.com/projecteru2/agent/logshim"
+	"github.com/projecteru2/agent/manager"
 	"github.com/projecteru2/agent/manager/node"
 	"github.com/projecteru2/agent/manager/workload"
 	"github.com/projecteru2/agent/ocihook"
@@ -57,10 +58,11 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 
 	var wg sync.WaitGroup
 
-	workloadsManager, err := workload.NewManager(ctx, config)
+	clients, err := manager.NewClients(ctx, config)
 	if err != nil {
 		return err
 	}
+	workloadsManager := workload.NewManager(ctx, config, clients)
 	wg.Go(func() {
 		if runErr := workloadsManager.Run(ctx); runErr != nil {
 			logger.Error(ctx, runErr, "workload manager failed")
@@ -68,10 +70,7 @@ func serve(ctx context.Context, cmd *cli.Command) error {
 		}
 	})
 
-	nodeManager, err := node.NewManager(ctx, config)
-	if err != nil {
-		return err
-	}
+	nodeManager := node.NewManager(config, clients)
 	wg.Go(func() {
 		if runErr := nodeManager.Run(ctx); runErr != nil {
 			logger.Error(ctx, runErr, "node manager failed")

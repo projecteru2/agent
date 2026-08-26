@@ -30,7 +30,25 @@ func LoadConfig(configPath string) (*types.Config, error) {
 	if err = checkRequired(value); err != nil {
 		return nil, err
 	}
+	if err = checkIntervals(config); err != nil {
+		return nil, err
+	}
 	return config, nil
+}
+
+func checkIntervals(config *types.Config) error {
+	for name, value := range map[string]int64{
+		"heartbeat_interval":        int64(config.HeartbeatInterval),
+		"healthcheck.interval":      int64(config.HealthCheck.Interval),
+		"healthcheck.timeout":       int64(config.HealthCheck.Timeout),
+		"metrics.step":              config.Metrics.Step,
+		"global_connection_timeout": int64(config.GlobalConnectionTimeout),
+	} {
+		if value <= 0 {
+			return fmt.Errorf("%s must be positive", name)
+		}
+	}
+	return nil
 }
 
 func applyDefaults(value reflect.Value) error {

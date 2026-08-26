@@ -18,14 +18,12 @@ func TestNodeStatusReport(t *testing.T) {
 
 	src.SetDaemonRunning(false)
 	manager.nodeStatusReport(ctx)
-	status, err := store.GetNodeStatus(ctx, "fake")
-	assert.Nil(t, err)
+	status := store.GetMockNodeStatus("fake")
 	assert.Equal(t, status.Alive, false)
 
 	src.SetDaemonRunning(true)
 	manager.nodeStatusReport(ctx)
-	status, err = store.GetNodeStatus(ctx, "fake")
-	assert.Nil(t, err)
+	status = store.GetMockNodeStatus("fake")
 	assert.Equal(t, status.Alive, true)
 }
 
@@ -34,14 +32,12 @@ func TestHeartbeat(t *testing.T) {
 	manager := newMockNodeManager(t)
 	store := manager.store.(*storemocks.MockStore)
 
-	status, err := store.GetNodeStatus(ctx, "fake")
-	assert.Nil(t, err)
+	status := store.GetMockNodeStatus("fake")
 	assert.Equal(t, status.Alive, false)
 
 	go manager.heartbeat(ctx)
 
 	time.Sleep(time.Duration(manager.config.HeartbeatInterval+2) * time.Second)
-	status, err = store.GetNodeStatus(ctx, "fake")
-	assert.Nil(t, err)
+	status = store.GetMockNodeStatus("fake")
 	assert.Equal(t, status.Alive, true)
 }

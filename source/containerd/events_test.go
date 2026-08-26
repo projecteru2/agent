@@ -53,8 +53,6 @@ func TestTranslateTheWorkloadLifecycle(t *testing.T) {
 			require.NotNil(t, message)
 			assert.Equal(t, tt.ID, message.ID)
 			assert.Equal(t, tt.action, message.Action)
-			assert.Equal(t, eventType, message.Type)
-			assert.NotZero(t, message.TimeNano)
 		})
 	}
 }

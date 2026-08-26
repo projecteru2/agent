@@ -7,20 +7,19 @@ import (
 	"github.com/projecteru2/core/log"
 
 	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 )
 
-func (m *Manager) watchEvent(ctx context.Context, eventChan <-chan *types.WorkloadEventMessage) {
-	log.WithFunc("workload.watchEvent").Info(ctx, "status watch start")
-	m.events.Watch(ctx, eventChan)
-}
+const startingCheckAttempts = 5
 
 func (m *Manager) monitor(ctx context.Context) {
 	logger := log.WithFunc("workload.monitor")
 	for {
 		eventChan, errChan := m.source.Events(ctx)
-		go m.watchEvent(ctx, eventChan)
+		logger.Info(ctx, "status watch start")
+		go m.events.Watch(ctx, eventChan)
 		select {
 		case <-ctx.Done():
 			logger.Info(ctx, "context canceled, stop monitoring")
@@ -47,7 +46,7 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 		retryTask.Stop()
 	}
 
-	retryTask := utils.NewRetryTask(ctx, utils.GetMaxAttemptsByTTL(m.config.GetHealthCheckStatusTTL()), func() error {
+	retryTask := utils.NewRetryTask(ctx, startingCheckAttempts, func() error {
 		w, err := m.source.Get(ctx, ID)
 		if err != nil {
 			return err
@@ -59,7 +58,7 @@ func (m *Manager) checkOneWorkloadWithBackoffRetry(ctx context.Context, ID strin
 	})
 	m.startingWorkloads[ID] = retryTask
 	go func() {
-		if err := retryTask.Run(ctx); err != nil {
+		if err := retryTask.Run(); err != nil {
 			logger.Debug(ctx, "workload still not healthy")
 		}
 		m.forgetRetryTask(ID, retryTask)
@@ -79,49 +78,45 @@ func (m *Manager) handleWorkloadStart(ctx context.Context, event *types.Workload
 	logger.Debug(ctx, "handling start")
 	w, err := m.source.Get(ctx, event.ID)
 	if err != nil {
-		logger.Error(ctx, err, "failed to get workload")
-		return
-	}
-
-	if w.Running {
-		m.start(ctx, w)
-	}
-
-	status, err := m.workloadStatus(ctx, w)
-	if err != nil {
-		logger.Error(ctx, err, "failed to get workload status")
-		return
-	}
-	if !status.Healthy {
+		logger.Error(ctx, err, "failed to get workload, will retry")
 		m.checkOneWorkloadWithBackoffRetry(ctx, event.ID)
 		return
 	}
-	if err := m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL()); err != nil {
-		logger.Error(ctx, err, "failed to update workload status")
+
+	if !m.checkOneWorkload(ctx, w) {
+		m.checkOneWorkloadWithBackoffRetry(ctx, event.ID)
 	}
 }
 
 func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEventMessage) {
 	logger := log.WithFunc("workload.handleWorkloadDie").WithField("ID", event.ID)
 	logger.Debug(ctx, "handling die")
+	forwarded := m.forwardedWorkload(event.ID)
 	m.stop(event.ID)
 
-	status, err := m.goneStatus(ctx, event.ID)
+	status, err := m.goneStatus(ctx, event.ID, forwarded)
 	if err != nil {
 		logger.Error(ctx, err, "failed to get workload status")
 		return
 	}
-
-	if err := m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL()); err != nil {
+	if err := m.setWorkloadStatus(ctx, status); err != nil {
 		logger.Error(ctx, err, "failed to update workload status")
+	}
+	if !status.Running {
+		m.stop(event.ID)
 	}
 }
 
-func (m *Manager) goneStatus(ctx context.Context, ID string) (*types.WorkloadStatus, error) {
+func (m *Manager) goneStatus(ctx context.Context, ID string, forwarded *source.Workload) (*types.WorkloadStatus, error) {
 	w, err := m.source.Get(ctx, ID)
 	if err != nil {
 		log.WithFunc("workload.goneStatus").WithField("ID", ID).Warnf(ctx, "no runtime knows it any more, reporting it gone: %v", err)
-		return &types.WorkloadStatus{ID: ID, Nodename: m.config.HostName}, nil
+		status := &types.WorkloadStatus{ID: ID, Nodename: m.config.HostName}
+		if forwarded != nil {
+			status.Appname = forwarded.Meta.Appname
+			status.Entrypoint = forwarded.Meta.Entrypoint
+		}
+		return status, nil
 	}
 	return m.workloadStatus(ctx, w)
 }

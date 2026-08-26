@@ -12,7 +12,7 @@ import (
 
 func TestPipeEventsDetachesReporterBeforeClosing(t *testing.T) {
 	reporter := NewReporter()
-	events, errs := PipeEvents(t.Context(), reporter, "test", func(context.Context) error {
+	events, errs := PipeEvents(t.Context(), reporter, func(context.Context) error {
 		return errors.New("watch failed")
 	})
 

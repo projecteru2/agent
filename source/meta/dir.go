@@ -81,10 +81,7 @@ func (d *Dir) Watch(ctx context.Context, reporter *source.Reporter) error {
 			}
 			return
 		}
-		if reporter.Known(ID) {
-			reporter.Report(ID, common.StatusDie)
-			reporter.Forget(ID)
-		}
+		reporter.Gone(ID)
 	})
 	if errors.Is(err, os.ErrClosed) || errors.Is(err, context.Canceled) {
 		return nil

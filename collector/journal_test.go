@@ -46,6 +46,12 @@ func TestJournalRecordWithoutATimestampIsStampedOnRead(t *testing.T) {
 	assert.False(t, entries[3].Time.Before(before))
 }
 
+func TestJournalRecordMapsStderrPriority(t *testing.T) {
+	assert.Equal(t, "stderr", (&journalRecord{Priority: "3"}).entry().Stream)
+	assert.Equal(t, "stdout", (&journalRecord{Priority: "6"}).entry().Stream)
+	assert.Equal(t, "console", (&journalRecord{Priority: "3", EruStream: "console"}).entry().Stream)
+}
+
 func TestJournalArgsFollowFromTheSavedCursor(t *testing.T) {
 	assert.Equal(t, []string{
 		"--follow", "--output=json", "--no-pager", "--lines=0", "SYSLOG_IDENTIFIER=eru",
@@ -105,6 +111,21 @@ func TestJournalReadDoesNotBlameTheReaderWhenTheContextEnds(t *testing.T) {
 	}
 }
 
+func TestJournalReadStopsWhenARecordExceedsTheLineLimit(t *testing.T) {
+	j := NewJournal(filepath.Join(t.TempDir(), "state"))
+	j.binary = fakeReader(t, "head -c 2097152 /dev/zero | tr '\\0' 'x'\necho\nsleep 30\n")
+
+	done := make(chan error, 1)
+	go func() { done <- j.Read(t.Context(), func(*Entry) { t.Error("no entry is expected") }) }()
+
+	select {
+	case err := <-done:
+		require.Error(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for the reader to stop")
+	}
+}
+
 func TestRingKeepsTheLastBytes(t *testing.T) {
 	r := &ring{limit: 4}
 
@@ -116,7 +137,7 @@ func TestRingKeepsTheLastBytes(t *testing.T) {
 func fakeReader(t *testing.T, body string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "fake-journalctl")
-	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+body), 0o700); err != nil { //nolint:gosec // a test fixture the test itself executes
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+body), 0o700); err != nil {
 		t.Fatalf("write fake reader: %v", err)
 	}
 	return path

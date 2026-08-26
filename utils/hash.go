@@ -20,7 +20,3 @@ func (s *HashBackends) Get(v string, offset int) string {
 	}
 	return s.data[(int(h.Sum32())+offset)%len(s.data)]
 }
-
-func (s *HashBackends) Len() int {
-	return len(s.data)
-}

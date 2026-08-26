@@ -65,15 +65,11 @@ func (s *subscriber) pump() {
 
 type logBroadcaster struct {
 	mu             sync.RWMutex
-	logC           chan *types.Log
 	subscribersMap map[string]map[string]*subscriber
 }
 
 func newLogBroadcaster() *logBroadcaster {
-	return &logBroadcaster{
-		logC:           make(chan *types.Log),
-		subscribersMap: map[string]map[string]*subscriber{},
-	}
+	return &logBroadcaster{subscribersMap: map[string]map[string]*subscriber{}}
 }
 
 func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.ReadWriter) (string, chan error, func()) {
@@ -144,18 +140,6 @@ func (l *logBroadcaster) broadcast(ctx context.Context, log *types.Log) {
 	for _, sub := range subscribers {
 		if !sub.isDone() {
 			sub.send(line)
-		}
-	}
-}
-
-func (l *logBroadcaster) run(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			corelog.WithFunc("workload.run").Info(ctx, "log broadcaster stops")
-			return
-		case log := <-l.logC:
-			l.broadcast(ctx, log)
 		}
 	}
 }

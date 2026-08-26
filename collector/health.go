@@ -21,16 +21,15 @@ func Probe(ctx context.Context, w *source.Workload, timeout time.Duration) bool 
 	}
 
 	var tcpChecker []string
-	var httpChecker []string
-
 	for _, port := range check.TCPPorts {
 		tcpChecker = append(tcpChecker, fmt.Sprintf("%s:%s", w.LocalIP, port))
 	}
+	httpURL := ""
 	if check.HTTPPort != "" {
-		httpChecker = append(httpChecker, fmt.Sprintf("http://%s:%s%s", w.LocalIP, check.HTTPPort, check.HTTPURL))
+		httpURL = fmt.Sprintf("http://%s:%s%s", w.LocalIP, check.HTTPPort, check.HTTPURL)
 	}
 
-	httpOK := utils.CheckHTTP(ctx, w.ID, httpChecker, check.HTTPCode, timeout)
+	httpOK := utils.CheckHTTP(ctx, w.ID, httpURL, check.HTTPCode, timeout)
 	tcpOK := utils.CheckTCP(ctx, w.ID, tcpChecker, timeout)
 	return httpOK && tcpOK
 }

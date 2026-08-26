@@ -44,27 +44,26 @@ func TestLogBroadcaster(t *testing.T) {
 		assert.Equal(t, server.ListenAndServe(), http.ErrServerClosed)
 	}()
 
+	ctx, cancel := context.WithTimeout(t.Context(), 7*time.Second)
+	defer cancel()
+
 	go func() {
 		time.Sleep(3 * time.Second)
-		manager.logBroadcaster.logC <- &types.Log{
+		manager.logBroadcaster.broadcast(ctx, &types.Log{
 			ID:         "Rei",
 			Name:       "nerv",
 			Type:       "stdout",
 			EntryPoint: "eva0",
 			Data:       "data0",
-		}
-		manager.logBroadcaster.logC <- &types.Log{
+		})
+		manager.logBroadcaster.broadcast(ctx, &types.Log{
 			ID:         "Rei",
 			Name:       "nerv",
 			Type:       "stdout",
 			EntryPoint: "eva0",
 			Data:       "data1",
-		}
+		})
 	}()
-
-	ctx, cancel := context.WithTimeout(t.Context(), 7*time.Second)
-	defer cancel()
-	go manager.logBroadcaster.run(ctx)
 
 	time.Sleep(time.Second)
 
@@ -88,13 +87,13 @@ func TestLogBroadcaster(t *testing.T) {
 	logCancel()
 	time.Sleep(time.Second)
 
-	manager.logBroadcaster.logC <- &types.Log{
+	manager.logBroadcaster.broadcast(ctx, &types.Log{
 		ID:         "Rei",
 		Name:       "nerv",
 		Type:       "stdout",
 		EntryPoint: "eva0",
 		Data:       "data1",
-	}
+	})
 	manager.logBroadcaster.mu.RLock()
 	defer manager.logBroadcaster.mu.RUnlock()
 	assert.Empty(t, manager.logBroadcaster.subscribersMap)

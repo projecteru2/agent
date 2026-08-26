@@ -12,11 +12,6 @@ import (
 	"github.com/projecteru2/agent/common"
 )
 
-func TestGetHealthCheckStatusTTL(t *testing.T) {
-	config := &Config{}
-	require.Equal(t, int64(0), config.GetHealthCheckStatusTTL())
-}
-
 func TestPrepareCoreEndpoints(t *testing.T) {
 	tests := []struct {
 		name string

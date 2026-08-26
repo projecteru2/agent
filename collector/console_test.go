@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -56,6 +57,15 @@ func TestConsoleEmitsATrailingLineWithoutANewline(t *testing.T) {
 	entries, _ := readConsole(t, console)
 
 	assert.Equal(t, "no newline here", nextEntry(t, entries).Data)
+}
+
+func TestConsoleCutsALineLongerThanTheReadBuffer(t *testing.T) {
+	blob := strings.Repeat("x", scanBufferSize+scanBufferSize/2)
+	console := NewConsole(consoleWorkload, consoleAppname, at(socketConsole(t, blob)))
+	entries, _ := readConsole(t, console)
+
+	assert.Len(t, nextEntry(t, entries).Data, scanBufferSize)
+	assert.Len(t, nextEntry(t, entries).Data, scanBufferSize/2)
 }
 
 func TestConsoleReconnectsWhenTheVMComesBack(t *testing.T) {
@@ -170,7 +180,6 @@ func listenAt(t *testing.T, path string) net.Listener {
 	return ln
 }
 
-// socketConsole serves one payload per connection, so a payload list is a list of vm lifetimes.
 func socketConsole(t *testing.T, payloads ...string) string {
 	t.Helper()
 	path := filepath.Join(shortDir(t), "c")
@@ -178,7 +187,6 @@ func socketConsole(t *testing.T, payloads ...string) string {
 	return path
 }
 
-// shortDir keeps a socket path inside the 104 byte sockaddr_un limit, which a test name blows past.
 func shortDir(t *testing.T) string {
 	t.Helper()
 	dir, err := os.MkdirTemp("", "eru")

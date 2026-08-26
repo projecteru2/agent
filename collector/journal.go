@@ -21,9 +21,12 @@ const (
 	journalBinary = "journalctl"
 	cursorFile    = "journal.cursor"
 
-	defaultStream = "stdout"
+	defaultStream  = "stdout"
+	stderrStream   = "stderr"
+	stderrPriority = "3"
 
 	cursorFlushInterval = 5 * time.Second
+	pipeWaitDelay       = time.Second
 	scanBufferSize      = 64 << 10
 	scanLineMax         = 1 << 20
 	stderrMax           = 4 << 10
@@ -38,10 +41,13 @@ type Entry struct {
 	Time       time.Time
 }
 
+type EntryHandler func(*Entry)
+
 type journalRecord struct {
 	Cursor    string          `json:"__CURSOR"`
 	Realtime  string          `json:"__REALTIME_TIMESTAMP"`
 	Message   json.RawMessage `json:"MESSAGE"`
+	Priority  string          `json:"PRIORITY"`
 	Unit      string          `json:"_SYSTEMD_UNIT"`
 	EruID     string          `json:"ERU_ID"`
 	EruStream string          `json:"ERU_STREAM"`
@@ -51,6 +57,9 @@ func (r *journalRecord) entry() *Entry {
 	stream := r.EruStream
 	if stream == "" {
 		stream = defaultStream
+		if r.Priority == stderrPriority {
+			stream = stderrStream
+		}
 	}
 	return &Entry{
 		WorkloadID: r.EruID,
@@ -72,7 +81,7 @@ func NewJournal(stateDir string) *Journal {
 }
 
 // Read follows the journal until ctx is done, calling handle for every eru workload line.
-func (j *Journal) Read(ctx context.Context, handle func(*Entry)) error {
+func (j *Journal) Read(ctx context.Context, handle EntryHandler) error {
 	err := j.read(ctx, handle)
 	if ctx.Err() != nil {
 		// a stop is not a reader failure, whatever the child made of being killed
@@ -81,13 +90,14 @@ func (j *Journal) Read(ctx context.Context, handle func(*Entry)) error {
 	return err
 }
 
-func (j *Journal) read(ctx context.Context, handle func(*Entry)) error {
+func (j *Journal) read(ctx context.Context, handle EntryHandler) error {
 	logger := log.WithFunc("collector.read")
 	// journald speaks a binary format only libsystemd reads, so its own tool is the reader
 	logger.Debugf(ctx, "forwarding workload logs needs %s on this node", j.binary)
 
 	cursor := j.loadCursor(ctx)
 	cmd := exec.CommandContext(ctx, j.binary, args(cursor)...) //nolint:gosec // the arguments are the agent's own match list and its saved cursor
+	cmd.WaitDelay = pipeWaitDelay
 	stderr := &ring{limit: stderrMax}
 	cmd.Stderr = stderr
 	stdout, err := cmd.StdoutPipe()
@@ -121,6 +131,7 @@ func (j *Journal) read(ctx context.Context, handle func(*Entry)) error {
 		}
 	}
 	if err := scanner.Err(); err != nil {
+		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
 		return err
 	}
@@ -188,7 +199,7 @@ func args(cursor string) []string {
 		args = append(args, "--after-cursor="+cursor, "--lines=all")
 	}
 	// journalctl ors terms with "+" but -u is an option, not a term, so every eru unit carries the identifier
-	return append(args, "SYSLOG_IDENTIFIER="+common.JournalIdentifier)
+	return append(args, common.FieldIdentifier+"="+common.JournalIdentifier)
 }
 
 // message decodes MESSAGE, which journalctl renders as a byte array when the line is not utf8.

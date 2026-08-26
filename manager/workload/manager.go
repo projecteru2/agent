@@ -45,13 +45,7 @@ type Manager struct {
 	events         *EventHandler
 }
 
-func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
-	clients, err := manager.NewClients(ctx, config)
-	if err != nil {
-		log.WithFunc("workload.NewManager").Errorf(ctx, err, "failed to create clients for node %s", config.HostName)
-		return nil, err
-	}
-
+func NewManager(ctx context.Context, config *types.Config, clients *manager.Clients) *Manager {
 	m := &Manager{
 		config:            config,
 		store:             clients.Store,
@@ -66,12 +60,10 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		logTargets:        map[string]*logTarget{},
 	}
 	m.events = NewEventHandler(m.handleWorkloadStart, m.handleWorkloadDie)
-	return m, nil
+	return m
 }
 
 func (m *Manager) Run(ctx context.Context) error {
-	go m.logBroadcaster.run(ctx)
-
 	// watching before the initial load means an event raised during it is handled, not missed
 	go m.monitor(ctx)
 
@@ -120,8 +112,13 @@ func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {
 	m.collectMutex.Lock()
 	defer m.collectMutex.Unlock()
 
-	if _, ok := m.collecting[w.ID]; ok {
-		return
+	if task, ok := m.collecting[w.ID]; ok {
+		select {
+		case <-task.done:
+			delete(m.collecting, w.ID)
+		default:
+			return
+		}
 	}
 
 	sampleCtx, cancel := context.WithCancel(ctx)

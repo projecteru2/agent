@@ -87,6 +87,13 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		defer func() { _ = conn.Close() }()
-		h.workloadsManager.PullLog(req.Context(), app, buf)
+
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		go func() {
+			_, _ = conn.Read(make([]byte, 1))
+			cancel()
+		}()
+		h.workloadsManager.PullLog(ctx, app, buf)
 	}
 }

@@ -15,9 +15,6 @@ const (
 )
 
 func (m *Manager) heartbeat(ctx context.Context) {
-	if m.config.HeartbeatInterval <= 0 {
-		return
-	}
 	go m.nodeStatusReport(ctx)
 
 	tick := time.NewTicker(time.Duration(m.config.HeartbeatInterval) * time.Second)
@@ -46,12 +43,11 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 	// the ttl outlives the interval so one lost report cannot expire the node
 	ttl := int64(m.config.HeartbeatInterval * ttlHeartbeats)
 
-	if err := utils.BackoffRetry(ctx, reportAttempts, func() (err error) {
-		utils.WithTimeout(ctx, m.config.GlobalConnectionTimeout, func(ctx context.Context) {
-			if err = m.setNodeStatus(ctx, ttl); err != nil {
-				logger.Error(ctx, err, "failed to set node status")
-			}
-		})
+	if err := utils.BackoffRetry(ctx, reportAttempts, func() error {
+		err := m.setNodeStatus(ctx, ttl)
+		if err != nil {
+			logger.Error(ctx, err, "failed to set node status")
+		}
 		return err
 	}); err != nil {
 		logger.Errorf(ctx, err, "failed to set node status after %d attempts", reportAttempts)

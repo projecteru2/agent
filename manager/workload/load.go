@@ -40,13 +40,7 @@ func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 	var wg sync.WaitGroup
 	for _, w := range workloads {
 		logger.Debugf(ctx, "detect workload %s", w.ID)
-		wg.Go(func() {
-			if w.Running {
-				logger.Debugf(ctx, "workload %s is running", w.ID)
-				m.start(ctx, w)
-			}
-			m.checkOneWorkload(ctx, w)
-		})
+		wg.Go(func() { m.checkOneWorkload(ctx, w) })
 	}
 	wg.Wait()
 	return nil

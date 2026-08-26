@@ -61,7 +61,7 @@ func TestHealthCheckReportsCoreRunningWorkloadMissingFromRuntime(t *testing.T) {
 		Nodename:   "fake",
 		Entrypoint: "eva3",
 	}
-	require.NoError(t, store.SetWorkloadStatus(t.Context(), status, 0))
+	require.NoError(t, store.SetWorkloadStatus(t.Context(), status))
 
 	manager.checkAllWorkloads(t.Context())
 
@@ -72,13 +72,30 @@ func TestHealthCheckReportsCoreRunningWorkloadMissingFromRuntime(t *testing.T) {
 	assert.Empty(t, manager.logTargets)
 }
 
+func TestHealthCheckKeepsAWorkloadTheListingMissed(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	w := &source.Workload{ID: "Misato", CgroupPath: t.TempDir(), Running: true}
+	manager.source = &blindListSource{sweepRaceSource{workloads: []*source.Workload{w}}}
+	store := manager.store.(*mocks.MockStore)
+	status := &types.WorkloadStatus{ID: w.ID, Running: true, Healthy: true, Nodename: "fake"}
+	require.NoError(t, store.SetWorkloadStatus(t.Context(), status))
+
+	manager.checkAllWorkloads(t.Context())
+
+	got := store.GetMockWorkloadStatus(w.ID)
+	require.NotNil(t, got)
+	assert.True(t, got.Running)
+	assert.NotNil(t, manager.collecting[w.ID])
+	manager.stop(w.ID)
+}
+
 func TestHealthCheckSamplesAWorkloadStartingMidSweep(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	src := &sweepRaceSource{}
 	manager.source = src
 	w := &source.Workload{ID: "Misato", CgroupPath: t.TempDir(), Running: true}
 	status := &types.WorkloadStatus{ID: w.ID, Running: true, Healthy: true, Nodename: "fake"}
-	require.NoError(t, manager.store.SetWorkloadStatus(t.Context(), status, 0))
+	require.NoError(t, manager.store.SetWorkloadStatus(t.Context(), status))
 	manager.store = &sweepRaceStore{Store: manager.store, src: src, starting: w}
 
 	manager.checkAllWorkloads(t.Context())
@@ -101,6 +118,14 @@ func (s *sweepRaceSource) Get(_ context.Context, ID string) (*source.Workload, e
 		return s.workloads[i], nil
 	}
 	return nil, errors.New("unknown workload")
+}
+
+type blindListSource struct {
+	sweepRaceSource
+}
+
+func (s *blindListSource) List(context.Context) ([]*source.Workload, error) {
+	return nil, nil
 }
 
 type sweepRaceStore struct {

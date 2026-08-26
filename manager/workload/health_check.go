@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/projecteru2/core/log"
@@ -19,10 +20,17 @@ func (m *Manager) healthCheck(ctx context.Context) {
 	tick := time.NewTicker(time.Duration(m.config.HealthCheck.Interval) * time.Second)
 	defer tick.Stop()
 
+	var sweeping atomic.Bool
 	for {
 		select {
 		case <-tick.C:
-			go m.checkAllWorkloads(ctx)
+			if !sweeping.CompareAndSwap(false, true) {
+				continue
+			}
+			go func() {
+				defer sweeping.Store(false)
+				m.checkAllWorkloads(ctx)
+			}()
 		case <-ctx.Done():
 			return
 		}
@@ -51,25 +59,33 @@ func (m *Manager) checkAllWorkloads(ctx context.Context) {
 	}
 	for _, ID := range runningIDs {
 		if _, ok := listed[ID]; !ok {
-			wg.Go(func() { m.handleWorkloadDie(ctx, &types.WorkloadEventMessage{ID: ID}) })
+			wg.Go(func() { m.reconcile(ctx, ID) })
 		}
 	}
 	wg.Wait()
 }
 
+func (m *Manager) reconcile(ctx context.Context, ID string) {
+	if w, err := m.source.Get(ctx, ID); err == nil {
+		m.checkOneWorkload(ctx, w)
+		return
+	}
+	m.handleWorkloadDie(ctx, &types.WorkloadEventMessage{ID: ID})
+}
+
 func (m *Manager) checkOneWorkload(ctx context.Context, w *source.Workload) bool {
 	logger := log.WithFunc("workload.checkOneWorkload").WithField("ID", w.ID)
-	status, err := m.workloadStatus(ctx, w)
-	if err != nil {
-		logger.Error(ctx, err, "failed to get status of workload")
-		return false
-	}
-	if status.Running {
+	if w.Running {
 		m.start(ctx, w)
 	} else {
 		m.stop(w.ID)
 	}
 
+	status, err := m.workloadStatus(ctx, w)
+	if err != nil {
+		logger.Error(ctx, err, "failed to get status of workload")
+		return false
+	}
 	if err = m.setWorkloadStatus(ctx, status); err != nil {
 		logger.Error(ctx, err, "update workload status failed")
 	}
@@ -107,6 +123,6 @@ func (m *Manager) workloadStatus(ctx context.Context, w *source.Workload) (*type
 
 func (m *Manager) setWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error {
 	return utils.BackoffRetry(ctx, 3, func() error {
-		return m.store.SetWorkloadStatus(ctx, status, m.config.GetHealthCheckStatusTTL())
+		return m.store.SetWorkloadStatus(ctx, status)
 	})
 }

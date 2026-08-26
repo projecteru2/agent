@@ -44,14 +44,21 @@ func TestWatchDaemonReportsTransitions(t *testing.T) {
 	assert.Equal(t, event{vmWorkload, common.StatusDie}, next(t, events))
 }
 
-func TestWatchDaemonReportsARunningVMBeforeItsGuestIsVerified(t *testing.T) {
+func TestVMStatusIsUnsureWhenTheVMMIsNotSeen(t *testing.T) {
+	live, dead := true, false
+	assert.False(t, vmStatus{State: "running"}.unsure())
+	assert.False(t, vmStatus{State: "running", Live: &live}.unsure())
+	assert.True(t, vmStatus{State: "running", Live: &dead}.unsure())
+	assert.False(t, vmStatus{State: "stopped", Live: &dead}.unsure())
+}
+
+func TestWatchDaemonSkipsAChangeItCannotVouchFor(t *testing.T) {
 	socket := startDaemon(t, stream(
 		fmt.Sprintf(changeFrame, "MODIFIED", vmWorkload, "running", false),
 		fmt.Sprintf(changeFrame, "ADDED", otherWorkload, "stopped", true),
 	))
 
 	events := watch(t, newCocoon(t, socket, t.TempDir()))
-	assert.Equal(t, event{vmWorkload, common.StatusStart}, next(t, events))
 	assert.Equal(t, event{otherWorkload, common.StatusDie}, next(t, events))
 }
 
@@ -96,7 +103,7 @@ func TestListUsesTheDaemonState(t *testing.T) {
 	workloads, err := newCocoon(t, socket, dir).List(t.Context())
 	require.NoError(t, err)
 	require.Len(t, workloads, 1)
-	assert.True(t, workloads[0].Running)
+	assert.False(t, workloads[0].Running)
 	assert.Equal(t, "10.0.0.9", workloads[0].LocalIP)
 	assert.Equal(t, cocoonTap, workloads[0].HostIface)
 	assert.Equal(t, "/var/lib/cocoon/run/cloudhypervisor/"+cocoonVMID+"/console.sock", workloads[0].Log.ConsoleSocket)

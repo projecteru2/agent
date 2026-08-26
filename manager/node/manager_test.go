@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/manager"
 	"github.com/projecteru2/agent/store"
 	storemocks "github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
@@ -23,14 +24,12 @@ func TestRun(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Duration(manager.config.HeartbeatInterval*3)*time.Second)
 	defer cancel()
 
-	status, err := store.GetNodeStatus(ctx, "fake")
-	assert.Nil(t, err)
+	status := store.GetMockNodeStatus("fake")
 	assert.Equal(t, status.Alive, false)
 
 	go func() {
 		time.Sleep(time.Duration(manager.config.HeartbeatInterval*2) * time.Second)
-		status, err := store.GetNodeStatus(ctx, "fake")
-		assert.Nil(t, err)
+		status := store.GetMockNodeStatus("fake")
 		assert.Equal(t, status.Alive, true)
 	}()
 
@@ -58,18 +57,35 @@ func TestExitLeavesTheDeleteAsTheLastNodeStatusWrite(t *testing.T) {
 	assert.Equal(t, []int64{180, -1}, statusStore.statusWrites())
 }
 
+func TestExitLeavesTheRemovalBudgetToTheStore(t *testing.T) {
+	statusStore := newBudgetStatusStore()
+	manager := &Manager{
+		config: &types.Config{GlobalConnectionTimeout: time.Second},
+		store:  statusStore,
+	}
+
+	reportDone := make(chan error, 1)
+	go func() { reportDone <- manager.setNodeStatus(t.Context(), 180) }()
+	<-statusStore.entered
+
+	exitDone := make(chan error, 1)
+	go func() { exitDone <- manager.Exit(t.Context()) }()
+	close(statusStore.release)
+
+	assert.NoError(t, <-reportDone)
+	assert.NoError(t, <-exitDone)
+}
+
 func TestExitRemovesNodeStatus(t *testing.T) {
 	manager := newMockNodeManager(t)
 	store := manager.store.(*storemocks.MockStore)
 
 	manager.nodeStatusReport(t.Context())
-	status, err := store.GetNodeStatus(t.Context(), "fake")
-	assert.NoError(t, err)
+	status := store.GetMockNodeStatus("fake")
 	assert.True(t, status.Alive)
 
 	assert.NoError(t, manager.Exit(t.Context()))
-	status, err = store.GetNodeStatus(t.Context(), "fake")
-	assert.NoError(t, err)
+	status = store.GetMockNodeStatus("fake")
 	assert.False(t, status.Alive)
 }
 
@@ -104,9 +120,9 @@ func newMockNodeManager(t *testing.T) *Manager {
 		GlobalConnectionTimeout: 5 * time.Second,
 	}
 
-	m, err := NewManager(t.Context(), config)
+	clients, err := manager.NewClients(t.Context(), config)
 	assert.Nil(t, err)
-	return m
+	return NewManager(config, clients)
 }
 
 type orderedStatusStore struct {
@@ -140,6 +156,28 @@ func (s *orderedStatusStore) statusWrites() []int64 {
 
 func newOrderedStatusStore() *orderedStatusStore {
 	return &orderedStatusStore{entered: make(chan struct{}), release: make(chan struct{})}
+}
+
+type budgetStatusStore struct {
+	store.Store
+	entered chan struct{}
+	release chan struct{}
+}
+
+func (s *budgetStatusStore) SetNodeStatus(ctx context.Context, ttl int64) error {
+	if ttl >= 0 {
+		close(s.entered)
+		<-s.release
+		return nil
+	}
+	if _, ok := ctx.Deadline(); ok {
+		return errors.New("the removal inherited an outer deadline")
+	}
+	return nil
+}
+
+func newBudgetStatusStore() *budgetStatusStore {
+	return &budgetStatusStore{entered: make(chan struct{}), release: make(chan struct{})}
 }
 
 type retryingStatusStore struct {

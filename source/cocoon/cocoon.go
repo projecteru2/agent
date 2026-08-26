@@ -11,17 +11,12 @@ import (
 
 	"github.com/projecteru2/core/log"
 
-	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/source/meta"
 	"github.com/projecteru2/agent/types"
 )
 
-const (
-	eventType = "vm"
-
-	procsFile = "cgroup.procs"
-)
+const procsFile = "cgroup.procs"
 
 var (
 	_ source.Source    = (*Cocoon)(nil)
@@ -88,7 +83,7 @@ func (c *Cocoon) Refresh(ID string) (*source.Workload, error) {
 }
 
 func (c *Cocoon) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage, <-chan error) {
-	return source.PipeEvents(ctx, c.reporter, eventType,
+	return source.PipeEvents(ctx, c.reporter,
 		func(ctx context.Context) error { return c.dir.Watch(ctx, c.reporter) },
 		func(ctx context.Context) error { c.watchDaemon(ctx); return nil },
 	)
@@ -117,7 +112,7 @@ func (c *Cocoon) watchDaemon(ctx context.Context) {
 				return
 			}
 			if gone {
-				c.forget(ID)
+				c.reporter.Gone(ID)
 				return
 			}
 			c.reporter.Report(ID, source.ActionOf(running))
@@ -133,13 +128,6 @@ func (c *Cocoon) watchDaemon(ctx context.Context) {
 		case <-time.After(c.config.GlobalConnectionTimeout):
 		}
 	}
-}
-
-func (c *Cocoon) forget(ID string) {
-	if c.reporter.Known(ID) {
-		c.reporter.Report(ID, common.StatusDie)
-	}
-	c.reporter.Forget(ID)
 }
 
 func (c *Cocoon) liveness(ctx context.Context) map[string]bool {
