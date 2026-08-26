@@ -48,16 +48,27 @@ func TestDirWatcherReportsARenameOutOfTheDir(t *testing.T) {
 	requireEvent(t, events, watchEvent{name: "moved.json", created: false})
 }
 
-func TestDirWatcherIgnoresAWriteToAnExistingFile(t *testing.T) {
+func TestDirWatcherReportsARewriteOfAnExistingFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "settled.json")
 	require.NoError(t, os.WriteFile(path, []byte("{}"), 0o600))
 	events := startDirWatch(t, dir)
 
 	require.NoError(t, os.WriteFile(path, []byte("{\"a\":1}"), 0o600))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "next.json"), []byte("{}"), 0o600))
+	requireEvent(t, events, watchEvent{name: "settled.json", created: true})
+}
 
-	requireEvent(t, events, watchEvent{name: "next.json", created: true})
+func TestDirWatcherWaitsForANonAtomicWriteToClose(t *testing.T) {
+	dir := t.TempDir()
+	events := startDirWatch(t, dir)
+
+	f, err := os.Create(filepath.Join(dir, "slow.json"))
+	require.NoError(t, err)
+	_, err = f.WriteString("{}")
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	requireEvent(t, events, watchEvent{name: "slow.json", created: true})
 }
 
 func TestNewDirWatcherFailsOnAMissingDir(t *testing.T) {

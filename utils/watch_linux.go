@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	dirWatchMask = unix.IN_CREATE | unix.IN_MOVED_TO | unix.IN_DELETE | unix.IN_MOVED_FROM
+	dirWatchMask = unix.IN_CLOSE_WRITE | unix.IN_MOVED_TO | unix.IN_DELETE | unix.IN_MOVED_FROM
 
 	watchBufferSize = 64 << 10
 )
@@ -85,7 +85,7 @@ func inotifyEvents(buf []byte) iter.Seq2[string, bool] {
 				return
 			}
 			name := strings.TrimRight(string(buf[unix.SizeofInotifyEvent:size]), "\x00")
-			if name != "" && !yield(name, event.Mask&(unix.IN_CREATE|unix.IN_MOVED_TO) != 0) {
+			if name != "" && !yield(name, event.Mask&(unix.IN_CLOSE_WRITE|unix.IN_MOVED_TO) != 0) {
 				return
 			}
 			buf = buf[size:]
