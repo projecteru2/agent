@@ -189,7 +189,7 @@ func (r *ring) String() string {
 }
 
 func args(cursor string) []string {
-	args := []string{"--follow", "--output=json", "--no-pager"}
+	args := []string{"--follow", "--output=json", "--no-pager", "--all"}
 	if cursor == "" {
 		args = append(args, "--lines=0")
 	} else {

@@ -54,11 +54,11 @@ func TestJournalRecordMapsStderrPriority(t *testing.T) {
 
 func TestJournalArgsFollowFromTheSavedCursor(t *testing.T) {
 	assert.Equal(t, []string{
-		"--follow", "--output=json", "--no-pager", "--lines=0", "SYSLOG_IDENTIFIER=eru",
+		"--follow", "--output=json", "--no-pager", "--all", "--lines=0", "SYSLOG_IDENTIFIER=eru",
 	}, args(""))
 
 	assert.Equal(t, []string{
-		"--follow", "--output=json", "--no-pager",
+		"--follow", "--output=json", "--no-pager", "--all",
 		"--after-cursor=s=aaa;i=7", "--lines=all", "SYSLOG_IDENTIFIER=eru",
 	}, args("s=aaa;i=7"))
 }
