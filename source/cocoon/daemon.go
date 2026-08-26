@@ -39,11 +39,14 @@ type vmStatus struct {
 }
 
 func (s vmStatus) running() bool {
+	if s.Live != nil && *s.Live {
+		return true
+	}
 	return s.State == stateRunning
 }
 
 func (s vmStatus) unsure() bool {
-	return s.running() && s.Live != nil && !*s.Live
+	return s.State == stateRunning && s.Live != nil && !*s.Live
 }
 
 type vmsResponse struct {
