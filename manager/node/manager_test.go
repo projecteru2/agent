@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/manager"
 	"github.com/projecteru2/agent/store"
 	storemocks "github.com/projecteru2/agent/store/mocks"
 	"github.com/projecteru2/agent/types"
@@ -123,9 +124,9 @@ func newMockNodeManager(t *testing.T) *Manager {
 		GlobalConnectionTimeout: 5 * time.Second,
 	}
 
-	m, err := NewManager(t.Context(), config)
+	clients, err := manager.NewClients(t.Context(), config)
 	assert.Nil(t, err)
-	return m
+	return NewManager(config, clients)
 }
 
 type orderedStatusStore struct {

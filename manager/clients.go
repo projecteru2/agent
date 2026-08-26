@@ -48,7 +48,7 @@ func NewClients(ctx context.Context, config *types.Config) (*Clients, error) {
 func newStore(ctx context.Context, config *types.Config) (store.Store, error) {
 	switch config.Store {
 	case common.GRPCStore:
-		return corestore.Get(ctx, config)
+		return corestore.New(ctx, config)
 	case common.MocksStore:
 		return storemocks.NewFakeStore(), nil
 	default:
@@ -60,21 +60,21 @@ func newSource(ctx context.Context, config *types.Config, nodeIP, storeIdentifie
 	var sources []source.Source
 
 	if config.Runtimes.Containerd != nil {
-		src, err := containerd.GetClient(ctx, config, nodeIP, storeIdentifier)
+		src, err := containerd.New(ctx, config, nodeIP, storeIdentifier)
 		if err != nil {
 			return nil, err
 		}
 		sources = append(sources, src)
 	}
 	if config.Runtimes.Systemd != nil {
-		src, err := systemd.GetClient(ctx, config)
+		src, err := systemd.New(ctx, config)
 		if err != nil {
 			return nil, err
 		}
 		sources = append(sources, src)
 	}
 	if config.Runtimes.Cocoon != nil {
-		src, err := cocoon.GetClient(ctx, config)
+		src, err := cocoon.New(ctx, config)
 		if err != nil {
 			return nil, err
 		}

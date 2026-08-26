@@ -21,13 +21,8 @@ type Manager struct {
 	exiting     bool
 }
 
-func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
-	clients, err := manager.NewClients(ctx, config)
-	if err != nil {
-		log.WithFunc("node.NewManager").WithField("hostname", config.HostName).Error(ctx, err, "failed to create clients")
-		return nil, err
-	}
-	return &Manager{config: config, store: clients.Store, source: clients.Source}, nil
+func NewManager(config *types.Config, clients *manager.Clients) *Manager {
+	return &Manager{config: config, store: clients.Store, source: clients.Source}
 }
 
 func (m *Manager) Run(ctx context.Context) error {

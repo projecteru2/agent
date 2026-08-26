@@ -45,13 +45,7 @@ type Manager struct {
 	events         *EventHandler
 }
 
-func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
-	clients, err := manager.NewClients(ctx, config)
-	if err != nil {
-		log.WithFunc("workload.NewManager").Errorf(ctx, err, "failed to create clients for node %s", config.HostName)
-		return nil, err
-	}
-
+func NewManager(ctx context.Context, config *types.Config, clients *manager.Clients) *Manager {
 	m := &Manager{
 		config:            config,
 		store:             clients.Store,
@@ -66,7 +60,7 @@ func NewManager(ctx context.Context, config *types.Config) (*Manager, error) {
 		logTargets:        map[string]*logTarget{},
 	}
 	m.events = NewEventHandler(m.handleWorkloadStart, m.handleWorkloadDie)
-	return m, nil
+	return m
 }
 
 func (m *Manager) Run(ctx context.Context) error {

@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/projecteru2/agent/common"
+	"github.com/projecteru2/agent/manager"
 	"github.com/projecteru2/agent/source/mocks"
 	"github.com/projecteru2/agent/types"
 )
@@ -46,7 +47,7 @@ func newMockWorkloadManager(t *testing.T) *Manager {
 		GlobalConnectionTimeout: 5 * time.Second,
 	}
 
-	m, err := NewManager(t.Context(), config)
+	clients, err := manager.NewClients(t.Context(), config)
 	assert.Nil(t, err)
-	return m
+	return NewManager(t.Context(), config, clients)
 }
