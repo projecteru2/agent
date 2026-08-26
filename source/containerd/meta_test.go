@@ -24,7 +24,7 @@ func TestWorkloadFromLabelsAndSpec(t *testing.T) {
 
 	assert.Equal(t, "myapp_web_EAXPcM", w.ID)
 	assert.Equal(t, "10.0.0.5", w.LocalIP)
-	assert.Equal(t, source.Log{JournalIdentifier: common.JournalIdentifier}, w.Log)
+	assert.Equal(t, source.Log{}, w.Log)
 	assert.Equal(t, source.Meta{
 		Appname:     "myapp",
 		Entrypoint:  "web",
@@ -34,7 +34,6 @@ func TestWorkloadFromLabelsAndSpec(t *testing.T) {
 		CoreID:      "core-1",
 		Labels:      eruLabels(t),
 		HealthCheck: &coretypes.HealthCheck{TCPPorts: []string{"80"}, HTTPPort: "80", HTTPURL: "/healthz", HTTPCode: 200},
-		Publish:     []string{"80"},
 		Networks:    map[string]string{"eru-cni": "10.0.0.5"},
 	}, w.Meta)
 }
@@ -131,7 +130,6 @@ func eruLabels(t *testing.T) map[string]string {
 		cluster.ERUMark:     "1",
 		cluster.LabelCoreID: "core-1",
 		cluster.LabelMeta: coreutils.EncodeMetaInLabel(t.Context(), &coretypes.LabelMeta{
-			Publish:     []string{"80"},
 			HealthCheck: &coretypes.HealthCheck{TCPPorts: []string{"80"}, HTTPPort: "80", HTTPURL: "/healthz", HTTPCode: 200},
 		}),
 		cluster.LabelNodeName:                 "node-1",

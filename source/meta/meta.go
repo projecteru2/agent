@@ -36,9 +36,8 @@ var (
 type Kind string
 
 type logSource struct {
-	JournalUnit       string `json:"journal_unit"`
-	JournalIdentifier string `json:"journal_identifier"`
-	ConsoleSocket     string `json:"console_socket"`
+	JournalUnit   string `json:"journal_unit"`
+	ConsoleSocket string `json:"console_socket"`
 }
 
 type healthCheck struct {
@@ -72,7 +71,6 @@ type File struct {
 	CoreID      string            `json:"coreid"`
 	Labels      map[string]string `json:"labels"`
 	HealthCheck *healthCheck      `json:"healthcheck"`
-	Publish     []string          `json:"publish"`
 	Networks    map[string]string `json:"networks"`
 	Cgroup      string            `json:"cgroup"`
 	NetnsPID    int               `json:"netns_pid"`
@@ -93,13 +91,11 @@ func (f *File) Workload(running bool) *source.Workload {
 			CoreID:      f.CoreID,
 			Labels:      f.Labels,
 			HealthCheck: f.HealthCheck.coreHealthCheck(),
-			Publish:     f.Publish,
 			Networks:    f.Networks,
 		},
 		Log: source.Log{
-			JournalUnit:       f.Log.JournalUnit,
-			JournalIdentifier: f.Log.JournalIdentifier,
-			ConsoleSocket:     f.Log.ConsoleSocket,
+			JournalUnit:   f.Log.JournalUnit,
+			ConsoleSocket: f.Log.ConsoleSocket,
 		},
 		CgroupPath:        f.Cgroup,
 		NetnsPID:          f.NetnsPID,

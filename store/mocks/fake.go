@@ -104,7 +104,6 @@ func (m *MockStore) init() {
 	m.workloadStatus = map[string]*types.WorkloadStatus{}
 	m.nodeStatus = map[string]*types.NodeStatus{}
 	m.nodeInfo = map[string]*types.Node{
-		"fake":  {Endpoint: "eva://127.0.0.1:6666"},
-		"faker": {Endpoint: "eva://127.0.0.1:6667"},
+		"fake": {Endpoint: "eva://127.0.0.1:6666"},
 	}
 }
