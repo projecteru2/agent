@@ -33,22 +33,15 @@ func (d *Dir) List(ctx context.Context) ([]*File, error) {
 		return nil, err
 	}
 
-	logger := log.WithFunc("meta.List")
 	files := make([]*File, 0, len(entries))
 	for _, entry := range entries {
 		ID, ok := IDFromFile(entry.Name())
 		if !ok {
 			continue
 		}
-		f, err := d.Read(ID)
-		switch {
-		case errors.Is(err, errOtherKind):
-			continue
-		case err != nil:
-			logger.Warnf(ctx, "skipping the meta file of %s: %v", ID, err)
-			continue
+		if f := d.readMine(ctx, ID); f != nil {
+			files = append(files, f)
 		}
-		files = append(files, f)
 	}
 	return files, nil
 }
@@ -65,18 +58,13 @@ func (d *Dir) Watch(ctx context.Context, reporter *source.Reporter) error {
 		return err
 	}
 
-	logger := log.WithFunc("meta.Watch")
 	err = watcher.Run(ctx, func(name string, created bool) {
 		ID, ok := IDFromFile(name)
 		if !ok || !IsID(ID) {
 			return
 		}
 		if created {
-			switch _, readErr := d.Read(ID); {
-			case errors.Is(readErr, errOtherKind):
-			case readErr != nil:
-				logger.Warnf(ctx, "skipping the meta file of %s: %v", ID, readErr)
-			default:
+			if d.readMine(ctx, ID) != nil {
 				reporter.Report(ID, common.StatusStart)
 			}
 			return
@@ -87,4 +75,16 @@ func (d *Dir) Watch(ctx context.Context, reporter *source.Reporter) error {
 		return nil
 	}
 	return err
+}
+
+func (d *Dir) readMine(ctx context.Context, ID string) *File {
+	f, err := d.Read(ID)
+	switch {
+	case errors.Is(err, errOtherKind):
+		return nil
+	case err != nil:
+		log.WithFunc("meta.readMine").Warnf(ctx, "skipping the meta file of %s: %v", ID, err)
+		return nil
+	}
+	return f
 }

@@ -51,7 +51,7 @@ func (m *Manager) forwardConsole(ctx context.Context, w *source.Workload) {
 
 func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 	logger := log.WithFunc("workload.startForwarding").WithField("ID", w.ID)
-	if m.forwarding(w.ID) {
+	if m.forwardedWorkload(w.ID) != nil {
 		return
 	}
 
@@ -74,13 +74,6 @@ func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 		return
 	}
 	logger.Infof(ctx, "forwarding %s logs from the journal", w.Meta.Appname)
-}
-
-func (m *Manager) forwarding(ID string) bool {
-	m.logMutex.RLock()
-	defer m.logMutex.RUnlock()
-	_, ok := m.logTargets[ID]
-	return ok
 }
 
 func (m *Manager) registerTarget(w *source.Workload, target *logTarget) bool {

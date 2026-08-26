@@ -21,6 +21,8 @@ const (
 
 	// StreamConsole marks a line the agent read off a vm console and already forwarded.
 	StreamConsole = "console"
+	StreamStdout  = "stdout"
+	StreamStderr  = "stderr"
 
 	// NetworkLabelPrefix is where the oci hook writes a cni address and the containerd source reads it.
 	NetworkLabelPrefix = "eru.network."

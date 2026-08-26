@@ -25,12 +25,12 @@ func TestRunJournalsOneEntryPerLine(t *testing.T) {
 
 	require.NoError(t, run(sender.send, task))
 
-	assert.Equal(t, []string{"first", "second", "no trailing newline"}, sender.messages(streamStdout))
-	assert.Equal(t, []string{"boom"}, sender.messages(streamStderr))
+	assert.Equal(t, []string{"first", "second", "no trailing newline"}, sender.messages(common.StreamStdout))
+	assert.Equal(t, []string{"boom"}, sender.messages(common.StreamStderr))
 	assert.Equal(t, map[string]string{
 		"SYSLOG_IDENTIFIER": common.JournalIdentifier,
 		"ERU_ID":            "myapp_web_EAXPcM",
-		"ERU_STREAM":        streamStdout,
+		"ERU_STREAM":        common.StreamStdout,
 	}, sender.varsOf("first"))
 	assert.Equal(t, journal.PriInfo, sender.priorityOf("first"))
 	assert.Equal(t, journal.PriErr, sender.priorityOf("boom"))
@@ -53,7 +53,7 @@ func TestRunSplitsALineLongerThanTheBuffer(t *testing.T) {
 
 	require.NoError(t, run(sender.send, task))
 
-	messages := sender.messages(streamStdout)
+	messages := sender.messages(common.StreamStdout)
 	require.Len(t, messages, 2)
 	assert.Len(t, messages[0], lineMax)
 	assert.Len(t, messages[1], lineMax/2)

@@ -50,7 +50,7 @@ func TestCollectRetriesAfterAFailedSample(t *testing.T) {
 
 	assert.Never(t, func() bool { return sampling(w.ID) }, sampleSettle, samplePoll)
 
-	restoreCgroupFile(t, dir, "memory.current")
+	copyCgroupFile(t, dir, "memory.current")
 	assert.Eventually(t, func() bool { return sampling(w.ID) }, sampleTimeout, samplePoll)
 }
 
@@ -174,14 +174,12 @@ func cgroupWithout(t *testing.T, missing string) string {
 		if entry.Name() == missing {
 			continue
 		}
-		body, err := os.ReadFile(filepath.Join("testdata/cgroup", entry.Name()))
-		require.NoError(t, err)
-		require.NoError(t, os.WriteFile(filepath.Join(dir, entry.Name()), body, 0o600))
+		copyCgroupFile(t, dir, entry.Name())
 	}
 	return dir
 }
 
-func restoreCgroupFile(t *testing.T, dir, name string) {
+func copyCgroupFile(t *testing.T, dir, name string) {
 	t.Helper()
 	body, err := os.ReadFile(filepath.Join("testdata/cgroup", name))
 	require.NoError(t, err)
