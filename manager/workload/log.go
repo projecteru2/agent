@@ -11,10 +11,13 @@ import (
 	corelog "github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
 
+	"github.com/projecteru2/agent/collector"
 	"github.com/projecteru2/agent/types"
 )
 
 const subscriberDepth = 256
+
+var droppedBySubscriber = collector.LogLinesDropped.WithLabelValues(collector.DropPointSubscriber)
 
 type subscriber struct {
 	ctx     context.Context
@@ -40,6 +43,7 @@ func (s *subscriber) send(line []byte) {
 	case s.lines <- line:
 	default:
 		s.dropped.Add(1)
+		droppedBySubscriber.Inc()
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/projecteru2/agent/types"
@@ -101,6 +102,7 @@ func TestLogBroadcaster(t *testing.T) {
 
 func TestSubscriberSendDropsWhatAStalledClientCannotTake(t *testing.T) {
 	sub := &subscriber{lines: make(chan []byte, 2)}
+	counted := testutil.ToFloat64(droppedBySubscriber)
 
 	for range 5 {
 		sub.send([]byte("line"))
@@ -108,6 +110,7 @@ func TestSubscriberSendDropsWhatAStalledClientCannotTake(t *testing.T) {
 
 	assert.Len(t, sub.lines, 2)
 	assert.Equal(t, int64(3), sub.dropped.Load())
+	assert.InDelta(t, counted+3, testutil.ToFloat64(droppedBySubscriber), 0)
 }
 
 func TestBroadcastDoesNotBlockOnAStalledSubscriber(t *testing.T) {

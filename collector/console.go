@@ -22,6 +22,8 @@ const (
 	consoleRetryMax = 5 * time.Second
 )
 
+var droppedByConsole = LogLinesDropped.WithLabelValues(DropPointConsole)
+
 type journalFunc func(message string, priority journal.Priority, vars map[string]string) error
 
 // pathFunc answers where the vm's console is now: a restart moves it, and core rewrites the meta file.
@@ -129,5 +131,6 @@ func (c *Console) emit(line string, handle EntryHandler) {
 	// journald holds the history core reads back over ssh, the same way it does for a container
 	if err := c.send(line, journal.PriInfo, c.vars); err != nil {
 		c.dropped++
+		droppedByConsole.Inc()
 	}
 }

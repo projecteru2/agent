@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/v22/journal"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -154,6 +155,7 @@ func TestEmitStampsTheWorkloadAndTheConsoleStream(t *testing.T) {
 func TestEmitKeepsForwardingWhenTheJournalRefuses(t *testing.T) {
 	console := NewConsole(consoleWorkload, consoleAppname, at("unused"))
 	console.send = func(string, journal.Priority, map[string]string) error { return errJournalRefused }
+	counted := testutil.ToFloat64(droppedByConsole)
 
 	var entries []*Entry
 	console.emit("boot", func(e *Entry) { entries = append(entries, e) })
@@ -161,6 +163,7 @@ func TestEmitKeepsForwardingWhenTheJournalRefuses(t *testing.T) {
 
 	assert.Len(t, entries, 2)
 	assert.Equal(t, 2, console.dropped)
+	assert.InDelta(t, counted+2, testutil.ToFloat64(droppedByConsole), 0)
 }
 
 func at(path string) pathFunc {

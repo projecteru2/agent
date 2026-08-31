@@ -16,6 +16,16 @@ Sampling happens every `metrics.step` seconds. Rates are computed over that wind
 
 The node-wide cpu split that the two `cpu_host_*_usage` ratios divide by is read from `/proc/stat` at most once a second and shared by every workload, instead of once per workload per tick.
 
+## Counters
+
+One node-level counter, with no workload labels:
+
+| Counter | Meaning |
+|---|---|
+| `log_lines_dropped_total{point}` | workload log lines lost on the forwarding path, by where they were lost |
+
+`point` is `forward` (the workload's forward target was down, timed out on a write, or refused an oversized datagram — the line is not replayed after the reconnect), `subscriber` (a `GET /log` client fell more than 256 lines behind), or `console` (journald refused a VM console line). Lines a `log-shim` could not journal are not counted here: the shim is a separate process and reports its drops once, when it exits.
+
 ## Gauges
 
 Every gauge carries the same constant labels: `containerID`, `hostname`, `appname`, `entrypoint`, `orchestrator` and `labels` — the last being the workload's own labels, minus eru's internal ones, flattened to `k=v,k=v`.
