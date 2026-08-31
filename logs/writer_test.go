@@ -2,6 +2,7 @@ package logs
 
 import (
 	"errors"
+	"io"
 	"net"
 	"strings"
 	"testing"
@@ -126,4 +127,65 @@ func TestReconnect(t *testing.T) {
 
 	writer.reconnect(ctx)
 	assert.NoError(t, writer.Write(ctx, &types.Log{}))
+}
+
+func BenchmarkWriterWrite(b *testing.B) {
+	line := &types.Log{
+		ID:         "0123456789abcdef0123456789abcdef",
+		Name:       "app",
+		Type:       common.StreamStdout,
+		EntryPoint: "web",
+		Ident:      "ident",
+		Data:       strings.Repeat("x", 200),
+		Datetime:   "2026-08-31T00:00:00.000000000Z",
+		Extra:      map[string]string{"zone": "z", "node": "n"},
+	}
+	sinks := map[string]func(b *testing.B) string{
+		"discard": func(*testing.B) string { return Discard },
+		"tcp":     drainingTCP,
+		"udp":     drainingUDP,
+	}
+	for name, sink := range sinks {
+		b.Run(name, func(b *testing.B) {
+			w, err := NewWriter(b.Context(), sink(b), false)
+			require.NoError(b, err)
+			b.ReportAllocs()
+			for b.Loop() {
+				if err := w.Write(b.Context(), line); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+func drainingTCP(b *testing.B) string {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(b, err)
+	b.Cleanup(func() { _ = l.Close() })
+	go func() {
+		for {
+			conn, err := l.Accept()
+			if err != nil {
+				return
+			}
+			go func() { _, _ = io.Copy(io.Discard, conn) }()
+		}
+	}()
+	return "tcp://" + l.Addr().String()
+}
+
+func drainingUDP(b *testing.B) string {
+	conn, err := net.ListenPacket("udp", "127.0.0.1:0")
+	require.NoError(b, err)
+	b.Cleanup(func() { _ = conn.Close() })
+	go func() {
+		buf := make([]byte, 64<<10)
+		for {
+			if _, _, err := conn.ReadFrom(buf); err != nil {
+				return
+			}
+		}
+	}()
+	return "udp://" + conn.LocalAddr().String()
 }
