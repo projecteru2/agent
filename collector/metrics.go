@@ -11,6 +11,7 @@ import (
 	"github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/projecteru2/agent/source"
 )
@@ -19,6 +20,7 @@ const (
 	DropPointSubscriber = "subscriber"
 	DropPointConsole    = "console"
 	DropPointForward    = "forward"
+	DropPointJournald   = "journald"
 
 	labelNIC   = "nic"
 	labelDev   = "dev"
@@ -28,10 +30,9 @@ const (
 )
 
 var (
-	// LogLinesDropped counts workload log lines lost at each bounded point of the forwarding path.
-	LogLinesDropped = prometheus.NewCounterVec(prometheus.CounterOpts{
+	LogLinesDropped = promauto.With(prometheus.DefaultRegisterer).NewCounterVec(prometheus.CounterOpts{
 		Name: "log_lines_dropped_total",
-		Help: "workload log lines dropped, by the point that dropped them.",
+		Help: "workload log lines that never reached their destination, by the point that lost them.",
 	}, []string{labelPoint})
 
 	clientsMutex sync.Mutex

@@ -21,7 +21,10 @@ const (
 	journalBinary = "journalctl"
 	cursorFile    = "journal.cursor"
 
-	stderrPriority = "3"
+	stderrPriority   = "3"
+	droppedMessageID = "a596d6fe7bfa4994828e72309e95d61e" // SD_MESSAGE_JOURNAL_DROPPED
+	eruUnitPrefix    = "eru-"
+	agentComm        = "eru-agent"
 
 	cursorFlushInterval = 5 * time.Second
 	pipeWaitDelay       = time.Second
@@ -29,6 +32,8 @@ const (
 	scanLineMax         = 1 << 20
 	stderrMax           = 4 << 10
 )
+
+var droppedByJournald = LogLinesDropped.WithLabelValues(DropPointJournald)
 
 // Entry is one journal record, addressed by the workload id the log shim wrote or by its unit.
 type Entry struct {
@@ -45,10 +50,15 @@ type journalRecord struct {
 	Cursor    string          `json:"__CURSOR"`
 	Realtime  string          `json:"__REALTIME_TIMESTAMP"`
 	Message   json.RawMessage `json:"MESSAGE"`
+	MessageID string          `json:"MESSAGE_ID"`
 	Priority  string          `json:"PRIORITY"`
 	Unit      string          `json:"_SYSTEMD_UNIT"`
 	EruID     string          `json:"ERU_ID"`
 	EruStream string          `json:"ERU_STREAM"`
+
+	Dropped     string `json:"N_DROPPED"`
+	DroppedUnit string `json:"OBJECT_SYSTEMD_UNIT"`
+	DroppedComm string `json:"OBJECT_COMM"`
 }
 
 func (r *journalRecord) entry() *Entry {
@@ -66,6 +76,19 @@ func (r *journalRecord) entry() *Entry {
 		Data:       message(r.Message),
 		Time:       realtime(r.Realtime),
 	}
+}
+
+// journald drops rate-limited lines without telling the sender, so the reader is the only place to count them
+func (r *journalRecord) countSuppressed(ctx context.Context) {
+	if !strings.HasPrefix(r.DroppedUnit, eruUnitPrefix) && r.DroppedComm != agentComm {
+		return
+	}
+	n, err := strconv.ParseUint(r.Dropped, 10, 64)
+	if err != nil {
+		return
+	}
+	droppedByJournald.Add(float64(n))
+	log.WithFunc("collector.countSuppressed").Warnf(ctx, "journald suppressed %d lines from %s", n, r.DroppedUnit)
 }
 
 // Journal follows the node's journal and hands every eru workload line to one reader.
@@ -117,8 +140,11 @@ func (j *Journal) read(ctx context.Context, handle EntryHandler) error {
 			logger.Error(ctx, err, "failed to decode a journal record")
 			continue
 		}
+		switch {
+		case record.MessageID == droppedMessageID:
+			record.countSuppressed(ctx)
 		// a console line reached the journal through the reader that already forwarded it
-		if record.EruStream != common.StreamConsole {
+		case record.EruStream != common.StreamConsole:
 			handle(record.entry())
 		}
 
@@ -197,7 +223,7 @@ func args(cursor string) []string {
 		args = append(args, "--after-cursor="+cursor, "--lines=all")
 	}
 	// journalctl ors terms with "+" but -u is an option, not a term, so every eru unit carries the identifier
-	return append(args, common.FieldIdentifier+"="+common.JournalIdentifier)
+	return append(args, common.FieldIdentifier+"="+common.JournalIdentifier, "+", "MESSAGE_ID="+droppedMessageID)
 }
 
 // message decodes MESSAGE, which journalctl renders as a byte array when the line is not utf8.
