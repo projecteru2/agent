@@ -2,6 +2,7 @@ package logs
 
 import (
 	"errors"
+	"io"
 	"net"
 	"strings"
 	"testing"
@@ -126,4 +127,71 @@ func TestReconnect(t *testing.T) {
 
 	writer.reconnect(ctx)
 	assert.NoError(t, writer.Write(ctx, &types.Log{}))
+}
+
+func BenchmarkWriterWrite(b *testing.B) {
+	line := &types.Log{
+		ID:         "0123456789abcdef0123456789abcdef",
+		Name:       "app",
+		Type:       common.StreamStdout,
+		EntryPoint: "web",
+		Ident:      "ident",
+		Data:       strings.Repeat("x", 200),
+		Datetime:   "2026-08-31T00:00:00.000000000Z",
+		Extra:      map[string]string{"zone": "z", "node": "n"},
+	}
+	ctx := b.Context()
+	writers := map[string]*Writer{"encode": {addr: "encode", scheme: "tcp", enc: NewStreamEncoder(nopSink{})}}
+	for name, addr := range map[string]string{"tcp": drainingTCP(b), "udp": drainingUDP(b)} {
+		w, err := NewWriter(ctx, addr, false)
+		require.NoError(b, err)
+		writers[name] = w
+	}
+	for name, w := range writers {
+		b.Run(name, func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				if err := w.Write(ctx, line); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
+type nopSink struct{}
+
+func (nopSink) Write(p []byte) (int, error) { return len(p), nil }
+
+func (nopSink) Close() error { return nil }
+
+func drainingTCP(b *testing.B) string {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(b, err)
+	b.Cleanup(func() { _ = l.Close() })
+	go func() {
+		for {
+			conn, err := l.Accept()
+			if err != nil {
+				return
+			}
+			go func() { _, _ = io.Copy(io.Discard, conn) }()
+		}
+	}()
+	return "tcp://" + l.Addr().String()
+}
+
+func drainingUDP(b *testing.B) string {
+	conn, err := net.ListenPacket("udp", "127.0.0.1:0")
+	require.NoError(b, err)
+	b.Cleanup(func() { _ = conn.Close() })
+	go func() {
+		buf := make([]byte, 64<<10)
+		for {
+			if _, _, err := conn.ReadFrom(buf); err != nil {
+				return
+			}
+		}
+	}()
+	return "udp://" + conn.LocalAddr().String()
 }

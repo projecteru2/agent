@@ -80,7 +80,7 @@ Either way, each line becomes the same JSON record:
 
 The record goes to two places: the configured forwarder for that workload, and the in-process broadcaster that serves `/log/`. Non-utf8 bytes are escaped as `\xNN` so a binary blob on stdout cannot corrupt the stream.
 
-**Log broadcaster.** `GET /log/?app=<name>` hijacks the connection and subscribes to every record whose `name` matches. Each reader broadcasts its lines in order, and one workload's lines come from one reader, so a subscriber sees a workload's lines in order. A subscriber whose connection breaks — detected by a read on the hijacked socket — is cancelled and dropped.
+**Log broadcaster.** `GET /log/?app=<name>` hijacks the connection and subscribes to every record whose `name` matches. Each reader broadcasts its lines in order, and one workload's lines come from one reader, so a subscriber sees a workload's lines in order. A subscriber whose connection breaks — detected by a read on the hijacked socket — is cancelled and dropped; one that falls more than 256 lines behind loses the excess rather than stalling the node's forwarding, counted in `log_lines_dropped_total{point="subscriber"}`.
 
 ## Status reporting
 

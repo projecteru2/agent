@@ -1,6 +1,7 @@
 package logs
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"sync"
@@ -17,19 +18,24 @@ type Encoder interface {
 }
 
 type StreamEncoder struct {
-	wt io.WriteCloser
+	wt  io.WriteCloser
+	buf bytes.Buffer
+	enc *json.Encoder
 }
 
 func NewStreamEncoder(wt io.WriteCloser) *StreamEncoder {
-	return &StreamEncoder{wt: wt}
+	e := &StreamEncoder{wt: wt}
+	e.enc = json.NewEncoder(&e.buf)
+	return e
 }
 
+// Encode runs under Writer's lock, which is what lets one buffer serve every line.
 func (e *StreamEncoder) Encode(logline *types.Log) error {
-	data, err := json.Marshal(logline)
-	if err != nil {
+	e.buf.Reset()
+	if err := e.enc.Encode(logline); err != nil {
 		return err
 	}
-	_, err = e.wt.Write(append(data, '\n'))
+	_, err := e.wt.Write(e.buf.Bytes())
 	return err
 }
 

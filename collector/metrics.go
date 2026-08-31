@@ -11,18 +11,29 @@ import (
 	"github.com/projecteru2/core/log"
 	coreutils "github.com/projecteru2/core/utils"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/projecteru2/agent/source"
 )
 
 const (
-	labelNIC = "nic"
-	labelDev = "dev"
+	DropPointSubscriber = "subscriber"
+	DropPointConsole    = "console"
+	DropPointForward    = "forward"
+
+	labelNIC   = "nic"
+	labelDev   = "dev"
+	labelPoint = "point"
 
 	metricMemMaxUsage = "mem_max_usage"
 )
 
 var (
+	LogLinesDropped = promauto.With(prometheus.DefaultRegisterer).NewCounterVec(prometheus.CounterOpts{
+		Name: "log_lines_dropped_total",
+		Help: "workload log lines that never reached their destination, by the point that lost them.",
+	}, []string{labelPoint})
+
 	clientsMutex sync.Mutex
 	clients      = map[string]*MetricsClient{}
 
