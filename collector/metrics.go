@@ -20,7 +20,6 @@ const (
 	DropPointSubscriber = "subscriber"
 	DropPointConsole    = "console"
 	DropPointForward    = "forward"
-	DropPointJournald   = "journald"
 
 	labelNIC   = "nic"
 	labelDev   = "dev"

@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -55,31 +54,13 @@ func TestJournalRecordMapsStderrPriority(t *testing.T) {
 
 func TestJournalArgsFollowFromTheSavedCursor(t *testing.T) {
 	assert.Equal(t, []string{
-		"--follow", "--output=json", "--no-pager", "--all", "--lines=0",
-		"SYSLOG_IDENTIFIER=eru", "+", "MESSAGE_ID=a596d6fe7bfa4994828e72309e95d61e",
+		"--follow", "--output=json", "--no-pager", "--all", "--lines=0", "SYSLOG_IDENTIFIER=eru",
 	}, args(""))
 
 	assert.Equal(t, []string{
-		"--follow", "--output=json", "--no-pager", "--all", "--after-cursor=s=aaa;i=7", "--lines=all",
-		"SYSLOG_IDENTIFIER=eru", "+", "MESSAGE_ID=a596d6fe7bfa4994828e72309e95d61e",
+		"--follow", "--output=json", "--no-pager", "--all",
+		"--after-cursor=s=aaa;i=7", "--lines=all", "SYSLOG_IDENTIFIER=eru",
 	}, args("s=aaa;i=7"))
-}
-
-func TestJournalReadCountsWhatJournaldSuppressed(t *testing.T) {
-	j := NewJournal(filepath.Join(t.TempDir(), "state"))
-	j.binary = fakeReader(t, `echo '{"__CURSOR":"s=aaa;i=1","MESSAGE":"Suppressed 22500 messages from eru-abc123.service","MESSAGE_ID":"a596d6fe7bfa4994828e72309e95d61e","N_DROPPED":"22500","OBJECT_SYSTEMD_UNIT":"eru-abc123.service","OBJECT_COMM":"python3","_SYSTEMD_UNIT":"systemd-journald.service"}'
-echo '{"__CURSOR":"s=aaa;i=2","MESSAGE":"Suppressed 7 messages from containerd.service","MESSAGE_ID":"a596d6fe7bfa4994828e72309e95d61e","N_DROPPED":"7","OBJECT_SYSTEMD_UNIT":"containerd.service","OBJECT_COMM":"eru-agent","_SYSTEMD_UNIT":"systemd-journald.service"}'
-echo '{"__CURSOR":"s=aaa;i=3","MESSAGE":"Suppressed 900 messages from ssh.service","MESSAGE_ID":"a596d6fe7bfa4994828e72309e95d61e","N_DROPPED":"900","OBJECT_SYSTEMD_UNIT":"ssh.service","OBJECT_COMM":"sshd","_SYSTEMD_UNIT":"systemd-journald.service"}'
-echo '{"__CURSOR":"s=aaa;i=4","MESSAGE":"still here","PRIORITY":"6","_SYSTEMD_UNIT":"eru-abc123.service"}'
-`)
-	counted := testutil.ToFloat64(droppedByJournald)
-
-	var entries []*Entry
-	require.NoError(t, j.Read(t.Context(), func(e *Entry) { entries = append(entries, e) }))
-
-	require.Len(t, entries, 1)
-	assert.Equal(t, "still here", entries[0].Data)
-	assert.Equal(t, counted+22507, testutil.ToFloat64(droppedByJournald))
 }
 
 func TestJournalCursorSurvivesARestart(t *testing.T) {
