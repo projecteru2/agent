@@ -9,10 +9,8 @@ import (
 	"time"
 
 	"github.com/projecteru2/core/log"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/projecteru2/agent/collector"
 	"github.com/projecteru2/agent/manager/workload"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/version"
@@ -37,7 +35,6 @@ func (h *Handler) Serve(ctx context.Context) {
 		return
 	}
 	logger := log.WithFunc("api.Serve")
-	prometheus.MustRegister(collector.LogLinesDropped)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /profile/{$}", h.profile)

@@ -110,7 +110,7 @@ func TestSubscriberSendDropsWhatAStalledClientCannotTake(t *testing.T) {
 
 	assert.Len(t, sub.lines, 2)
 	assert.Equal(t, int64(3), sub.dropped.Load())
-	assert.InDelta(t, counted+3, testutil.ToFloat64(droppedBySubscriber), 0)
+	assert.Equal(t, counted+3, testutil.ToFloat64(droppedBySubscriber))
 }
 
 func TestBroadcastDoesNotBlockOnAStalledSubscriber(t *testing.T) {

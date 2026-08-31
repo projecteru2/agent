@@ -163,7 +163,7 @@ func TestEmitKeepsForwardingWhenTheJournalRefuses(t *testing.T) {
 
 	assert.Len(t, entries, 2)
 	assert.Equal(t, 2, console.dropped)
-	assert.InDelta(t, counted+2, testutil.ToFloat64(droppedByConsole), 0)
+	assert.Equal(t, counted+2, testutil.ToFloat64(droppedByConsole))
 }
 
 func at(path string) pathFunc {

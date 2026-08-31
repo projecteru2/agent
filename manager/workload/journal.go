@@ -131,14 +131,11 @@ func (m *Manager) forward(ctx context.Context, entry *collector.Entry) {
 		Extra:      target.extra,
 	}
 	m.logBroadcaster.broadcast(ctx, l)
-	err := target.writer.Write(ctx, l)
-	if err == nil {
-		return
-	}
-	droppedByForward.Inc()
-	if !errors.Is(err, common.ErrConnecting) {
-		logger := log.WithFunc("workload.forward").WithField("ID", w.ID)
-		logger.Errorf(ctx, err, "%s workload %s write failed", w.Meta.Appname, w.Meta.Entrypoint)
+	if err := target.writer.Write(ctx, l); err != nil {
+		droppedByForward.Inc()
+		if !errors.Is(err, common.ErrConnecting) {
+			log.WithFunc("workload.forward").WithField("ID", w.ID).Errorf(ctx, err, "%s workload %s write failed", w.Meta.Appname, w.Meta.Entrypoint)
+		}
 	}
 }
 

@@ -34,7 +34,6 @@ func TestLogKeysOfAWorkloadWithoutAUnit(t *testing.T) {
 
 func TestForwardCountsALineTheTargetCannotTake(t *testing.T) {
 	m, target := managerWithTarget()
-	m.logBroadcaster = newLogBroadcaster()
 	writer, err := logs.NewWriter(t.Context(), "tcp://127.0.0.1:1", false)
 	require.NoError(t, err)
 	target.writer = writer
@@ -42,14 +41,14 @@ func TestForwardCountsALineTheTargetCannotTake(t *testing.T) {
 
 	m.forward(t.Context(), &collector.Entry{WorkloadID: "abc123", Data: "lost while connecting"})
 
-	assert.InDelta(t, counted+1, testutil.ToFloat64(droppedByForward), 0)
+	assert.Equal(t, counted+1, testutil.ToFloat64(droppedByForward))
 }
 
 func managerWithTarget() (*Manager, *logTarget) {
 	w := &source.Workload{ID: "abc123", Log: source.Log{JournalUnit: "eru-abc123.service"}}
 	target := &logTarget{workload: w, cancel: func() {}}
 
-	m := &Manager{logTargets: map[string]*logTarget{}}
+	m := &Manager{logTargets: map[string]*logTarget{}, logBroadcaster: newLogBroadcaster()}
 	for _, key := range logKeys(w) {
 		m.logTargets[key] = target
 	}

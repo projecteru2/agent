@@ -140,24 +140,30 @@ func BenchmarkWriterWrite(b *testing.B) {
 		Datetime:   "2026-08-31T00:00:00.000000000Z",
 		Extra:      map[string]string{"zone": "z", "node": "n"},
 	}
-	sinks := map[string]func(b *testing.B) string{
-		"discard": func(*testing.B) string { return Discard },
-		"tcp":     drainingTCP,
-		"udp":     drainingUDP,
+	ctx := b.Context()
+	writers := map[string]*Writer{"encode": {addr: "encode", scheme: "tcp", enc: NewStreamEncoder(nopSink{})}}
+	for name, addr := range map[string]string{"tcp": drainingTCP(b), "udp": drainingUDP(b)} {
+		w, err := NewWriter(ctx, addr, false)
+		require.NoError(b, err)
+		writers[name] = w
 	}
-	for name, sink := range sinks {
+	for name, w := range writers {
 		b.Run(name, func(b *testing.B) {
-			w, err := NewWriter(b.Context(), sink(b), false)
-			require.NoError(b, err)
 			b.ReportAllocs()
 			for b.Loop() {
-				if err := w.Write(b.Context(), line); err != nil {
+				if err := w.Write(ctx, line); err != nil {
 					b.Fatal(err)
 				}
 			}
 		})
 	}
 }
+
+type nopSink struct{}
+
+func (nopSink) Write(p []byte) (int, error) { return len(p), nil }
+
+func (nopSink) Close() error { return nil }
 
 func drainingTCP(b *testing.B) string {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
