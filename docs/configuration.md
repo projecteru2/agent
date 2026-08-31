@@ -94,6 +94,8 @@ log:
 
 A VM's output is its serial console, so the agent reads the console its meta file names, one goroutine per VM, forwarding each line and writing it to journald so the history is there too. Every other runtime logs to journald natively, and the agent runs one `journalctl --follow --output=json SYSLOG_IDENTIFIER=eru` for the whole node, resuming from the cursor it saved under `state_dir`. That path needs `journalctl` on the node, and needs every eru workload to log under the `eru` syslog identifier: process units get it from core's `systemd-run`, containers from `eru-agent log-shim`.
 
+journald rate-limits every service on its own — by default `RateLimitBurst=10000` per `RateLimitIntervalSec=30s`, per priority class, scaled up with the journal's free space — and drops the excess without telling the sender, so a workload that logs faster than that loses lines before the agent ever sees them. A unit's own `LogRateLimitBurst=` overrides the node default; journald's "Suppressed N messages" notices are the only record of what was lost.
+
 `stdout: true` additionally writes every forwarded line to the agent's own log.
 
 ## `metrics`
