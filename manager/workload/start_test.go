@@ -1,6 +1,7 @@
 package workload
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,17 +29,26 @@ func TestStartCollectingLeavesARunningSamplerAlone(t *testing.T) {
 
 func TestStartCollectingRestartsASamplerThatReturned(t *testing.T) {
 	m := managerForStart(t)
-	w := &source.Workload{ID: "Rei"}
+	w := &source.Workload{ID: "Rei", CgroupPath: t.TempDir()}
+	ctx, cancel := context.WithCancel(t.Context())
 
-	m.startCollecting(t.Context(), w)
+	m.startCollecting(ctx, w)
 	first := m.collecting[w.ID]
 	require.NotNil(t, first)
+	cancel()
 	<-first.done
 
-	w.CgroupPath = t.TempDir()
 	m.startCollecting(t.Context(), w)
 	assert.NotSame(t, first, m.collecting[w.ID])
 	m.stopCollecting(w.ID)
+}
+
+func TestStartCollectingSkipsAWorkloadWithoutACgroup(t *testing.T) {
+	m := managerForStart(t)
+	w := &source.Workload{ID: "Rei"}
+
+	m.startCollecting(t.Context(), w)
+	assert.Empty(t, m.collecting)
 }
 
 func TestStartCollectingStartsAgainAfterTheWorkloadDied(t *testing.T) {

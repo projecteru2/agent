@@ -12,6 +12,7 @@ import (
 // Multi presents every runtime a node hosts as one source.
 type Multi struct {
 	sources []Source
+	owners  sync.Map
 }
 
 // NewMulti fans out over the runtimes a node hosts; a node with one runtime needs no fan-out.
@@ -34,12 +35,19 @@ func (m *Multi) List(ctx context.Context) ([]*Workload, error) {
 	return workloads, nil
 }
 
-// Get asks every runtime in turn, since a workload id says nothing about which one runs it.
+// Get asks the runtime that answered for the id last, then every other one, since an id says nothing about which runtime runs it.
 func (m *Multi) Get(ctx context.Context, ID string) (*Workload, error) {
+	if owner, ok := m.owners.Load(ID); ok {
+		if w, err := owner.(Source).Get(ctx, ID); err == nil {
+			return w, nil
+		}
+		m.owners.Delete(ID)
+	}
 	refusals := []error{ErrUnknownWorkload}
 	for _, src := range m.sources {
 		w, err := src.Get(ctx, ID)
 		if err == nil {
+			m.owners.Store(ID, src)
 			return w, nil
 		}
 		refusals = append(refusals, err)

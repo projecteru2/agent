@@ -22,6 +22,20 @@ const (
 	hostNetwork = "host"
 )
 
+// ociSpec is the slice of the runtime spec the agent reads, so the rest of a multi-kilobyte spec is never allocated.
+type ociSpec struct {
+	Process *struct {
+		Env []string `json:"env"`
+	} `json:"process"`
+	Linux *struct {
+		Namespaces []ociNamespace `json:"namespaces"`
+	} `json:"linux"`
+}
+
+type ociNamespace struct {
+	Type string `json:"type"`
+}
+
 // spec is what the container's runtime spec says about how core configured it.
 type spec struct {
 	env         []string
@@ -34,7 +48,7 @@ func readSpec(raw typeurl.Any) (spec, error) {
 		return s, nil
 	}
 	// containerd stores the runtime spec as json, so the typeurl value is the spec itself
-	oci := &specs.Spec{}
+	oci := &ociSpec{}
 	if err := json.Unmarshal(raw.GetValue(), oci); err != nil {
 		return s, err
 	}
@@ -42,8 +56,8 @@ func readSpec(raw typeurl.Any) (spec, error) {
 		s.env = oci.Process.Env
 	}
 	// a container that shares the node's network has no network namespace of its own in the spec
-	s.hostNetwork = oci.Linux != nil && !slices.ContainsFunc(oci.Linux.Namespaces, func(ns specs.LinuxNamespace) bool {
-		return ns.Type == specs.NetworkNamespace
+	s.hostNetwork = oci.Linux != nil && !slices.ContainsFunc(oci.Linux.Namespaces, func(ns ociNamespace) bool {
+		return ns.Type == string(specs.NetworkNamespace)
 	})
 	return s, nil
 }

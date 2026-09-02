@@ -35,24 +35,21 @@ func (r *RetryTask) Run() error {
 	logger.Debug(r.ctx, "start")
 	defer r.Stop()
 
+	interval := time.Second
 	var err error
-	interval := 1
-	timer := time.NewTimer(0)
-	defer timer.Stop()
-
-	for range r.maxAttempts {
-		select {
-		case <-r.ctx.Done():
-			logger.Debug(r.ctx, "abort")
-			return r.ctx.Err()
-		case <-timer.C:
-			err = r.fn()
-			if err == nil {
-				return nil
+	for attempt := range r.maxAttempts {
+		if attempt > 0 {
+			logger.Debugf(r.ctx, "will retry after %v", interval)
+			select {
+			case <-r.ctx.Done():
+				logger.Debug(r.ctx, "abort")
+				return r.ctx.Err()
+			case <-time.After(interval):
 			}
-			logger.Debugf(r.ctx, "will retry after %v seconds", interval)
-			timer.Reset(time.Duration(interval) * time.Second)
 			interval *= 2
+		}
+		if err = r.fn(); err == nil {
+			return nil
 		}
 	}
 	return err
