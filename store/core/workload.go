@@ -10,6 +10,7 @@ import (
 	"time"
 
 	pb "github.com/projecteru2/core/rpc/gen"
+	coretypes "github.com/projecteru2/core/types"
 
 	"github.com/projecteru2/agent/types"
 )
@@ -29,6 +30,20 @@ func (c *Store) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
 		}
 	}
 	return IDs, nil
+}
+
+// WorkloadExists reports whether core still owns the workload; core answers a missing one with its count or not-exists sentinel.
+func (c *Store) WorkloadExists(ctx context.Context, ID string) (bool, error) {
+	_, err := call(ctx, c, func(ctx context.Context) (*pb.Workload, error) {
+		return c.GetClient().GetWorkload(ctx, &pb.WorkloadID{Id: ID})
+	})
+	switch {
+	case err == nil:
+		return true, nil
+	case strings.Contains(err.Error(), coretypes.ErrInvaildCount.Error()), strings.Contains(err.Error(), coretypes.ErrWorkloadNotExists.Error()):
+		return false, nil
+	}
+	return false, err
 }
 
 func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error {

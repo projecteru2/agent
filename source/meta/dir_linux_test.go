@@ -49,7 +49,7 @@ func TestWatchReportsARemovalItClaimed(t *testing.T) {
 	write(t, dir, cniWorkload, KindProcess)
 	assert.Equal(t, watched{cniWorkload, common.StatusStart}, next(t, events))
 
-	require.NoError(t, os.Remove(filepath.Join(dir, cniWorkload+Suffix)))
+	require.NoError(t, os.Remove(filepath.Join(dir, cniWorkload+suffix)))
 	assert.Equal(t, watched{cniWorkload, common.StatusDie}, next(t, events))
 }
 
@@ -58,7 +58,7 @@ func TestWatchIgnoresTheRemovalOfAnotherKind(t *testing.T) {
 	write(t, dir, vmWorkload, KindVM)
 	events := startWatch(t, dir, KindProcess)
 
-	require.NoError(t, os.Remove(filepath.Join(dir, vmWorkload+Suffix)))
+	require.NoError(t, os.Remove(filepath.Join(dir, vmWorkload+suffix)))
 	write(t, dir, cniWorkload, KindProcess)
 
 	assert.Equal(t, watched{cniWorkload, common.StatusStart}, next(t, events))
@@ -101,9 +101,9 @@ func awaitWatchArmed(t *testing.T, dir string, kind Kind, events <-chan watched)
 func write(t *testing.T, dir, ID string, kind Kind) {
 	t.Helper()
 	body := `{"id":"` + ID + `","kind":"` + string(kind) + `","log":{"journal_unit":"eru-` + ID + `.service"}}`
-	staging := filepath.Join(t.TempDir(), ID+Suffix)
+	staging := filepath.Join(t.TempDir(), ID+suffix)
 	require.NoError(t, os.WriteFile(staging, []byte(body), 0o600))
-	require.NoError(t, os.Rename(staging, filepath.Join(dir, ID+Suffix)))
+	require.NoError(t, os.Rename(staging, filepath.Join(dir, ID+suffix)))
 }
 
 func next(t *testing.T, events <-chan watched) watched {

@@ -2,14 +2,11 @@ package workload
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/projecteru2/core/log"
 
 	"github.com/projecteru2/agent/common"
-	"github.com/projecteru2/agent/source/meta"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 )
@@ -105,13 +102,10 @@ func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEv
 		return
 	}
 
-	if forwarded == nil {
-		// core drops the meta file when it removes a workload; the runtime forgetting one that core still owns is what gets reported
-		if _, statErr := os.Stat(filepath.Join(m.config.MetaDir, event.ID+meta.Suffix)); statErr != nil {
-			logger.Debugf(ctx, "no runtime and no meta file know it, core removed it: %v", err)
-			m.stop(event.ID)
-			return
-		}
+	if owned, ownErr := m.store.WorkloadExists(ctx, event.ID); ownErr == nil && !owned {
+		logger.Debugf(ctx, "no runtime knows it and core has removed it: %v", err)
+		m.stop(event.ID)
+		return
 	}
 	logger.Warnf(ctx, "no runtime knows it any more, reporting it gone: %v", err)
 	status := &types.WorkloadStatus{ID: event.ID, Nodename: m.config.HostName}

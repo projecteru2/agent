@@ -3,8 +3,6 @@ package workload
 import (
 	"context"
 	"errors"
-	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -21,9 +19,8 @@ import (
 func TestHandleWorkloadDieReportsAWorkloadTheRuntimeForgot(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	manager.source = &forgetfulSource{}
-	manager.config.MetaDir = t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(manager.config.MetaDir, "Kaworu.json"), []byte("{}"), 0o600))
 	store := manager.store.(*mocks.MockStore)
+	store.Own("Kaworu")
 
 	manager.handleWorkloadDie(t.Context(), &types.WorkloadEventMessage{ID: "Kaworu", Action: "die"})
 
@@ -37,7 +34,6 @@ func TestHandleWorkloadDieReportsAWorkloadTheRuntimeForgot(t *testing.T) {
 func TestHandleWorkloadDieSkipsAWorkloadCoreAlreadyRemoved(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	manager.source = &forgetfulSource{}
-	manager.config.MetaDir = t.TempDir()
 	store := manager.store.(*mocks.MockStore)
 
 	manager.handleWorkloadDie(t.Context(), &types.WorkloadEventMessage{ID: "Kaworu", Action: "die"})
@@ -66,6 +62,7 @@ func TestHandleWorkloadDieCarriesTheForwardedMeta(t *testing.T) {
 		Meta: source.Meta{Appname: "nerv", Entrypoint: "eva3"},
 		Log:  source.Log{JournalUnit: "eru-Kaworu.service"},
 	}
+	store.Own(w.ID)
 	manager.startForwarding(t.Context(), w)
 
 	manager.handleWorkloadDie(t.Context(), &types.WorkloadEventMessage{ID: w.ID, Action: "die"})
@@ -81,6 +78,7 @@ func TestHandleWorkloadDieStopsLocalTasksRestartedDuringStatusWrite(t *testing.T
 	ctx := t.Context()
 	manager := newMockWorkloadManager(t)
 	manager.source = &forgetfulSource{}
+	manager.store.(*mocks.MockStore).Own("Rei")
 	statusStore := &blockingStatusStore{
 		Store:   manager.store,
 		started: make(chan struct{}),

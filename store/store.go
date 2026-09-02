@@ -11,5 +11,6 @@ type Store interface {
 	SetNodeStatus(ctx context.Context, ttl int64) error
 	ListRunningWorkloadIDs(ctx context.Context) ([]string, error)
 	SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error
+	WorkloadExists(ctx context.Context, ID string) (bool, error)
 	GetIdentifier(ctx context.Context) string
 }
