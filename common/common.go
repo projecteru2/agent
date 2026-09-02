@@ -13,7 +13,6 @@ const (
 	// JournalIdentifier is the one term the journal reader matches, so every eru workload logs under it.
 	JournalIdentifier = "eru"
 
-	// These name the journal fields every eru log writer sets and the journal reader routes on.
 	FieldIdentifier = "SYSLOG_IDENTIFIER"
 	FieldID         = "ERU_ID"
 	FieldName       = "ERU_NAME"
