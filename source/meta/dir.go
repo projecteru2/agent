@@ -36,7 +36,7 @@ func (d *Dir) List(ctx context.Context) ([]*File, error) {
 	files := make([]*File, 0, len(entries))
 	for _, entry := range entries {
 		ID, ok := IDFromFile(entry.Name())
-		if !ok {
+		if !ok || !IsID(ID) {
 			continue
 		}
 		if f := d.readMine(ctx, ID); f != nil {
