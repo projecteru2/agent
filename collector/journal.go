@@ -80,16 +80,7 @@ func NewJournal(stateDir string) *Journal {
 
 // Read follows the journal until ctx is done, calling handle for every eru workload line.
 func (j *Journal) Read(ctx context.Context, handle EntryHandler) error {
-	err := j.read(ctx, handle)
-	if ctx.Err() != nil {
-		// a stop is not a reader failure, whatever the child made of being killed
-		return nil
-	}
-	return err
-}
-
-func (j *Journal) read(ctx context.Context, handle EntryHandler) error {
-	logger := log.WithFunc("collector.read")
+	logger := log.WithFunc("collector.Read")
 	// journald speaks a binary format only libsystemd reads, so its own tool is the reader
 	logger.Debugf(ctx, "forwarding workload logs needs %s on this node", j.binary)
 
