@@ -21,8 +21,15 @@ var droppedByForward = collector.LogLinesDropped.WithLabelValues(collector.DropP
 type logTarget struct {
 	workload *source.Workload
 	writer   *logs.Writer
+	transfer string
 	extra    map[string]string
 	cancel   context.CancelFunc
+}
+
+type forwardWriter struct {
+	writer *logs.Writer
+	cancel context.CancelFunc
+	refs   int
 }
 
 func (m *Manager) forwardJournal(ctx context.Context) {
@@ -58,15 +65,15 @@ func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 	}
 
 	transfer := cmp.Or(m.forwards.Get(w.ID, 0), logs.Discard)
-	ctx, cancel := context.WithCancel(ctx)
-	writer, err := logs.NewWriter(ctx, transfer, m.config.Log.Stdout)
+	writer, err := m.acquireWriter(ctx, transfer)
 	if err != nil {
-		cancel()
 		logger.Errorf(ctx, err, "create log forward %s failed", transfer)
 		return
 	}
-	if !m.registerTarget(w, &logTarget{workload: w, writer: writer, extra: w.LogFields(), cancel: cancel}) {
+	ctx, cancel := context.WithCancel(ctx)
+	if !m.registerTarget(w, &logTarget{workload: w, writer: writer, transfer: transfer, extra: w.LogFields(), cancel: cancel}) {
 		cancel()
+		m.releaseWriter(transfer)
 		return
 	}
 
@@ -111,6 +118,39 @@ func (m *Manager) stopForwarding(ID string) {
 	for _, key := range logKeys(target.workload) {
 		delete(m.logTargets, key)
 	}
+	m.releaseWriter(target.transfer)
+}
+
+func (m *Manager) acquireWriter(ctx context.Context, transfer string) (*logs.Writer, error) {
+	m.writerMutex.Lock()
+	defer m.writerMutex.Unlock()
+	if fw, ok := m.writers[transfer]; ok {
+		fw.refs++
+		return fw.writer, nil
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	writer, err := logs.NewWriter(ctx, transfer, m.config.Log.Stdout)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	m.writers[transfer] = &forwardWriter{writer: writer, cancel: cancel, refs: 1}
+	return writer, nil
+}
+
+func (m *Manager) releaseWriter(transfer string) {
+	m.writerMutex.Lock()
+	defer m.writerMutex.Unlock()
+	fw, ok := m.writers[transfer]
+	if !ok {
+		return
+	}
+	fw.refs--
+	if fw.refs > 0 {
+		return
+	}
+	fw.cancel()
+	delete(m.writers, transfer)
 }
 
 func (m *Manager) forward(ctx context.Context, entry *collector.Entry) {

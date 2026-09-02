@@ -41,6 +41,9 @@ type Manager struct {
 	logMutex   sync.RWMutex
 	logTargets map[string]*logTarget
 
+	writerMutex sync.Mutex
+	writers     map[string]*forwardWriter
+
 	logBroadcaster *logBroadcaster
 	events         *EventHandler
 }
@@ -58,6 +61,7 @@ func NewManager(ctx context.Context, config *types.Config, clients *manager.Clie
 		startingWorkloads: map[string]*utils.RetryTask{},
 		collecting:        map[string]*collectTask{},
 		logTargets:        map[string]*logTarget{},
+		writers:           map[string]*forwardWriter{},
 	}
 	m.events = NewEventHandler(m.handleWorkloadStart, m.handleWorkloadDie)
 	return m
