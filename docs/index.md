@@ -1,6 +1,6 @@
 # eru-agent
 
-`eru-agent` runs on every Eru node. It watches the workloads the node runs, health checks them, forwards their logs, exports their metrics, and reports node and workload status back to `eru-core`. Core never talks to the node directly; the agent is the node's voice.
+`eru-agent` runs on every Eru node. It watches the workloads the node runs, health checks them, forwards their logs, exports their metrics, and reports node and workload status back to `eru-core`. Core does not poll the node for status; the agent is the node's voice.
 
 ```
                        +-----------------------------------------------+

@@ -12,7 +12,6 @@ core:
 
 # heartbeat_interval defines the interval for eru-agent to
 # report health status of the node to eru-core.
-# If you don't want eru-agent to report this status, set it to 0.
 # The default value of this option is 60.
 heartbeat_interval: 120
 
