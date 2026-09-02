@@ -47,9 +47,13 @@ func (c *Containerd) List(ctx context.Context) ([]*source.Workload, error) {
 	logger := log.WithFunc("containerd.List")
 
 	var listed []containerd.Container
+	var processes map[string]*tasktypes.Process
 	var err error
 	utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
-		listed, err = c.client.Containers(ctx, c.filter)
+		if listed, err = c.client.Containers(ctx, c.filter); err != nil {
+			return
+		}
+		processes, err = c.tasks(ctx)
 	})
 	if err != nil {
 		logger.Error(ctx, err, "failed to list workloads")
@@ -58,10 +62,7 @@ func (c *Containerd) List(ctx context.Context) ([]*source.Workload, error) {
 
 	workloads := make([]*source.Workload, 0, len(listed))
 	for _, container := range listed {
-		var w *source.Workload
-		utils.WithTimeout(ctx, c.config.GlobalConnectionTimeout, func(ctx context.Context) {
-			w, err = c.inspect(ctx, container)
-		})
+		w, err := c.inspect(ctx, container, processes[container.ID()])
 		if err != nil {
 			logger.WithField("ID", container.ID()).Debugf(ctx, "skipping workload: %v", err)
 			continue
@@ -79,7 +80,11 @@ func (c *Containerd) Get(ctx context.Context, ID string) (*source.Workload, erro
 		if container, err = c.client.LoadContainer(ctx, ID); err != nil {
 			return
 		}
-		w, err = c.inspect(ctx, container)
+		var process *tasktypes.Process
+		if process, err = c.task(ctx, ID); err != nil && !errdefs.IsNotFound(err) {
+			return
+		}
+		w, err = c.inspect(ctx, container, process)
 	})
 	return w, err
 }
@@ -102,7 +107,7 @@ func (c *Containerd) Alive(ctx context.Context) bool {
 	return serving
 }
 
-func (c *Containerd) inspect(ctx context.Context, container containerd.Container) (*source.Workload, error) {
+func (c *Containerd) inspect(ctx context.Context, container containerd.Container, process *tasktypes.Process) (*source.Workload, error) {
 	info, err := container.Info(ctx, containerd.WithoutRefreshedMetadata)
 	if err != nil {
 		return nil, err
@@ -123,11 +128,7 @@ func (c *Containerd) inspect(ctx context.Context, container containerd.Container
 		return nil, err
 	}
 
-	process, err := c.task(ctx, info.ID)
-	if err != nil {
-		if !errdefs.IsNotFound(err) {
-			return nil, err
-		}
+	if process == nil {
 		return w, nil
 	}
 	w.Running = process.Status == tasktypes.Status_RUNNING
@@ -145,6 +146,18 @@ func (c *Containerd) task(ctx context.Context, ID string) (*tasktypes.Process, e
 		return nil, errgrpc.ToNative(err)
 	}
 	return resp.Process, nil
+}
+
+func (c *Containerd) tasks(ctx context.Context) (map[string]*tasktypes.Process, error) {
+	resp, err := c.client.TaskService().List(ctx, &tasks.ListTasksRequest{})
+	if err != nil {
+		return nil, errgrpc.ToNative(err)
+	}
+	processes := make(map[string]*tasktypes.Process, len(resp.Tasks))
+	for _, process := range resp.Tasks {
+		processes[process.ContainerID] = process
+	}
+	return processes, nil
 }
 
 // newFilter builds one containerd filter term, whose comma separated conditions are anded.

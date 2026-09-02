@@ -2,10 +2,10 @@ package workload
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/projecteru2/core/log"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/projecteru2/agent/source"
 )
@@ -37,11 +37,11 @@ func (m *Manager) initWorkloadStatus(ctx context.Context) error {
 		return err
 	}
 
-	var wg sync.WaitGroup
+	var g errgroup.Group
+	g.SetLimit(sweepFanout)
 	for _, w := range workloads {
 		logger.Debugf(ctx, "detect workload %s", w.ID)
-		wg.Go(func() { m.checkOneWorkload(ctx, w) })
+		g.Go(func() error { m.checkOneWorkload(ctx, w); return nil })
 	}
-	wg.Wait()
-	return nil
+	return g.Wait()
 }

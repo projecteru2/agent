@@ -3,11 +3,12 @@ package workload
 import (
 	"context"
 	"encoding/json"
-	"sync"
+	"errors"
 	"sync/atomic"
 	"time"
 
 	"github.com/projecteru2/core/log"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/projecteru2/agent/collector"
 	"github.com/projecteru2/agent/common"
@@ -15,6 +16,8 @@ import (
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
 )
+
+const sweepFanout = 64
 
 func (m *Manager) healthCheck(ctx context.Context) {
 	tick := time.NewTicker(time.Duration(m.config.HealthCheck.Interval) * time.Second)
@@ -52,17 +55,18 @@ func (m *Manager) checkAllWorkloads(ctx context.Context) {
 	}
 
 	listed := make(map[string]struct{}, len(workloads))
-	var wg sync.WaitGroup
+	var g errgroup.Group
+	g.SetLimit(sweepFanout)
 	for _, w := range workloads {
 		listed[w.ID] = struct{}{}
-		wg.Go(func() { m.checkOneWorkload(ctx, w) })
+		g.Go(func() error { m.checkOneWorkload(ctx, w); return nil })
 	}
 	for _, ID := range runningIDs {
 		if _, ok := listed[ID]; !ok {
-			wg.Go(func() { m.reconcile(ctx, ID) })
+			g.Go(func() error { m.reconcile(ctx, ID); return nil })
 		}
 	}
-	wg.Wait()
+	_ = g.Wait()
 
 	for _, ID := range runningIDs {
 		listed[ID] = struct{}{}
@@ -109,6 +113,10 @@ func (m *Manager) checkOneWorkload(ctx context.Context, w *source.Workload) bool
 	}
 
 	status, err := m.workloadStatus(ctx, w)
+	if errors.Is(err, common.ErrGetLockFailed) {
+		logger.Debug(ctx, "another probe of this workload is running, it reports the status")
+		return false
+	}
 	if err != nil {
 		logger.Error(ctx, err, "failed to get status of workload")
 		return false
