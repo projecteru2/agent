@@ -3,6 +3,8 @@ package workload
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -19,6 +21,8 @@ import (
 func TestHandleWorkloadDieReportsAWorkloadTheRuntimeForgot(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	manager.source = &forgetfulSource{}
+	manager.config.MetaDir = t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(manager.config.MetaDir, "Kaworu.json"), []byte("{}"), 0o600))
 	store := manager.store.(*mocks.MockStore)
 
 	manager.handleWorkloadDie(t.Context(), &types.WorkloadEventMessage{ID: "Kaworu", Action: "die"})
@@ -28,6 +32,17 @@ func TestHandleWorkloadDieReportsAWorkloadTheRuntimeForgot(t *testing.T) {
 	assert.False(t, status.Running)
 	assert.False(t, status.Healthy)
 	assert.Equal(t, "fake", status.Nodename)
+}
+
+func TestHandleWorkloadDieSkipsAWorkloadCoreAlreadyRemoved(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	manager.source = &forgetfulSource{}
+	manager.config.MetaDir = t.TempDir()
+	store := manager.store.(*mocks.MockStore)
+
+	manager.handleWorkloadDie(t.Context(), &types.WorkloadEventMessage{ID: "Kaworu", Action: "die"})
+
+	assert.Nil(t, store.GetMockWorkloadStatus("Kaworu"))
 }
 
 func TestHandleWorkloadDieReportsWhatTheRuntimeStillKnows(t *testing.T) {
