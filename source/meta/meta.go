@@ -20,7 +20,7 @@ const (
 	KindProcess Kind = "process"
 	KindVM      Kind = "vm"
 
-	Suffix = ".json"
+	suffix = ".json"
 )
 
 var (
@@ -112,7 +112,7 @@ func (f *File) localIP() string {
 }
 
 func IDFromFile(name string) (string, bool) {
-	return strings.CutSuffix(name, Suffix)
+	return strings.CutSuffix(name, suffix)
 }
 
 // IsID reports whether a name is a workload id, so nothing else a node names is taken for a workload.
@@ -121,7 +121,7 @@ func IsID(name string) bool {
 }
 
 func read(dir, ID string, kind Kind) (*File, error) {
-	data, err := os.ReadFile(filepath.Join(dir, ID+Suffix)) //nolint:gosec // the id comes from the meta dir listing or from an event
+	data, err := os.ReadFile(filepath.Join(dir, ID+suffix)) //nolint:gosec // the id comes from the meta dir listing or from an event
 	if err != nil {
 		return nil, err
 	}

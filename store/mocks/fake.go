@@ -17,6 +17,7 @@ type MockStore struct {
 	Store
 	sync.Mutex
 	workloadStatus map[string]*types.WorkloadStatus
+	owned          map[string]bool
 	nodeStatus     map[string]*types.NodeStatus
 	nodeInfo       map[string]*types.Node
 }
@@ -87,6 +88,21 @@ func (m *MockStore) GetMockWorkloadStatus(ID string) *types.WorkloadStatus {
 	return m.workloadStatus[ID]
 }
 
+// Own marks workloads core still has a record of.
+func (m *MockStore) Own(IDs ...string) {
+	m.Lock()
+	defer m.Unlock()
+	for _, ID := range IDs {
+		m.owned[ID] = true
+	}
+}
+
+func (m *MockStore) WorkloadExists(_ context.Context, ID string) (bool, error) {
+	m.Lock()
+	defer m.Unlock()
+	return m.owned[ID] || m.workloadStatus[ID] != nil, nil
+}
+
 func (m *MockStore) ListRunningWorkloadIDs(context.Context) ([]string, error) {
 	m.Lock()
 	defer m.Unlock()
@@ -102,6 +118,7 @@ func (m *MockStore) ListRunningWorkloadIDs(context.Context) ([]string, error) {
 
 func (m *MockStore) init() {
 	m.workloadStatus = map[string]*types.WorkloadStatus{}
+	m.owned = map[string]bool{}
 	m.nodeStatus = map[string]*types.NodeStatus{}
 	m.nodeInfo = map[string]*types.Node{
 		"fake": {Endpoint: "eva://127.0.0.1:6666"},
