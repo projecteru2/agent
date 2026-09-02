@@ -6,10 +6,9 @@ import (
 	"slices"
 	"testing"
 
+	coretypes "github.com/projecteru2/core/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	coretypes "github.com/projecteru2/core/types"
 
 	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/store"
