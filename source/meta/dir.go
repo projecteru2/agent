@@ -51,6 +51,11 @@ func (d *Dir) Read(ID string) (*File, error) {
 	return read(d.path, ID, d.kind)
 }
 
+func (d *Dir) Readable() error {
+	_, err := os.ReadDir(d.path)
+	return err
+}
+
 // Watch reports a meta file appearing as a start and its removal as a die, until ctx is done.
 func (d *Dir) Watch(ctx context.Context, reporter *source.Reporter) error {
 	watcher, err := utils.NewDirWatcher(d.path)

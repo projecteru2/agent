@@ -95,7 +95,7 @@ func (c *Cocoon) Alive(ctx context.Context) bool {
 	if err := c.daemon.health(ctx); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		logger.Warnf(ctx, "the cocoon daemon on %s is not answering: %v", c.daemon.socket, err)
 	}
-	if _, err := c.dir.List(ctx); err != nil {
+	if err := c.dir.Readable(); err != nil {
 		logger.Error(ctx, err, "the meta dir is unreadable, so this node knows nothing about its vms")
 		return false
 	}
