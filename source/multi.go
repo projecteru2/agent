@@ -37,14 +37,21 @@ func (m *Multi) List(ctx context.Context) ([]*Workload, error) {
 
 // Get asks the runtime that answered for the id last, then every other one, since an id says nothing about which runtime runs it.
 func (m *Multi) Get(ctx context.Context, ID string) (*Workload, error) {
+	refusals := []error{ErrUnknownWorkload}
+	var tried Source
 	if owner, ok := m.owners.Load(ID); ok {
-		if w, err := owner.(Source).Get(ctx, ID); err == nil {
+		tried = owner.(Source)
+		w, err := tried.Get(ctx, ID)
+		if err == nil {
 			return w, nil
 		}
+		refusals = append(refusals, err)
 		m.owners.Delete(ID)
 	}
-	refusals := []error{ErrUnknownWorkload}
 	for _, src := range m.sources {
+		if src == tried {
+			continue
+		}
 		w, err := src.Get(ctx, ID)
 		if err == nil {
 			m.owners.Store(ID, src)

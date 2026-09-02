@@ -68,6 +68,22 @@ func TestMultiGetWithoutARuntimeThatKnowsIt(t *testing.T) {
 	assert.ErrorIs(t, err, errBroken)
 }
 
+func TestMultiGetAsksAStaleOwnerOnce(t *testing.T) {
+	stale := &fakeSource{workloads: []*Workload{{ID: "w"}}}
+	other := &fakeSource{}
+	multi := &Multi{sources: []Source{stale, other}}
+
+	_, err := multi.Get(t.Context(), "w")
+	require.NoError(t, err)
+
+	stale.workloads, other.workloads = nil, []*Workload{{ID: "w"}}
+	w, err := multi.Get(t.Context(), "w")
+	require.NoError(t, err)
+	assert.Equal(t, "w", w.ID)
+	assert.Equal(t, 2, stale.gets)
+	assert.Equal(t, 1, other.gets)
+}
+
 func TestMultiIsAliveOnlyWhenEveryRuntimeIs(t *testing.T) {
 	up, down := &fakeSource{alive: true}, &fakeSource{}
 
@@ -136,6 +152,7 @@ type fakeSource struct {
 	event     string
 	err       error
 	alive     bool
+	gets      int
 }
 
 func (f *fakeSource) List(context.Context) ([]*Workload, error) {
@@ -146,6 +163,7 @@ func (f *fakeSource) List(context.Context) ([]*Workload, error) {
 }
 
 func (f *fakeSource) Get(_ context.Context, ID string) (*Workload, error) {
+	f.gets++
 	if f.err != nil {
 		return nil, f.err
 	}
