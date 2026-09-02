@@ -91,13 +91,33 @@ func TestPublishSkipsAStepAcrossACounterReset(t *testing.T) {
 	w := &source.Workload{ID: "restarted-in-place", Meta: source.Meta{Appname: "app", Entrypoint: "web"}}
 	client := NewMetricsClient("", "node", w, nil)
 	defer removeMetricsClient(w.ID)
-	c := &Collector{config: &types.Config{Metrics: types.MetricsConfig{Step: sampleStep}}, cpuCores: 1}
+	c := &Collector{cpuCores: 1}
+	now := time.Now()
 
-	c.publish(t.Context(), client, &sample{cpu: cpuStat{Usage: 100}}, &sample{cpu: cpuStat{Usage: 1}})
+	c.publish(t.Context(), client, &sample{at: now, cpu: cpuStat{Usage: 100}}, &sample{at: now.Add(time.Second), cpu: cpuStat{Usage: 1}})
 	assert.Zero(t, testutil.ToFloat64(client.gauges["cpu_host_usage"].plain))
 
-	c.publish(t.Context(), client, &sample{cpu: cpuStat{Usage: 1}}, &sample{cpu: cpuStat{Usage: 2}})
+	c.publish(t.Context(), client, &sample{at: now, cpu: cpuStat{Usage: 1}}, &sample{at: now.Add(time.Second), cpu: cpuStat{Usage: 2}})
 	assert.Positive(t, testutil.ToFloat64(client.gauges["cpu_host_usage"].plain))
+}
+
+func TestPublishDividesByTheMeasuredWindow(t *testing.T) {
+	w := &source.Workload{ID: "late-tick", Meta: source.Meta{Appname: "app", Entrypoint: "web"}}
+	client := NewMetricsClient("", "node", w, nil)
+	defer removeMetricsClient(w.ID)
+	c := &Collector{cpuCores: 1}
+	now := time.Now()
+	prev := &sample{at: now, hostAt: now, cpu: cpuStat{Usage: 1, System: 1}, host: hostCPU{System: 4}}
+	next := &sample{at: now.Add(2 * time.Second), hostAt: now, cpu: cpuStat{Usage: 2, System: 2}, host: hostCPU{System: 4}}
+
+	c.publish(t.Context(), client, prev, next)
+	assert.InDelta(t, 0.5, testutil.ToFloat64(client.gauges["cpu_host_usage"].plain), 1e-9)
+	assert.Zero(t, testutil.ToFloat64(client.gauges["cpu_host_sys_usage"].plain))
+
+	next.hostAt = now.Add(time.Second)
+	next.host.System = 6
+	c.publish(t.Context(), client, prev, next)
+	assert.InDelta(t, 0.25, testutil.ToFloat64(client.gauges["cpu_host_sys_usage"].plain), 1e-9)
 }
 
 func TestRewoundCatchesACounterTheBytesOutran(t *testing.T) {
@@ -116,8 +136,7 @@ func TestPublishIOSkipsTheRateOfADeviceItJustMet(t *testing.T) {
 	w := &source.Workload{ID: "first-write-to-a-new-device", Meta: source.Meta{Appname: "app", Entrypoint: "web"}}
 	client := NewMetricsClient("", "node", w, nil)
 	defer removeMetricsClient(w.ID)
-	c := &Collector{config: &types.Config{Metrics: types.MetricsConfig{Step: sampleStep}}}
-	c.devices = map[device]string{{major: 8, minor: 16}: "sdb"}
+	c := &Collector{devices: map[device]string{{major: 8, minor: 16}: "sdb"}}
 
 	c.publishIO(t.Context(), client, nil, []ioStat{{Major: 8, Minor: 16, WriteBytes: 1 << 30}}, sampleStep)
 
@@ -154,14 +173,13 @@ func TestSampleKeepsTheCgroupGaugesWhenTheNetnsIsGone(t *testing.T) {
 func TestCollectorCachesTheNodeCPUTimes(t *testing.T) {
 	c := &Collector{config: &types.Config{}, procRoot: "testdata/proc"}
 
-	first, err := c.host()
+	first, at, err := c.host()
 	require.NoError(t, err)
-	at := c.hostAt
 
-	second, err := c.host()
+	second, again, err := c.host()
 	require.NoError(t, err)
 	assert.Equal(t, first, second)
-	assert.Equal(t, at, c.hostAt)
+	assert.Equal(t, at, again)
 }
 
 func noRefresh() *source.Workload {

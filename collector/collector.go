@@ -30,6 +30,9 @@ type device struct {
 }
 
 type sample struct {
+	at     time.Time
+	hostAt time.Time
+
 	cpu  cpuStat
 	mem  memStat
 	io   []ioStat
@@ -143,6 +146,7 @@ func (c *Collector) clientFor(w *source.Workload, first *sample) *MetricsClient 
 
 func (c *Collector) sample(ctx context.Context, w *source.Workload) (*sample, error) {
 	cg := &cgroup{path: w.CgroupPath}
+	at := time.Now()
 	cpu, err := cg.cpu()
 	if err != nil {
 		return nil, err
@@ -155,24 +159,23 @@ func (c *Collector) sample(ctx context.Context, w *source.Workload) (*sample, er
 	if err != nil {
 		return nil, err
 	}
-	host, err := c.host()
+	host, hostAt, err := c.host()
 	if err != nil {
 		return nil, err
 	}
-	return &sample{cpu: cpu, mem: mem, io: io, net: c.netStats(ctx, w), host: host}, nil
+	return &sample{at: at, hostAt: hostAt, cpu: cpu, mem: mem, io: io, net: c.netStats(ctx, w), host: host}, nil
 }
 
 // host reads /proc/stat at most once per cache ttl: it is the same file for every workload here.
-func (c *Collector) host() (hostCPU, error) {
+func (c *Collector) host() (hostCPU, time.Time, error) {
 	c.hostMutex.Lock()
 	defer c.hostMutex.Unlock()
 
-	if time.Since(c.hostAt) < hostCacheTTL {
-		return c.hostTimes, c.hostErr
+	if time.Since(c.hostAt) >= hostCacheTTL {
+		c.hostTimes, c.hostErr = hostCPUTimes(c.procRoot)
+		c.hostAt = time.Now()
 	}
-	c.hostTimes, c.hostErr = hostCPUTimes(c.procRoot)
-	c.hostAt = time.Now()
-	return c.hostTimes, c.hostErr
+	return c.hostTimes, c.hostAt, c.hostErr
 }
 
 func (c *Collector) netStats(ctx context.Context, w *source.Workload) []netStat {
@@ -196,20 +199,23 @@ func (c *Collector) netStats(ctx context.Context, w *source.Workload) []netStat 
 }
 
 func (c *Collector) publish(ctx context.Context, client *MetricsClient, prev, next *sample) {
-	if next.cpu.Usage < prev.cpu.Usage {
+	elapsed := next.at.Sub(prev.at).Seconds()
+	if elapsed <= 0 || next.cpu.Usage < prev.cpu.Usage {
 		return
 	}
-	step := float64(c.config.Metrics.Step)
+	hostElapsed := next.hostAt.Sub(prev.hostAt).Seconds()
 
 	deltaUsage := next.cpu.Usage - prev.cpu.Usage
 	deltaUser := next.cpu.User - prev.cpu.User
 	deltaSystem := next.cpu.System - prev.cpu.System
+	hostSystem := ratio(next.host.System-prev.host.System, hostElapsed)
+	hostUser := ratio(next.host.User-prev.host.User, hostElapsed)
 
-	client.CPUHostUsage(deltaUsage / (c.cpuCores * step))
-	client.CPUHostSysUsage(ratio(deltaSystem, next.host.System-prev.host.System))
-	client.CPUHostUserUsage(ratio(deltaUser, next.host.User-prev.host.User))
+	client.CPUHostUsage(deltaUsage / (c.cpuCores * elapsed))
+	client.CPUHostSysUsage(ratio(deltaSystem/elapsed, hostSystem))
+	client.CPUHostUserUsage(ratio(deltaUser/elapsed, hostUser))
 
-	client.CPUContainerUsage(deltaUsage / (cmp.Or(next.cpu.Limit, c.cpuCores) * step))
+	client.CPUContainerUsage(deltaUsage / (cmp.Or(next.cpu.Limit, c.cpuCores) * elapsed))
 	client.CPUContainerSysUsage(ratio(deltaSystem, deltaUsage))
 	client.CPUContainerUserUsage(ratio(deltaUser, deltaUsage))
 
@@ -221,15 +227,15 @@ func (c *Collector) publish(ctx context.Context, client *MetricsClient, prev, ne
 		client.MemRSSPercent(float64(next.mem.Anon) / float64(limit))
 	}
 
-	publishNet(client, prev.net, next.net, step)
-	c.publishIO(ctx, client, prev.io, next.io, step)
+	publishNet(client, prev.net, next.net, elapsed)
+	c.publishIO(ctx, client, prev.io, next.io, elapsed)
 
 	if err := client.Send(ctx); err != nil {
 		log.WithFunc("collector.publish").Error(ctx, err, "send metrics failed")
 	}
 }
 
-func (c *Collector) publishIO(ctx context.Context, client *MetricsClient, prev, next []ioStat, step float64) {
+func (c *Collector) publishIO(ctx context.Context, client *MetricsClient, prev, next []ioStat, elapsed float64) {
 	before := make(map[device]ioStat, len(prev))
 	for _, dev := range prev {
 		before[device{major: dev.Major, minor: dev.Minor}] = dev
@@ -251,10 +257,10 @@ func (c *Collector) publishIO(ctx context.Context, client *MetricsClient, prev, 
 		if !ok || dev.rewound(old) {
 			continue
 		}
-		client.IOServiceBytesReadPerSecond(path, float64(dev.ReadBytes-old.ReadBytes)/step)
-		client.IOServiceBytesWritePerSecond(path, float64(dev.WriteBytes-old.WriteBytes)/step)
-		client.IOServicedReadPerSecond(path, float64(dev.ReadIOs-old.ReadIOs)/step)
-		client.IOServicedWritePerSecond(path, float64(dev.WriteIOs-old.WriteIOs)/step)
+		client.IOServiceBytesReadPerSecond(path, float64(dev.ReadBytes-old.ReadBytes)/elapsed)
+		client.IOServiceBytesWritePerSecond(path, float64(dev.WriteBytes-old.WriteBytes)/elapsed)
+		client.IOServicedReadPerSecond(path, float64(dev.ReadIOs-old.ReadIOs)/elapsed)
+		client.IOServicedWritePerSecond(path, float64(dev.WriteIOs-old.WriteIOs)/elapsed)
 	}
 }
 
@@ -273,7 +279,7 @@ func (c *Collector) devicePath(key device) (string, error) {
 	return path, nil
 }
 
-func publishNet(client *MetricsClient, prev, next []netStat, step float64) {
+func publishNet(client *MetricsClient, prev, next []netStat, elapsed float64) {
 	before := make(map[string]netStat, len(prev))
 	for _, nic := range prev {
 		before[nic.Name] = nic
@@ -284,14 +290,14 @@ func publishNet(client *MetricsClient, prev, next []netStat, step float64) {
 		if !ok || nic.rewound(old) {
 			continue
 		}
-		client.BytesSent(nic.Name, float64(nic.BytesSent-old.BytesSent)/step)
-		client.BytesRecv(nic.Name, float64(nic.BytesRecv-old.BytesRecv)/step)
-		client.PacketsSent(nic.Name, float64(nic.PacketsSent-old.PacketsSent)/step)
-		client.PacketsRecv(nic.Name, float64(nic.PacketsRecv-old.PacketsRecv)/step)
-		client.ErrIn(nic.Name, float64(nic.ErrIn-old.ErrIn)/step)
-		client.ErrOut(nic.Name, float64(nic.ErrOut-old.ErrOut)/step)
-		client.DropIn(nic.Name, float64(nic.DropIn-old.DropIn)/step)
-		client.DropOut(nic.Name, float64(nic.DropOut-old.DropOut)/step)
+		client.BytesSent(nic.Name, float64(nic.BytesSent-old.BytesSent)/elapsed)
+		client.BytesRecv(nic.Name, float64(nic.BytesRecv-old.BytesRecv)/elapsed)
+		client.PacketsSent(nic.Name, float64(nic.PacketsSent-old.PacketsSent)/elapsed)
+		client.PacketsRecv(nic.Name, float64(nic.PacketsRecv-old.PacketsRecv)/elapsed)
+		client.ErrIn(nic.Name, float64(nic.ErrIn-old.ErrIn)/elapsed)
+		client.ErrOut(nic.Name, float64(nic.ErrOut-old.ErrOut)/elapsed)
+		client.DropIn(nic.Name, float64(nic.DropIn-old.DropIn)/elapsed)
+		client.DropOut(nic.Name, float64(nic.DropOut-old.DropOut)/elapsed)
 	}
 }
 

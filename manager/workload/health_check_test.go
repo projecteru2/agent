@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 
+	coretypes "github.com/projecteru2/core/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -131,6 +132,23 @@ func TestHealthCheckSamplesAWorkloadStartingMidSweep(t *testing.T) {
 
 	assert.NotNil(t, manager.collecting[w.ID])
 	assert.NotEmpty(t, manager.logTargets)
+}
+
+func TestCheckOneWorkloadYieldsToARunningProbe(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	w := &source.Workload{
+		ID:         "Asuka",
+		Meta:       source.Meta{HealthCheck: &coretypes.HealthCheck{}},
+		CgroupPath: t.TempDir(),
+		Running:    true,
+	}
+	free, acquired := manager.cas.Acquire(w.ID)
+	require.True(t, acquired)
+	defer free()
+
+	assert.False(t, manager.checkOneWorkload(t.Context(), w))
+	assert.Nil(t, manager.store.(*mocks.MockStore).GetMockWorkloadStatus(w.ID))
+	manager.stop(w.ID)
 }
 
 type sweepRaceSource struct {
