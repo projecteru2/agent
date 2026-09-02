@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/projecteru2/agent/source"
@@ -29,7 +30,10 @@ func Probe(ctx context.Context, w *source.Workload, timeout time.Duration) bool 
 		httpURL = fmt.Sprintf("http://%s:%s%s", w.LocalIP, check.HTTPPort, check.HTTPURL)
 	}
 
-	httpOK := utils.CheckHTTP(ctx, w.ID, httpURL, check.HTTPCode, timeout)
-	tcpOK := utils.CheckTCP(ctx, w.ID, tcpChecker, timeout)
+	var httpOK, tcpOK bool
+	var probes sync.WaitGroup
+	probes.Go(func() { httpOK = utils.CheckHTTP(ctx, w.ID, httpURL, check.HTTPCode, timeout) })
+	probes.Go(func() { tcpOK = utils.CheckTCP(ctx, w.ID, tcpChecker, timeout) })
+	probes.Wait()
 	return httpOK && tcpOK
 }

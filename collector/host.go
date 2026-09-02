@@ -1,7 +1,9 @@
 package collector
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -20,12 +22,14 @@ type hostCPU struct {
 
 // hostCPUTimes reads the node-wide user and system time, in seconds.
 func hostCPUTimes(procRoot string) (hostCPU, error) {
-	lines, err := readLines(filepath.Join(procRoot, "stat"))
+	f, err := os.Open(filepath.Join(procRoot, "stat")) //nolint:gosec // procRoot is the configured proc mount
 	if err != nil {
 		return hostCPU{}, err
 	}
-	for _, line := range lines {
-		fields := strings.Fields(line)
+	defer func() { _ = f.Close() }()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		fields := strings.Fields(scanner.Text())
 		if len(fields) < 4 || fields[0] != "cpu" {
 			continue
 		}

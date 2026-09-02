@@ -113,6 +113,9 @@ func (m *Manager) stop(ID string) {
 }
 
 func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {
+	if w.CgroupPath == "" {
+		return
+	}
 	m.collectMutex.Lock()
 	defer m.collectMutex.Unlock()
 
