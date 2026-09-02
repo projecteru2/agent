@@ -62,15 +62,14 @@ func (m *Manager) checkAllWorkloads(ctx context.Context) {
 		g.Go(func() error { m.checkOneWorkload(ctx, w); return nil })
 	}
 	for _, ID := range runningIDs {
-		if _, ok := listed[ID]; !ok {
-			g.Go(func() error { m.reconcile(ctx, ID); return nil })
+		if _, ok := listed[ID]; ok {
+			continue
 		}
+		listed[ID] = struct{}{}
+		g.Go(func() error { m.reconcile(ctx, ID); return nil })
 	}
 	_ = g.Wait()
 
-	for _, ID := range runningIDs {
-		listed[ID] = struct{}{}
-	}
 	for ID := range m.localTaskIDs() {
 		if _, ok := listed[ID]; ok {
 			continue
