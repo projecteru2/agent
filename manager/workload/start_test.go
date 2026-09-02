@@ -84,6 +84,22 @@ func TestStartForwardingForwardsAgainAfterTheWorkloadDied(t *testing.T) {
 	assert.NotSame(t, first, m.logTargets[w.ID])
 }
 
+func TestStartForwardingSharesOneWriterPerTarget(t *testing.T) {
+	m := managerForStart(t)
+	rei := &source.Workload{ID: "Rei"}
+	asuka := &source.Workload{ID: "Asuka"}
+
+	m.startForwarding(t.Context(), rei)
+	m.startForwarding(t.Context(), asuka)
+	assert.Same(t, m.logTargets[rei.ID].writer, m.logTargets[asuka.ID].writer)
+	assert.Len(t, m.writers, 1)
+
+	m.stopForwarding(rei.ID)
+	assert.Len(t, m.writers, 1)
+	m.stopForwarding(asuka.ID)
+	assert.Empty(t, m.writers)
+}
+
 func managerForStart(t *testing.T) *Manager {
 	t.Helper()
 	config := &types.Config{Metrics: types.MetricsConfig{Step: 10}}
