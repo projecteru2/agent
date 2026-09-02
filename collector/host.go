@@ -22,7 +22,7 @@ type hostCPU struct {
 
 // hostCPUTimes reads the node-wide user and system time, in seconds.
 func hostCPUTimes(procRoot string) (hostCPU, error) {
-	f, err := os.Open(filepath.Join(procRoot, "stat"))
+	f, err := os.Open(filepath.Join(procRoot, "stat")) //nolint:gosec // procRoot is the configured proc mount
 	if err != nil {
 		return hostCPU{}, err
 	}
