@@ -102,8 +102,9 @@ func (j *Journal) Read(ctx context.Context, handle EntryHandler) error {
 	scanner.Buffer(make([]byte, 0, scanBufferSize), scanLineMax)
 	nextFlush := time.Now().Add(cursorFlushInterval)
 
+	record := &journalRecord{}
 	for scanner.Scan() {
-		record := &journalRecord{}
+		*record = journalRecord{}
 		if err := json.Unmarshal(scanner.Bytes(), record); err != nil {
 			logger.Error(ctx, err, "failed to decode a journal record")
 			continue
