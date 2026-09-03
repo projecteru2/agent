@@ -49,7 +49,7 @@ func CheckTCP(ctx context.Context, ID string, backends []string, timeout time.Du
 		logger.Debug(ctx, "checking health via tcp")
 		conn, err := net.DialTimeout("tcp", backend, timeout)
 		if err != nil {
-			logger.Debug(ctx, "tcp health check failed")
+			logger.Debugf(ctx, "tcp health check failed: %v", err)
 			return false
 		}
 		_ = conn.Close()

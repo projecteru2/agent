@@ -1,6 +1,7 @@
 package containerd
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"strings"
@@ -155,7 +156,7 @@ func (c *Containerd) tasks(ctx context.Context) (map[string]*tasktypes.Process, 
 	}
 	processes := make(map[string]*tasktypes.Process, len(resp.Tasks))
 	for _, process := range resp.Tasks {
-		processes[process.ContainerID] = process
+		processes[cmp.Or(process.ContainerID, process.ID)] = process
 	}
 	return processes, nil
 }
