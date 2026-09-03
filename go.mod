@@ -12,7 +12,7 @@ require (
 	github.com/containernetworking/cni v1.3.0
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/opencontainers/runtime-spec v1.3.0
-	github.com/projecteru2/core v0.1.4-0.20260903022120-11a0a292cfdf
+	github.com/projecteru2/core v0.1.4
 	github.com/prometheus/client_golang v1.24.1
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.12.1
