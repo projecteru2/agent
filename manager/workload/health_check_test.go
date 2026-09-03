@@ -134,6 +134,28 @@ func TestHealthCheckSamplesAWorkloadStartingMidSweep(t *testing.T) {
 	assert.NotEmpty(t, manager.logTargets)
 }
 
+func TestHealthCheckReplacesAStaleSamplerAfterAMissedRestart(t *testing.T) {
+	manager := newMockWorkloadManager(t)
+	old := &source.Workload{ID: "Misato", CgroupPath: t.TempDir(), NetnsPID: 111, Running: true}
+	fresh := *old
+	fresh.NetnsPID = 222
+	manager.source = &sweepRaceSource{workloads: []*source.Workload{&fresh}}
+
+	manager.startCollecting(t.Context(), old)
+	first := manager.collecting[old.ID]
+	require.NotNil(t, first)
+
+	manager.checkAllWorkloads(t.Context())
+
+	assert.NotSame(t, first, manager.collecting[old.ID])
+	select {
+	case <-first.done:
+	default:
+		t.Fatal("stale sampler is still running")
+	}
+	manager.stop(old.ID)
+}
+
 func TestCheckOneWorkloadYieldsToARunningProbe(t *testing.T) {
 	manager := newMockWorkloadManager(t)
 	w := &source.Workload{

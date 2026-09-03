@@ -18,8 +18,16 @@ import (
 )
 
 type collectTask struct {
-	cancel context.CancelFunc
-	done   chan struct{}
+	cancel   context.CancelFunc
+	done     chan struct{}
+	identity collectIdentity
+}
+
+type collectIdentity struct {
+	cgroupPath        string
+	netnsPID          int
+	hostIface         string
+	hostIfaceMirrored bool
 }
 
 type Manager struct {
@@ -119,17 +127,26 @@ func (m *Manager) startCollecting(ctx context.Context, w *source.Workload) {
 	m.collectMutex.Lock()
 	defer m.collectMutex.Unlock()
 
+	identity := collectIdentity{
+		cgroupPath:        w.CgroupPath,
+		netnsPID:          w.NetnsPID,
+		hostIface:         w.HostIface,
+		hostIfaceMirrored: w.HostIfaceMirrored,
+	}
 	if task, ok := m.collecting[w.ID]; ok {
-		select {
-		case <-task.done:
-			task.cancel()
-		default:
-			return
+		if task.identity == identity {
+			select {
+			case <-task.done:
+			default:
+				return
+			}
 		}
+		task.cancel()
+		<-task.done
 	}
 
 	sampleCtx, cancel := context.WithCancel(ctx)
-	task := &collectTask{cancel: cancel, done: make(chan struct{})}
+	task := &collectTask{cancel: cancel, done: make(chan struct{}), identity: identity}
 	m.collecting[w.ID] = task
 	go func() {
 		defer close(task.done)
