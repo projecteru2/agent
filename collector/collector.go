@@ -3,6 +3,7 @@ package collector
 import (
 	"cmp"
 	"context"
+	"errors"
 	"runtime"
 	"strings"
 	"sync"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/projecteru2/core/log"
 
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
@@ -274,8 +276,8 @@ func (c *Collector) devicePath(key device) (string, bool) {
 	}
 
 	path, err := utils.GetDevicePath(key.major, key.minor)
-	if err != nil {
-		path = ""
+	if err != nil && !errors.Is(err, common.ErrDevNotFound) {
+		return "", false
 	}
 	c.devicesMutex.Lock()
 	c.devices[key] = path
