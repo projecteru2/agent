@@ -6,6 +6,7 @@ import (
 
 	"github.com/coreos/go-systemd/v22/dbus"
 	"github.com/projecteru2/core/log"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/source"
@@ -19,6 +20,7 @@ const (
 	stateFailed   = "failed"
 
 	signalDepth = 100
+	netnsFanout = 64
 )
 
 var _ source.Source = (*Systemd)(nil)
@@ -62,12 +64,18 @@ func (s *Systemd) List(ctx context.Context) ([]*source.Workload, error) {
 		return nil, err
 	}
 
-	workloads := make([]*source.Workload, 0, len(files))
-	for _, f := range files {
+	workloads := make([]*source.Workload, len(files))
+	var g errgroup.Group
+	g.SetLimit(netnsFanout)
+	for i, f := range files {
 		active := running[unitOf(f.ID)]
 		s.reporter.Note(f.ID, source.ActionOf(active))
-		workloads = append(workloads, s.withNetns(ctx, f.Workload(active)))
+		g.Go(func() error {
+			workloads[i] = s.withNetns(ctx, f.Workload(active))
+			return nil
+		})
 	}
+	_ = g.Wait()
 	return workloads, nil
 }
 

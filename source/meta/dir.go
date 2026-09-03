@@ -36,7 +36,7 @@ func (d *Dir) List(ctx context.Context) ([]*File, error) {
 	files := make([]*File, 0, len(entries))
 	for _, entry := range entries {
 		ID, ok := IDFromFile(entry.Name())
-		if !ok {
+		if !ok || !IsID(ID) {
 			continue
 		}
 		if f := d.readMine(ctx, ID); f != nil {
@@ -49,6 +49,11 @@ func (d *Dir) List(ctx context.Context) ([]*File, error) {
 // Read returns the meta file of one workload of this dir's kind.
 func (d *Dir) Read(ID string) (*File, error) {
 	return read(d.path, ID, d.kind)
+}
+
+func (d *Dir) Readable() error {
+	_, err := os.ReadDir(d.path)
+	return err
 }
 
 // Watch reports a meta file appearing as a start and its removal as a die, until ctx is done.

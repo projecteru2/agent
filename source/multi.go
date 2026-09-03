@@ -6,6 +6,8 @@ import (
 	"slices"
 	"sync"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/projecteru2/agent/types"
 )
 
@@ -24,15 +26,19 @@ func NewMulti(sources ...Source) Source {
 }
 
 func (m *Multi) List(ctx context.Context) ([]*Workload, error) {
-	var workloads []*Workload
-	for _, src := range m.sources {
-		listed, err := src.List(ctx)
-		if err != nil {
-			return nil, err
-		}
-		workloads = append(workloads, listed...)
+	listed := make([][]*Workload, len(m.sources))
+	g, ctx := errgroup.WithContext(ctx)
+	for i, src := range m.sources {
+		g.Go(func() error {
+			workloads, err := src.List(ctx)
+			listed[i] = workloads
+			return err
+		})
 	}
-	return workloads, nil
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+	return slices.Concat(listed...), nil
 }
 
 // Get asks the runtime that answered for the id last, then every other one, since an id says nothing about which runtime runs it.

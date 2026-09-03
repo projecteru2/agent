@@ -3,6 +3,7 @@ package collector
 import (
 	"cmp"
 	"context"
+	"errors"
 	"runtime"
 	"strings"
 	"sync"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/projecteru2/core/log"
 
+	"github.com/projecteru2/agent/common"
 	"github.com/projecteru2/agent/source"
 	"github.com/projecteru2/agent/types"
 	"github.com/projecteru2/agent/utils"
@@ -243,8 +245,8 @@ func (c *Collector) publishIO(ctx context.Context, client *MetricsClient, prev, 
 
 	for _, dev := range next {
 		key := device{major: dev.Major, minor: dev.Minor}
-		path, err := c.devicePath(key)
-		if err != nil {
+		path, ok := c.devicePath(key)
+		if !ok {
 			log.WithFunc("collector.publishIO").Debugf(ctx, "no device node for %d:%d", dev.Major, dev.Minor)
 			continue
 		}
@@ -265,18 +267,22 @@ func (c *Collector) publishIO(ctx context.Context, client *MetricsClient, prev, 
 }
 
 // devicePath caches the /dev walk so a tick costs a map lookup per device.
-func (c *Collector) devicePath(key device) (string, error) {
+func (c *Collector) devicePath(key device) (string, bool) {
 	c.devicesMutex.Lock()
-	defer c.devicesMutex.Unlock()
-	if path, ok := c.devices[key]; ok {
-		return path, nil
+	path, cached := c.devices[key]
+	c.devicesMutex.Unlock()
+	if cached {
+		return path, path != ""
 	}
+
 	path, err := utils.GetDevicePath(key.major, key.minor)
-	if err != nil {
-		return "", err
+	if err != nil && !errors.Is(err, common.ErrDevNotFound) {
+		return "", false
 	}
+	c.devicesMutex.Lock()
 	c.devices[key] = path
-	return path, nil
+	c.devicesMutex.Unlock()
+	return path, path != ""
 }
 
 func publishNet(client *MetricsClient, prev, next []netStat, elapsed float64) {

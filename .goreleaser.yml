@@ -60,7 +60,7 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}_debug
       {{- if .Arm }}v{{ .Arm }}{{ end -}}
 
-  # Unversioned alias so releases/latest/download/eru-agent_Linux_x86_64.tar.gz resolves.
+  # Unversioned alias so releases/latest/download/agent_Linux_x86_64.tar.gz resolves.
   - id: release-latest
     ids:
       - eru-agent-release

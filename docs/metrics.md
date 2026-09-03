@@ -4,7 +4,9 @@ The agent exports per-workload metrics for every source that yields a cgroup dir
 
 Collection starts when the agent first sees a workload running and stops when that workload dies, at which point its gauges are unregistered and the workload disappears from `/metrics`.
 
-A step that cannot read the cgroup — a controller the slice has not delegated yet, a scope that does not exist yet, a VM that has not booted and so has no netns to read counters from — is logged once and retried on the next step instead of ending the sampler, so a workload begins reporting as soon as the files appear. The first step after such a gap publishes gauges but no rates: a rate across an interval of unknown length is not a rate. Any counter that moved backwards — the cgroup, a nic or a device recreated in place — likewise skips that step's rates and publishes them again from the new counter generation on the next one.
+A step that cannot read the cgroup — a controller the slice has not delegated yet, a scope that does not exist yet — is logged once and retried on the next step instead of ending the sampler, so a workload begins reporting as soon as the files appear. The first step after such a gap publishes nothing at all, gauges included: a rate across an interval of unknown length is not a rate, and the step after it resumes both. A counter that moved backwards is treated the same way, at the granularity it broke: a rewound cgroup cpu counter skips its whole step, while a nic or a device recreated in place skips only its own rates. Either publishes again from the new counter generation on the next step.
+
+A network namespace the agent cannot read is not a failed step: a VM that has not booted yet has no netns pid to read, so that step publishes the cgroup gauges alone and no network ones.
 
 Every sample is read straight off the node — cgroup v2 files plus the network counters of the workload's namespace. A tick makes no call to any daemon, so the cost is the same whether the node runs one workload or a hundred daemons' worth. A **unified cgroup v2 hierarchy is required**; on a cgroup v1 node the agent warns and exports nothing per workload.
 

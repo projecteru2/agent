@@ -69,7 +69,7 @@ func (c *Containerd) workload(ctx context.Context, ID string, labels map[string]
 		return nil, err
 	}
 
-	vars := normalizeEnv(s.env)
+	podname, nodename := placement(s.env)
 	meta := coreutils.DecodeMetaInLabel(ctx, labels)
 	nets := networks(labels)
 
@@ -85,8 +85,8 @@ func (c *Containerd) workload(ctx context.Context, ID string, labels map[string]
 			Appname:     appname,
 			Entrypoint:  entrypoint,
 			Ident:       ident,
-			Podname:     vars[fieldPodName],
-			Nodename:    vars[fieldNodeName],
+			Podname:     podname,
+			Nodename:    nodename,
 			CoreID:      labels[cluster.LabelCoreID],
 			Labels:      labels,
 			HealthCheck: meta.HealthCheck,
@@ -107,11 +107,14 @@ func networks(labels map[string]string) map[string]string {
 	return nets
 }
 
-func normalizeEnv(env []string) map[string]string {
-	vars := make(map[string]string, len(env))
+func placement(env []string) (podname, nodename string) {
 	for _, e := range env {
-		name, value, _ := strings.Cut(e, "=")
-		vars[name] = value
+		switch name, value, _ := strings.Cut(e, "="); name {
+		case fieldPodName:
+			podname = value
+		case fieldNodeName:
+			nodename = value
+		}
 	}
-	return vars
+	return podname, nodename
 }
