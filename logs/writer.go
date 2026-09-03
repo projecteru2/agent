@@ -19,6 +19,7 @@ const (
 	Discard = "__discard__"
 
 	keepaliveInterval = time.Second * 30
+	closeWaitInterval = time.Second * 5
 	dialTimeout       = time.Second * 5
 	writeTimeout      = time.Second * 5
 )
@@ -156,6 +157,8 @@ func (w *Writer) keepalive(ctx context.Context) {
 			w.reconnect(ctx)
 			timer.Reset(keepaliveInterval)
 		case <-ctx.Done():
+			// give the pending writes a chance to drain before closing
+			time.Sleep(closeWaitInterval)
 			if err := w.close(ctx); err != nil {
 				log.WithFunc("logs.keepalive").Errorf(ctx, err, "failed to close writer %s", w.addr)
 			}

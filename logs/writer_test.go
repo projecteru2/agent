@@ -5,7 +5,6 @@ import (
 	"io"
 	"net"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -77,18 +76,19 @@ func TestNewWriters(t *testing.T) {
 
 	ctx := t.Context()
 
-	var wg sync.WaitGroup
 	for addr, expectedErr := range cases {
-		wg.Go(func() {
+		go func(addr string, expectedErr error) {
 			writer, err := NewWriter(ctx, addr, false)
 			assert.Equal(t, expectedErr, err)
 			if expectedErr != nil {
 				return
 			}
-			assert.NoError(t, writer.Write(ctx, &types.Log{}))
-		})
+			assert.NoError(t, err)
+			err = writer.Write(ctx, &types.Log{})
+			assert.NoError(t, err)
+		}(addr, expectedErr)
 	}
-	wg.Wait()
+	time.Sleep(closeWaitInterval + 2*time.Second)
 }
 
 func TestWriteKeepsTheEncoderWhenADatagramIsTooBig(t *testing.T) {
