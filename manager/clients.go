@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"cmp"
 	"context"
 
 	"github.com/projecteru2/agent/common"
@@ -33,10 +34,7 @@ func NewClients(ctx context.Context, config *types.Config) (*Clients, error) {
 	if err != nil {
 		return nil, err
 	}
-	nodeIP := utils.GetIP(node.Endpoint)
-	if nodeIP == "" {
-		nodeIP = common.LocalIP
-	}
+	nodeIP := cmp.Or(utils.GetIP(node.Endpoint), common.LocalIP)
 
 	src, err := newSource(ctx, config, nodeIP, st.GetIdentifier(ctx))
 	if err != nil {
