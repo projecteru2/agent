@@ -2,6 +2,7 @@ package node
 
 import (
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -28,16 +29,19 @@ func TestNodeStatusReport(t *testing.T) {
 }
 
 func TestHeartbeat(t *testing.T) {
-	ctx := t.Context()
-	manager := newMockNodeManager(t)
-	store := manager.store.(*storemocks.MockStore)
+	synctest.Test(t, func(t *testing.T) {
+		ctx := t.Context()
+		manager := newMockNodeManager(t)
+		store := manager.store.(*storemocks.MockStore)
 
-	status := store.GetMockNodeStatus("fake")
-	assert.Equal(t, status.Alive, false)
+		status := store.GetMockNodeStatus("fake")
+		assert.Equal(t, status.Alive, false)
 
-	go manager.heartbeat(ctx)
+		go manager.heartbeat(ctx)
 
-	time.Sleep(time.Duration(manager.config.HeartbeatInterval+2) * time.Second)
-	status = store.GetMockNodeStatus("fake")
-	assert.Equal(t, status.Alive, true)
+		time.Sleep(time.Duration(manager.config.HeartbeatInterval) * time.Second)
+		synctest.Wait()
+		status = store.GetMockNodeStatus("fake")
+		assert.Equal(t, status.Alive, true)
+	})
 }

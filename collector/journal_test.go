@@ -47,9 +47,20 @@ func TestJournalRecordWithoutATimestampIsStampedOnRead(t *testing.T) {
 }
 
 func TestJournalRecordMapsStderrPriority(t *testing.T) {
-	assert.Equal(t, "stderr", (&journalRecord{Priority: "3"}).entry().Stream)
-	assert.Equal(t, "stdout", (&journalRecord{Priority: "6"}).entry().Stream)
-	assert.Equal(t, "console", (&journalRecord{Priority: "3", EruStream: "console"}).entry().Stream)
+	for _, tc := range []struct {
+		priority  string
+		eruStream string
+		want      string
+	}{
+		{"3", "", "stderr"},
+		{"6", "", "stdout"},
+		{"3", "console", "console"},
+	} {
+		t.Run(tc.want, func(t *testing.T) {
+			record := &journalRecord{Priority: tc.priority, EruStream: tc.eruStream}
+			assert.Equal(t, tc.want, record.entry().Stream)
+		})
+	}
 }
 
 func TestJournalArgsFollowFromTheSavedCursor(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -19,22 +20,24 @@ const (
 )
 
 func TestEvent(t *testing.T) {
-	ctx := t.Context()
+	synctest.Test(t, func(t *testing.T) {
+		ctx := t.Context()
 
-	manager := newMockWorkloadManager(t)
-	src := manager.source.(*sourcemocks.Nerv)
-	store := manager.store.(*storemocks.MockStore)
-	assert.Nil(t, manager.initWorkloadStatus(ctx))
-	assertInitStatus(t, store)
+		manager := newMockWorkloadManager(t)
+		src := manager.source.(*sourcemocks.Nerv)
+		store := manager.store.(*storemocks.MockStore)
+		assert.Nil(t, manager.initWorkloadStatus(ctx))
+		assertInitStatus(t, store)
 
-	go manager.monitor(ctx)
+		go manager.monitor(ctx)
 
-	go src.StartEvents()
-	time.Sleep(5 * time.Second)
+		src.StartEvents()
+		synctest.Wait()
 
-	assert.Equal(t, store.GetMockWorkloadStatus("Asuka"), wantStatus("Asuka", "eva2", false, false))
-	assert.Equal(t, store.GetMockWorkloadStatus("Rei"), wantStatus("Rei", "eva0", false, false))
-	assert.Equal(t, store.GetMockWorkloadStatus("Shinji"), wantStatus("Shinji", "eva1", true, true))
+		assert.Equal(t, store.GetMockWorkloadStatus("Asuka"), wantStatus("Asuka", "eva2", false, false))
+		assert.Equal(t, store.GetMockWorkloadStatus("Rei"), wantStatus("Rei", "eva0", false, false))
+		assert.Equal(t, store.GetMockWorkloadStatus("Shinji"), wantStatus("Shinji", "eva1", true, true))
+	})
 }
 
 func TestSerialQueueRunsOneKeyInSubmissionOrder(t *testing.T) {

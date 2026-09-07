@@ -102,12 +102,12 @@ func (c *Cocoon) Alive(ctx context.Context) bool {
 	return true
 }
 
-// watchDaemon keeps reconnecting: the daemon is optional and restarts on its own, and its stream loses events.
+// watchDaemon keeps reconnecting because the daemon's stream loses events across its restarts.
 func (c *Cocoon) watchDaemon(ctx context.Context) {
 	logger := log.WithFunc("cocoon.watchDaemon")
 	for {
 		err := c.daemon.events(ctx, func(ID string, running, gone bool) {
-			// the daemon supervises every vm on the node, so only a name eru created is worth an event
+			// the daemon reports every vm on the node, not only eru's
 			if !meta.IsID(ID) {
 				return
 			}
