@@ -6,6 +6,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -18,22 +19,25 @@ import (
 )
 
 func TestRun(t *testing.T) {
-	manager := newMockNodeManager(t)
-	store := manager.store.(*storemocks.MockStore)
+	synctest.Test(t, func(t *testing.T) {
+		manager := newMockNodeManager(t)
+		store := manager.store.(*storemocks.MockStore)
 
-	ctx, cancel := context.WithTimeout(t.Context(), time.Duration(manager.config.HeartbeatInterval*3)*time.Second)
-	defer cancel()
+		ctx, cancel := context.WithTimeout(t.Context(), time.Duration(manager.config.HeartbeatInterval*3)*time.Second)
+		defer cancel()
 
-	status := store.GetMockNodeStatus("fake")
-	assert.Equal(t, status.Alive, false)
-
-	go func() {
-		time.Sleep(time.Duration(manager.config.HeartbeatInterval*2) * time.Second)
 		status := store.GetMockNodeStatus("fake")
-		assert.Equal(t, status.Alive, true)
-	}()
+		assert.Equal(t, status.Alive, false)
 
-	assert.Nil(t, manager.Run(ctx))
+		go func() {
+			time.Sleep(time.Duration(manager.config.HeartbeatInterval*2) * time.Second)
+			synctest.Wait()
+			status := store.GetMockNodeStatus("fake")
+			assert.Equal(t, status.Alive, true)
+		}()
+
+		assert.Nil(t, manager.Run(ctx))
+	})
 }
 
 func TestExitLeavesTheDeleteAsTheLastNodeStatusWrite(t *testing.T) {

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -66,9 +67,19 @@ func TestUseLabelAsFilter(t *testing.T) {
 }
 
 func TestGetIP(t *testing.T) {
-	assert.Equal(t, "10.0.0.1", GetIP("containerd://10.0.0.1:2376"))
-	assert.Equal(t, "10.0.0.1", GetIP("containerd://eru@10.0.0.1:2376"))
-	assert.Equal(t, "", GetIP("invalid-string"))
+	tests := []struct {
+		endpoint string
+		want     string
+	}{
+		{"containerd://10.0.0.1:2376", "10.0.0.1"},
+		{"containerd://eru@10.0.0.1:2376", "10.0.0.1"},
+		{"invalid-string", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.endpoint, func(t *testing.T) {
+			assert.Equal(t, tt.want, GetIP(tt.endpoint))
+		})
+	}
 }
 
 func TestProcRoot(t *testing.T) {
@@ -92,28 +103,27 @@ func TestCgroupPathFailsForAProcessThatIsGone(t *testing.T) {
 }
 
 func TestWithTimeout(t *testing.T) {
-	ctx := t.Context()
-	i := 0
-	WithTimeout(ctx, time.Second, func(ctx context.Context) {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			i = 1
-		}
+	synctest.Test(t, func(t *testing.T) {
+		i := 0
+		WithTimeout(t.Context(), time.Second, func(ctx context.Context) {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				i = 1
+			}
+		})
+		assert.Equal(t, 1, i)
+
+		WithTimeout(t.Context(), time.Second, func(ctx context.Context) {
+			time.Sleep(2 * time.Second)
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				i = 2
+			}
+		})
+		assert.NotEqual(t, 2, i)
 	})
-
-	assert.Equal(t, i, 1)
-
-	WithTimeout(ctx, time.Second, func(ctx context.Context) {
-		time.Sleep(2 * time.Second)
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			i = 2
-		}
-	})
-
-	assert.NotEqual(t, i, 2)
 }

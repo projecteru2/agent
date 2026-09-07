@@ -122,10 +122,20 @@ func TestPublishDividesByTheMeasuredWindow(t *testing.T) {
 
 func TestRewoundCatchesACounterTheBytesOutran(t *testing.T) {
 	oldNic := netStat{BytesSent: 100, PacketsSent: 1000, DropIn: 5}
-	assert.False(t, (&netStat{BytesSent: 100, PacketsSent: 1000, DropIn: 5}).rewound(oldNic))
-	assert.True(t, (&netStat{BytesSent: 200, PacketsSent: 1000}).rewound(oldNic))
-	assert.True(t, (&netStat{BytesSent: 200, PacketsSent: 17, DropIn: 5}).rewound(oldNic))
-	assert.False(t, (&netStat{BytesSent: 200, PacketsSent: 1200, DropIn: 5}).rewound(oldNic))
+	for _, tc := range []struct {
+		name string
+		stat netStat
+		want bool
+	}{
+		{"no counter moved", netStat{BytesSent: 100, PacketsSent: 1000, DropIn: 5}, false},
+		{"the drops went back to zero while the bytes grew", netStat{BytesSent: 200, PacketsSent: 1000}, true},
+		{"the packets went backwards while the bytes grew", netStat{BytesSent: 200, PacketsSent: 17, DropIn: 5}, true},
+		{"every counter grew", netStat{BytesSent: 200, PacketsSent: 1200, DropIn: 5}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, tc.stat.rewound(oldNic))
+		})
+	}
 
 	oldDev := ioStat{ReadBytes: 100, ReadIOs: 10}
 	assert.True(t, ioStat{ReadBytes: 200, ReadIOs: 3}.rewound(oldDev))

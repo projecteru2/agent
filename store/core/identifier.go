@@ -6,9 +6,9 @@ import (
 	pb "github.com/projecteru2/core/rpc/gen"
 )
 
-func (c *Store) GetIdentifier(ctx context.Context) string {
-	resp, err := call(ctx, c, func(ctx context.Context) (*pb.CoreInfo, error) {
-		return c.GetClient().Info(ctx, &pb.Empty{})
+func (s *Store) GetIdentifier(ctx context.Context) string {
+	resp, err := call(ctx, s, func(ctx context.Context) (*pb.CoreInfo, error) {
+		return s.GetClient().Info(ctx, &pb.Empty{})
 	})
 	if err != nil {
 		return ""

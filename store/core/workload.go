@@ -15,9 +15,9 @@ import (
 	"github.com/projecteru2/agent/types"
 )
 
-func (c *Store) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
-	workloads, err := call(ctx, c, func(ctx context.Context) (*pb.Workloads, error) {
-		return c.GetClient().ListNodeWorkloads(ctx, &pb.GetNodeOptions{Nodename: c.config.HostName})
+func (s *Store) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
+	workloads, err := call(ctx, s, func(ctx context.Context) (*pb.Workloads, error) {
+		return s.GetClient().ListNodeWorkloads(ctx, &pb.GetNodeOptions{Nodename: s.config.HostName})
 	})
 	if err != nil {
 		return nil, err
@@ -32,10 +32,10 @@ func (c *Store) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
 	return IDs, nil
 }
 
-// WorkloadExists reports whether core still owns the workload; core answers a missing one with its count or not-exists sentinel.
-func (c *Store) WorkloadExists(ctx context.Context, ID string) (bool, error) {
-	_, err := call(ctx, c, func(ctx context.Context) (*pb.Workload, error) {
-		return c.GetClient().GetWorkload(ctx, &pb.WorkloadID{Id: ID})
+// WorkloadExists reports whether core still owns the workload.
+func (s *Store) WorkloadExists(ctx context.Context, ID string) (bool, error) {
+	_, err := call(ctx, s, func(ctx context.Context) (*pb.Workload, error) {
+		return s.GetClient().GetWorkload(ctx, &pb.WorkloadID{Id: ID})
 	})
 	switch {
 	case err == nil:
@@ -46,13 +46,13 @@ func (c *Store) WorkloadExists(ctx context.Context, ID string) (bool, error) {
 	return false, err
 }
 
-func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error {
+func (s *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error {
 	workloadStatus := statusKey(status)
-	if cached, ok := c.cache.Get(status.ID); ok && cached == workloadStatus {
+	if cached, ok := s.cache.Get(status.ID); ok && cached == workloadStatus {
 		return nil
 	}
 
-	// core's selfmon owns status expiry, so the reported ttl stays zero
+	// core's selfmon owns status expiry
 	statusPb := &pb.WorkloadStatus{
 		Id:        status.ID,
 		Running:   status.Running,
@@ -62,20 +62,20 @@ func (c *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadSta
 
 		Appname:    status.Appname,
 		Entrypoint: status.Entrypoint,
-		Nodename:   c.config.HostName,
+		Nodename:   s.config.HostName,
 	}
 
 	opts := &pb.SetWorkloadsStatusOptions{
 		Status: []*pb.WorkloadStatus{statusPb},
 	}
 
-	_, err := call(ctx, c, func(ctx context.Context) (*pb.WorkloadsStatus, error) {
-		return c.GetClient().SetWorkloadsStatus(ctx, opts)
+	_, err := call(ctx, s, func(ctx context.Context) (*pb.WorkloadsStatus, error) {
+		return s.GetClient().SetWorkloadsStatus(ctx, opts)
 	})
 	if err != nil {
-		c.cache.Delete(status.ID)
+		s.cache.Delete(status.ID)
 	} else {
-		c.cache.Set(status.ID, workloadStatus, getCacheTTL(c.config.HealthCheck.CacheTTL))
+		s.cache.Set(status.ID, workloadStatus, getCacheTTL(s.config.HealthCheck.CacheTTL))
 	}
 	return err
 }

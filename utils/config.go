@@ -57,7 +57,7 @@ func applyDefaults(value reflect.Value) error {
 		structField := value.Type().Field(i)
 		if tag := structField.Tag.Get("default"); tag != "" && field.IsZero() {
 			if err := yaml.Unmarshal([]byte(tag), field.Addr().Interface()); err != nil {
-				return fmt.Errorf("bad default for %s: %w", structField.Name, err)
+				return fmt.Errorf("apply default for %s: %w", structField.Name, err)
 			}
 		}
 		if err := walkNested(field, applyDefaults); err != nil {

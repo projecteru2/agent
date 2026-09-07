@@ -2,7 +2,6 @@ package workload
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -15,7 +14,6 @@ func TestLoad(t *testing.T) {
 	store := manager.store.(*mocks.MockStore)
 	ctx := t.Context()
 	err := manager.initWorkloadStatus(ctx)
-	time.Sleep(2 * time.Second)
 	assert.Nil(t, err)
 	assertInitStatus(t, store)
 }

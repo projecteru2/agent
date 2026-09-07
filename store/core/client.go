@@ -29,8 +29,8 @@ func New(ctx context.Context, config *types.Config) (*Store, error) {
 	return &Store{clientPool: clientPool, config: config, cache: newStatusCache()}, nil
 }
 
-func (c *Store) GetClient() pb.CoreRPCClient {
-	return c.clientPool.GetClient()
+func (s *Store) GetClient() pb.CoreRPCClient {
+	return s.clientPool.GetClient()
 }
 
 func call[T any](ctx context.Context, c *Store, do func(ctx context.Context) (T, error)) (T, error) {
