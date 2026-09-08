@@ -143,7 +143,7 @@ func (c *Collector) Collect(ctx context.Context, w *source.Workload, refresh ref
 }
 
 func (c *Collector) clientFor(w *source.Workload, first *sample) *MetricsClient {
-	return NewMetricsClient(c.transfers.Get(w.ID, 0), c.hostname, w, first.unsupported())
+	return NewMetricsClient(c.transfers.Get(w.ID), c.hostname, w, first.unsupported())
 }
 
 func (c *Collector) sample(ctx context.Context, w *source.Workload) (*sample, error) {

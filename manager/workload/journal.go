@@ -64,7 +64,7 @@ func (m *Manager) startForwarding(ctx context.Context, w *source.Workload) {
 		return
 	}
 
-	transfer := cmp.Or(m.forwards.Get(w.ID, 0), logs.Discard)
+	transfer := cmp.Or(m.forwards.Get(w.ID), logs.Discard)
 	writer, err := m.acquireWriter(ctx, transfer)
 	if err != nil {
 		logger.Errorf(ctx, err, "create log forward %s failed", transfer)
