@@ -3,14 +3,21 @@ package workload
 import (
 	"bufio"
 	"context"
+	"net"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/projecteru2/agent/types"
+)
+
+const (
+	streamTimeout = 10 * time.Second
+	streamPoll    = time.Millisecond
 )
 
 func TestLogBroadcaster(t *testing.T) {
@@ -35,48 +42,43 @@ func TestLogBroadcaster(t *testing.T) {
 			manager.PullLog(logCtx, app, buf)
 		}
 	}
-	server := &http.Server{Addr: ":12310"}
-	defer func() { _ = server.Shutdown(context.Background()) }()
 
-	go func() {
-		mux := http.NewServeMux()
-		mux.HandleFunc("GET /log/{$}", handler)
-		server.Handler = mux
-		assert.Equal(t, server.ListenAndServe(), http.ErrServerClosed)
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /log/{$}", handler)
+	server := &http.Server{Handler: mux}
+	served := make(chan error, 1)
+	go func() { served <- server.Serve(listener) }()
+	defer func() {
+		assert.NoError(t, server.Shutdown(t.Context()))
+		assert.Equal(t, http.ErrServerClosed, <-served)
 	}()
 
-	ctx, cancel := context.WithTimeout(t.Context(), 7*time.Second)
-	defer cancel()
-
-	go func() {
-		time.Sleep(3 * time.Second)
-		manager.logBroadcaster.broadcast(ctx, &types.Log{
-			ID:         "Rei",
-			Name:       "nerv",
-			Type:       "stdout",
-			EntryPoint: "eva0",
-			Data:       "data0",
-		})
-		manager.logBroadcaster.broadcast(ctx, &types.Log{
-			ID:         "Rei",
-			Name:       "nerv",
-			Type:       "stdout",
-			EntryPoint: "eva0",
-			Data:       "data1",
-		})
-	}()
-
-	time.Sleep(time.Second)
-
-	reqCtx, reqCancel := context.WithTimeout(ctx, 3*time.Second)
+	reqCtx, reqCancel := context.WithTimeout(t.Context(), streamTimeout)
 	defer reqCancel()
 
-	req, err := http.NewRequestWithContext(reqCtx, "GET", "http://127.0.0.1:12310/log/?app=nerv", nil)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, "http://"+listener.Addr().String()+"/log/?app=nerv", nil)
 	assert.Nil(t, err)
 
 	resp, err := http.DefaultClient.Do(req)
 	assert.Nil(t, err)
 	defer resp.Body.Close()
+
+	require.Eventually(t, func() bool {
+		return subscriberCount(manager.logBroadcaster, "nerv") == 1
+	}, streamTimeout, streamPoll, "the log stream never subscribed")
+
+	for _, data := range []string{"data0", "data1"} {
+		manager.logBroadcaster.broadcast(t.Context(), &types.Log{
+			ID:         "Rei",
+			Name:       "nerv",
+			Type:       "stdout",
+			EntryPoint: "eva0",
+			Data:       data,
+		})
+	}
 
 	reader := bufio.NewReader(resp.Body)
 	for range 2 {
@@ -86,9 +88,11 @@ func TestLogBroadcaster(t *testing.T) {
 	}
 
 	logCancel()
-	time.Sleep(time.Second)
+	require.Eventually(t, func() bool {
+		return subscriberCount(manager.logBroadcaster, "nerv") == 0
+	}, streamTimeout, streamPoll, "the canceled log stream never detached")
 
-	manager.logBroadcaster.broadcast(ctx, &types.Log{
+	manager.logBroadcaster.broadcast(t.Context(), &types.Log{
 		ID:         "Rei",
 		Name:       "nerv",
 		Type:       "stdout",
@@ -135,4 +139,10 @@ func TestBroadcastDoesNotBlockOnAStalledSubscriber(t *testing.T) {
 		t.Fatal("broadcast blocked on a subscriber that stopped reading")
 	}
 	assert.Positive(t, stalled.dropped.Load())
+}
+
+func subscriberCount(l *logBroadcaster, app string) int {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return len(l.subscribersMap[app])
 }

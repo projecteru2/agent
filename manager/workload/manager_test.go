@@ -3,6 +3,7 @@ package workload
 import (
 	"context"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -13,19 +14,31 @@ import (
 	"github.com/projecteru2/agent/types"
 )
 
+const (
+	runTimeout       = 30 * time.Second
+	connectTimeout   = 5 * time.Second
+	journalDrainWait = 2 * connectTimeout
+)
+
 func TestRun(t *testing.T) {
-	manager := newMockWorkloadManager(t)
-	src := manager.source.(*mocks.Nerv)
-	ctx, cancel := context.WithTimeout(t.Context(), time.Second*30)
-	defer cancel()
-	go func() {
-		src.StartEvents()
-		src.StartCustomEvent(&types.WorkloadEventMessage{
-			ID:     "Kaworu",
-			Action: "start",
-		})
-	}()
-	assert.Nil(t, manager.Run(ctx))
+	t.Setenv("PATH", "")
+	synctest.Test(t, func(t *testing.T) {
+		manager := newMockWorkloadManager(t)
+		src := manager.source.(*mocks.Nerv)
+		ctx, cancel := context.WithTimeout(t.Context(), runTimeout)
+		defer cancel()
+
+		go func() {
+			src.StartEvents()
+			src.StartCustomEvent(&types.WorkloadEventMessage{
+				ID:     "Kaworu",
+				Action: "start",
+			})
+		}()
+
+		assert.Nil(t, manager.Run(ctx))
+		synctest.Sleep(journalDrainWait)
+	})
 }
 
 func newMockWorkloadManager(t *testing.T) *Manager {
@@ -44,7 +57,7 @@ func newMockWorkloadManager(t *testing.T) *Manager {
 			Timeout:  5,
 			CacheTTL: 300,
 		},
-		GlobalConnectionTimeout: 5 * time.Second,
+		GlobalConnectionTimeout: connectTimeout,
 	}
 
 	clients, err := manager.NewClients(t.Context(), config)
