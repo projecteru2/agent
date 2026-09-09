@@ -17,7 +17,7 @@ import (
 
 func (s *Store) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
 	workloads, err := call(ctx, s, func(ctx context.Context) (*pb.Workloads, error) {
-		return s.GetClient().ListNodeWorkloads(ctx, &pb.GetNodeOptions{Nodename: s.config.HostName})
+		return s.client().ListNodeWorkloads(ctx, &pb.GetNodeOptions{Nodename: s.config.HostName})
 	})
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func (s *Store) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
 // WorkloadExists reports whether core still owns the workload.
 func (s *Store) WorkloadExists(ctx context.Context, ID string) (bool, error) {
 	_, err := call(ctx, s, func(ctx context.Context) (*pb.Workload, error) {
-		return s.GetClient().GetWorkload(ctx, &pb.WorkloadID{Id: ID})
+		return s.client().GetWorkload(ctx, &pb.WorkloadID{Id: ID})
 	})
 	switch {
 	case err == nil:
@@ -70,7 +70,7 @@ func (s *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadSta
 	}
 
 	_, err := call(ctx, s, func(ctx context.Context) (*pb.WorkloadsStatus, error) {
-		return s.GetClient().SetWorkloadsStatus(ctx, opts)
+		return s.client().SetWorkloadsStatus(ctx, opts)
 	})
 	if err != nil {
 		s.cache.Delete(status.ID)
@@ -82,7 +82,7 @@ func (s *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadSta
 
 func statusKey(status *types.WorkloadStatus) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%s\x00%t\x00%t\x00%s\x00%s\x00%s\x00", status.ID, status.Running, status.Healthy, status.Appname, status.Entrypoint, status.Nodename)
+	fmt.Fprintf(&b, "%t\x00%t\x00%s\x00%s\x00", status.Running, status.Healthy, status.Appname, status.Entrypoint)
 	b.Write(status.Extension)
 	for _, k := range slices.Sorted(maps.Keys(status.Networks)) {
 		fmt.Fprintf(&b, "\x00%s=%s", k, status.Networks[k])

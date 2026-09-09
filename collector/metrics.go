@@ -96,9 +96,6 @@ type MetricsClient struct {
 func NewMetricsClient(statsd, hostname string, w *source.Workload, unsupported []string) *MetricsClient {
 	clientsMutex.Lock()
 	defer clientsMutex.Unlock()
-	if metricsClient, ok := clients[w.ID]; ok {
-		return metricsClient
-	}
 
 	labelPairs := make([]string, 0, len(w.Meta.Labels))
 	for k, v := range w.Meta.Labels {
@@ -107,13 +104,14 @@ func NewMetricsClient(statsd, hostname string, w *source.Workload, unsupported [
 		}
 		labelPairs = append(labelPairs, fmt.Sprintf("%s=%s", k, v))
 	}
+	slices.Sort(labelPairs)
 	labels := map[string]string{
 		"containerID":  w.ID,
 		"hostname":     hostname,
 		"appname":      w.Meta.Appname,
 		"entrypoint":   w.Meta.Entrypoint,
 		"orchestrator": cluster.ERUMark,
-		"labels":       strings.Join(slices.Sorted(slices.Values(labelPairs)), ","),
+		"labels":       strings.Join(labelPairs, ","),
 	}
 
 	tag := fmt.Sprintf("%s.%s", hostname, coreutils.ShortID(w.ID))
@@ -229,8 +227,8 @@ func (m *MetricsClient) Send(ctx context.Context) error {
 	}
 	for k, v := range m.data {
 		m.statsdClient.Gauge(m.prefix+"."+k, v)
-		delete(m.data, k)
 	}
+	clear(m.data)
 	return nil
 }
 

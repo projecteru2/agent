@@ -66,7 +66,7 @@ func (m *Manager) checkAllWorkloads(ctx context.Context) {
 			continue
 		}
 		listed[ID] = struct{}{}
-		g.Go(func() error { m.reconcile(ctx, ID); return nil })
+		g.Go(func() error { m.handleWorkloadDie(ctx, &types.WorkloadEventMessage{ID: ID}); return nil })
 	}
 	_ = g.Wait()
 
@@ -93,14 +93,6 @@ func (m *Manager) localTaskIDs() map[string]struct{} {
 	}
 	m.logMutex.RUnlock()
 	return IDs
-}
-
-func (m *Manager) reconcile(ctx context.Context, ID string) {
-	if w, err := m.source.Get(ctx, ID); err == nil {
-		m.checkOneWorkload(ctx, w)
-		return
-	}
-	m.handleWorkloadDie(ctx, &types.WorkloadEventMessage{ID: ID})
 }
 
 func (m *Manager) checkOneWorkload(ctx context.Context, w *source.Workload) bool {

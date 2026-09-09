@@ -112,7 +112,8 @@ func (f *File) localIP() string {
 }
 
 func IDFromFile(name string) (string, bool) {
-	return strings.CutSuffix(name, suffix)
+	ID, ok := strings.CutSuffix(name, suffix)
+	return ID, ok && IsID(ID)
 }
 
 // IsID reports whether a name is a workload id, so nothing else a node names is taken for a workload.

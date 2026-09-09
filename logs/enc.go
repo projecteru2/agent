@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
-	"sync"
 
 	"github.com/coreos/go-systemd/v22/journal"
 
@@ -43,9 +42,7 @@ func (e *StreamEncoder) Close() error {
 	return e.wt.Close()
 }
 
-type JournalEncoder struct {
-	mu sync.Mutex
-}
+type JournalEncoder struct{}
 
 func CreateJournalEncoder() (*JournalEncoder, error) {
 	if !journal.Enabled() {
@@ -69,9 +66,6 @@ func (c *JournalEncoder) Encode(logline *types.Log) error {
 		"DATE_TIME":            logline.Datetime,
 		"EXTRA":                string(extra),
 	}
-
-	c.mu.Lock()
-	defer c.mu.Unlock()
 
 	return journal.Send(logline.Data, journal.PriInfo, vars)
 }

@@ -150,12 +150,12 @@ func (w *Writer) reconnect(ctx context.Context) {
 }
 
 func (w *Writer) keepalive(ctx context.Context) {
-	timer := time.NewTimer(keepaliveInterval)
+	tick := time.NewTicker(keepaliveInterval)
+	defer tick.Stop()
 	for {
 		select {
-		case <-timer.C:
+		case <-tick.C:
 			w.reconnect(ctx)
-			timer.Reset(keepaliveInterval)
 		case <-ctx.Done():
 			// give the pending writes a chance to drain before closing
 			time.Sleep(closeWaitInterval)

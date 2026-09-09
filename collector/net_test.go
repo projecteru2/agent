@@ -68,21 +68,3 @@ func TestNetStatsFromProcMirrorsAVMTapInItsNetns(t *testing.T) {
 		DropOut:     2,
 	}, stats[0])
 }
-
-func TestNetStatsFromIface(t *testing.T) {
-	stats, err := netStatsFromIface("testdata/sys", "eth0")
-	require.NoError(t, err)
-	require.Len(t, stats, 1)
-
-	assert.Equal(t, netStat{
-		Name:        "eth0",
-		BytesRecv:   111,
-		BytesSent:   222,
-		PacketsRecv: 3,
-		PacketsSent: 4,
-		ErrIn:       5,
-		ErrOut:      6,
-		DropIn:      7,
-		DropOut:     8,
-	}, stats[0])
-}

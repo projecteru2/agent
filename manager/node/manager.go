@@ -40,11 +40,7 @@ func (m *Manager) Exit(ctx context.Context) error {
 	logger.Info(ctx, "remove node status")
 
 	// a negative ttl removes the node status
-	if err := m.setNodeStatus(ctx, -1); err != nil {
-		logger.Error(ctx, err, "failed to remove node status")
-		return err
-	}
-	return nil
+	return m.setNodeStatus(ctx, -1)
 }
 
 func (m *Manager) setNodeStatus(ctx context.Context, ttl int64) error {

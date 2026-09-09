@@ -68,10 +68,15 @@ func (s *Systemd) List(ctx context.Context) ([]*source.Workload, error) {
 	var g errgroup.Group
 	g.SetLimit(netnsFanout)
 	for i, f := range files {
-		active := running[unitOf(f.ID)]
+		active := running[f.ID]
 		s.reporter.Note(f.ID, source.ActionOf(active))
+		w := f.Workload(active)
+		if !needsNetns(w) {
+			workloads[i] = w
+			continue
+		}
 		g.Go(func() error {
-			workloads[i] = s.withNetns(ctx, f.Workload(active))
+			workloads[i] = s.withNetns(ctx, w)
 			return nil
 		})
 	}
@@ -159,11 +164,7 @@ func (s *Systemd) relist(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	for unit, active := range running {
-		ID, ok := workloadIDFromUnit(unit)
-		if !ok {
-			continue
-		}
+	for ID, active := range running {
 		s.reporter.Report(ID, source.ActionOf(active))
 	}
 	return nil
@@ -177,10 +178,11 @@ func (s *Systemd) runningUnits(ctx context.Context) (map[string]bool, error) {
 	}
 	running := make(map[string]bool, len(units))
 	for _, unit := range units {
-		if _, ok := workloadIDFromUnit(unit.Name); !ok {
+		ID, ok := workloadIDFromUnit(unit.Name)
+		if !ok {
 			continue
 		}
-		running[unit.Name] = unit.ActiveState == stateActive
+		running[ID] = unit.ActiveState == stateActive
 	}
 	return running, nil
 }

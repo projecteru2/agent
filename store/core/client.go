@@ -29,7 +29,7 @@ func New(ctx context.Context, config *types.Config) (*Store, error) {
 	return &Store{clientPool: clientPool, config: config, cache: newStatusCache()}, nil
 }
 
-func (s *Store) GetClient() pb.CoreRPCClient {
+func (s *Store) client() pb.CoreRPCClient {
 	return s.clientPool.GetClient()
 }
 
