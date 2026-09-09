@@ -15,11 +15,13 @@ import (
 )
 
 const (
-	runTimeout     = 30 * time.Second
-	connectTimeout = 5 * time.Second
+	runTimeout       = 30 * time.Second
+	connectTimeout   = 5 * time.Second
+	journalDrainWait = 2 * connectTimeout
 )
 
 func TestRun(t *testing.T) {
+	t.Setenv("PATH", "")
 	synctest.Test(t, func(t *testing.T) {
 		manager := newMockWorkloadManager(t)
 		src := manager.source.(*mocks.Nerv)
@@ -35,6 +37,7 @@ func TestRun(t *testing.T) {
 		}()
 
 		assert.Nil(t, manager.Run(ctx))
+		synctest.Sleep(journalDrainWait)
 	})
 }
 
