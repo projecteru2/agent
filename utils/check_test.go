@@ -34,9 +34,10 @@ func TestCheck(t *testing.T) {
 		})
 	}
 
+	assert.Equal(t, CheckTCP(ctx, "", []string{addr}, time.Second), true)
+	assert.Equal(t, CheckTCP(ctx, "", []string{addr, "127.0.0.1:1"}, time.Second), false)
+
 	cancel()
 	assert.Equal(t, CheckHTTP(ctx, "", server.URL, 404, time.Second), false)
-
-	assert.Equal(t, CheckTCP(ctx, "", []string{addr}, time.Second), true)
-	assert.Equal(t, CheckTCP(ctx, "", []string{"127.0.0.1:1"}, time.Second), false)
+	assert.Equal(t, CheckTCP(ctx, "", []string{addr}, time.Second), false)
 }

@@ -96,15 +96,11 @@ func (m *Manager) handleWorkloadDie(ctx context.Context, event *types.WorkloadEv
 	w, err := m.source.Get(ctx, event.ID)
 	if err == nil {
 		m.checkOneWorkload(ctx, w)
-		if !w.Running {
-			m.stop(event.ID)
-		}
 		return
 	}
 
 	if owned, ownErr := m.store.WorkloadExists(ctx, event.ID); ownErr == nil && !owned {
 		logger.Debugf(ctx, "no runtime knows it and core has removed it: %v", err)
-		m.stop(event.ID)
 		return
 	}
 	logger.Warnf(ctx, "no runtime knows it any more, reporting it gone: %v", err)

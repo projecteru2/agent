@@ -1,8 +1,6 @@
 package types
 
 import (
-	"bufio"
-	"bytes"
 	"cmp"
 	"context"
 	"fmt"
@@ -148,10 +146,7 @@ func (config *Config) Print(ctx context.Context) {
 	}
 
 	fmt.Println("---- current config ----")
-	scanner := bufio.NewScanner(bytes.NewBuffer(bs))
-	for scanner.Scan() {
-		fmt.Println(scanner.Text())
-	}
+	fmt.Print(string(bs))
 	fmt.Println("------------------------")
 }
 

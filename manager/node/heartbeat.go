@@ -15,7 +15,7 @@ const (
 )
 
 func (m *Manager) heartbeat(ctx context.Context) {
-	go m.nodeStatusReport(ctx)
+	m.nodeStatusReport(ctx)
 
 	tick := time.NewTicker(time.Duration(m.config.HeartbeatInterval) * time.Second)
 	defer tick.Stop()
@@ -23,7 +23,7 @@ func (m *Manager) heartbeat(ctx context.Context) {
 	for {
 		select {
 		case <-tick.C:
-			go m.nodeStatusReport(ctx)
+			m.nodeStatusReport(ctx)
 		case <-ctx.Done():
 			return
 		}
@@ -44,11 +44,7 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 	ttl := int64(m.config.HeartbeatInterval * ttlHeartbeats)
 
 	if err := utils.BackoffRetry(ctx, reportAttempts, func() error {
-		err := m.setNodeStatus(ctx, ttl)
-		if err != nil {
-			logger.Error(ctx, err, "failed to set node status")
-		}
-		return err
+		return m.setNodeStatus(ctx, ttl)
 	}); err != nil {
 		logger.Errorf(ctx, err, "failed to set node status after %d attempts", reportAttempts)
 	}

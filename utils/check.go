@@ -2,11 +2,13 @@ package utils
 
 import (
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/projecteru2/core/log"
+	"golang.org/x/sync/errgroup"
 )
 
 // CheckHTTP reports whether url answers with the expected status code; an empty url passes.
@@ -29,7 +31,10 @@ func CheckHTTP(ctx context.Context, ID, url string, code int, timeout time.Durat
 		logger.Debugf(ctx, "http health check failed: %v", err)
 		return false
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if code == 0 {
 		if resp.StatusCode >= 500 {
 			logger.Debugf(ctx, "http health check failed with %d", resp.StatusCode)
@@ -44,15 +49,27 @@ func CheckHTTP(ctx context.Context, ID, url string, code int, timeout time.Durat
 
 // CheckTCP reports whether every backend accepts a TCP connection.
 func CheckTCP(ctx context.Context, ID string, backends []string, timeout time.Duration) bool {
+	if len(backends) == 0 {
+		return true
+	}
 	logger := log.WithFunc("utils.CheckTCP").WithField("ID", ID).WithField("backends", backends)
+	logger.Debug(ctx, "checking health via tcp")
+
+	dialer := &net.Dialer{Timeout: timeout}
+	g, ctx := errgroup.WithContext(ctx)
 	for _, backend := range backends {
-		logger.Debug(ctx, "checking health via tcp")
-		conn, err := net.DialTimeout("tcp", backend, timeout)
-		if err != nil {
-			logger.Debugf(ctx, "tcp health check failed: %v", err)
-			return false
-		}
-		_ = conn.Close()
+		g.Go(func() error {
+			conn, err := dialer.DialContext(ctx, "tcp", backend)
+			if err != nil {
+				return err
+			}
+			_ = conn.Close()
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		logger.Debugf(ctx, "tcp health check failed: %v", err)
+		return false
 	}
 	return true
 }

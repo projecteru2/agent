@@ -22,7 +22,7 @@ func GetDevicePath(major, minor uint64) (string, error) {
 	for _, entry := range entries {
 		fi, err := entry.Info()
 		if err != nil {
-			return "", err
+			continue
 		}
 		if fi.Mode()&os.ModeDevice != os.ModeDevice {
 			continue

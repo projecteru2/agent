@@ -75,31 +75,6 @@ func netStatsFromProc(procRoot string, pid int, iface string, mirrored bool) ([]
 	return stats, nil
 }
 
-func netStatsFromIface(sysRoot, iface string) ([]netStat, error) {
-	dir := filepath.Join(sysRoot, iface, "statistics")
-	stat := netStat{Name: iface}
-	for _, counter := range []struct {
-		name  string
-		field *uint64
-	}{
-		{"rx_bytes", &stat.BytesRecv},
-		{"tx_bytes", &stat.BytesSent},
-		{"rx_packets", &stat.PacketsRecv},
-		{"tx_packets", &stat.PacketsSent},
-		{"rx_errors", &stat.ErrIn},
-		{"tx_errors", &stat.ErrOut},
-		{"rx_dropped", &stat.DropIn},
-		{"tx_dropped", &stat.DropOut},
-	} {
-		value, err := readUint(filepath.Join(dir, counter.name))
-		if err != nil {
-			return nil, err
-		}
-		*counter.field = value
-	}
-	return []netStat{stat}, nil
-}
-
 func parseUint(field string) uint64 {
 	value, _ := strconv.ParseUint(field, 10, 64)
 	return value

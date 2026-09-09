@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	sysNetRoot = "/sys/class/net"
+	hostNetnsPID = 1
 
 	// hostCacheTTL is under the smallest useful metrics step, so a tick still sees a fresh read
 	hostCacheTTL = time.Second
@@ -143,7 +143,7 @@ func (c *Collector) Collect(ctx context.Context, w *source.Workload, refresh ref
 }
 
 func (c *Collector) clientFor(w *source.Workload, first *sample) *MetricsClient {
-	return NewMetricsClient(c.transfers.Get(w.ID, 0), c.hostname, w, first.unsupported())
+	return NewMetricsClient(c.transfers.Get(w.ID), c.hostname, w, first.unsupported())
 }
 
 func (c *Collector) sample(ctx context.Context, w *source.Workload) (*sample, error) {
@@ -189,7 +189,7 @@ func (c *Collector) netStats(ctx context.Context, w *source.Workload) []netStat 
 	case w.HostIfaceMirrored:
 		return nil
 	case w.HostIface != "":
-		stats, err = netStatsFromIface(sysNetRoot, w.HostIface)
+		stats, err = netStatsFromProc(c.procRoot, hostNetnsPID, w.HostIface, false)
 	default:
 		return nil
 	}

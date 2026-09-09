@@ -26,9 +26,21 @@ func TestWritePid(t *testing.T) {
 }
 
 func TestReplaceNonUtf8(t *testing.T) {
-	str := "test, 1\x00\xff\x01\xbb\xfd\xff\xfd\n"
-	assert.Equal(t, "test, 1\\x00\\xff\\x01\\xbb\\xfd\\xff\\xfd\n", ReplaceNonUtf8(str))
-	assert.Equal(t, "a\\xef\\xbf\\xbdb", ReplaceNonUtf8("a�b"))
+	for _, tc := range []struct {
+		name string
+		str  string
+		want string
+	}{
+		{"a valid line is left alone", "plain line\r\n", "plain line\r\n"},
+		{"an empty line is left alone", "", ""},
+		{"control and invalid bytes are escaped", "test, 1\x00\xff\x01\xbb\xfd\xff\xfd\n", "test, 1\\x00\\xff\\x01\\xbb\\xfd\\xff\\xfd\n"},
+		{"a legitimate replacement rune is escaped", "a�b", "a\\xef\\xbf\\xbdb"},
+		{"valid runes, replacement runes and control bytes mix", "héllo�\x01\xff\n", "héllo\\xef\\xbf\\xbd\\x01\\xff\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, ReplaceNonUtf8(tc.str))
+		})
+	}
 
 	data := []byte{
 		0x7b, 0x0a, 0x20, 0x20, 0x22, 0x41, 0x44, 0x44, 0x52, 0x22, 0x3a, 0x20, 0x22, 0x31, 0x30, 0x2e,
@@ -61,9 +73,10 @@ func TestReplaceNonUtf8(t *testing.T) {
 
 func TestUseLabelAsFilter(t *testing.T) {
 	t.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", "test")
-	assert.Equal(t, UseLabelAsFilter(), false)
+	assert.False(t, labelFilterEnabled())
 	t.Setenv("ERU_AGENT_EXPERIMENTAL_FILTER", "label")
-	assert.Equal(t, UseLabelAsFilter(), true)
+	assert.True(t, labelFilterEnabled())
+	assert.True(t, UseLabelAsFilter())
 }
 
 func TestGetIP(t *testing.T) {

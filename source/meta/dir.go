@@ -36,7 +36,7 @@ func (d *Dir) List(ctx context.Context) ([]*File, error) {
 	files := make([]*File, 0, len(entries))
 	for _, entry := range entries {
 		ID, ok := IDFromFile(entry.Name())
-		if !ok || !IsID(ID) {
+		if !ok {
 			continue
 		}
 		if f := d.readMine(ctx, ID); f != nil {
@@ -65,7 +65,7 @@ func (d *Dir) Watch(ctx context.Context, reporter *source.Reporter) error {
 
 	err = watcher.Run(ctx, func(name string, created bool) {
 		ID, ok := IDFromFile(name)
-		if !ok || !IsID(ID) {
+		if !ok {
 			return
 		}
 		if created {

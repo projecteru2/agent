@@ -170,6 +170,23 @@ func TestNetStatsSurviveANamespaceThatIsGone(t *testing.T) {
 	assert.Nil(t, c.netStats(t.Context(), w))
 }
 
+func TestNetStatsReadAHostIfaceFromTheHostNetns(t *testing.T) {
+	c := &Collector{procRoot: "testdata/proc"}
+	w := &source.Workload{ID: "on-a-host-iface", HostIface: "eth0"}
+
+	assert.Equal(t, []netStat{{
+		Name:        "eth0",
+		BytesRecv:   111,
+		PacketsRecv: 3,
+		ErrIn:       5,
+		DropIn:      7,
+		BytesSent:   222,
+		PacketsSent: 4,
+		ErrOut:      6,
+		DropOut:     8,
+	}}, c.netStats(t.Context(), w))
+}
+
 func TestSampleKeepsTheCgroupGaugesWhenTheNetnsIsGone(t *testing.T) {
 	c := &Collector{procRoot: "testdata/proc"}
 	w := &source.Workload{ID: "netns-gone", CgroupPath: "testdata/cgroup", NetnsPID: 4321}

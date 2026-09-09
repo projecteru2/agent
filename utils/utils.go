@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -18,10 +17,17 @@ import (
 	"github.com/projecteru2/agent/common"
 )
 
-// CgroupRoot is where the unified cgroup v2 hierarchy is mounted.
-const CgroupRoot = "/sys/fs/cgroup"
+const (
+	// CgroupRoot is where the unified cgroup v2 hierarchy is mounted.
+	CgroupRoot = "/sys/fs/cgroup"
 
-var isDockerized = sync.OnceValue(func() bool { return os.Getenv(common.DOCKERIZED) != "" })
+	hexDigits = "0123456789abcdef"
+)
+
+var (
+	isDockerized     = sync.OnceValue(func() bool { return os.Getenv(common.DOCKERIZED) != "" })
+	useLabelAsFilter = sync.OnceValue(labelFilterEnabled)
+)
 
 func WritePid(ctx context.Context, path string) {
 	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
@@ -30,7 +36,7 @@ func WritePid(ctx context.Context, path string) {
 }
 
 func UseLabelAsFilter() bool {
-	return os.Getenv("ERU_AGENT_EXPERIMENTAL_FILTER") == "label"
+	return useLabelAsFilter()
 }
 
 // ReplaceNonUtf8 replaces non-utf8 characters in \x format.
@@ -38,12 +44,13 @@ func ReplaceNonUtf8(str string) string {
 	if str == "" {
 		return str
 	}
-	if utf8.ValidString(str) && !strings.Contains(str, string(utf8.RuneError)) {
+	replaceable := strings.Contains(str, string(utf8.RuneError))
+	if utf8.ValidString(str) && !replaceable {
 		return str
 	}
 
 	// U+FFFD may be a legitimate rune, escape it before validating
-	if strings.Contains(str, string(utf8.RuneError)) {
+	if replaceable {
 		str = strings.ReplaceAll(str, string(utf8.RuneError), "\\xef\\xbf\\xbd")
 	}
 
@@ -51,21 +58,19 @@ func ReplaceNonUtf8(str string) string {
 		return str
 	}
 
-	v := make([]rune, 0, len(str))
+	var v strings.Builder
+	v.Grow(len(str))
 	for i, r := range str {
 		switch {
 		case r == utf8.RuneError:
-			_, size := utf8.DecodeRuneInString(str[i:])
-			if size > 0 {
-				v = append(v, []rune(fmt.Sprintf("\\x%02x", str[i:i+size]))...)
-			}
+			writeEscaped(&v, rune(str[i]))
 		case unicode.IsControl(r) && r != '\r' && r != '\n':
-			v = append(v, []rune(fmt.Sprintf("\\x%02x", r))...)
+			writeEscaped(&v, r)
 		default:
-			v = append(v, r)
+			v.WriteRune(r)
 		}
 	}
-	return string(v)
+	return v.String()
 }
 
 // ProcRoot returns where this agent reads the host's procfs.
@@ -104,4 +109,14 @@ func GetIP(endpoint string) string {
 		return ""
 	}
 	return u.Hostname()
+}
+
+func labelFilterEnabled() bool {
+	return os.Getenv("ERU_AGENT_EXPERIMENTAL_FILTER") == "label"
+}
+
+func writeEscaped(v *strings.Builder, c rune) {
+	v.WriteString("\\x")
+	v.WriteByte(hexDigits[c>>4])
+	v.WriteByte(hexDigits[c&0xf])
 }

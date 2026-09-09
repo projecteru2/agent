@@ -87,7 +87,7 @@ func (l *logBroadcaster) subscribe(ctx context.Context, app string, buf *bufio.R
 	}
 	ID := coreutils.RandomString(8)
 	subCtx, cancel := context.WithCancel(ctx)
-	errChan := make(chan error)
+	errChan := make(chan error, 1)
 
 	sub := &subscriber{
 		ctx:     subCtx,

@@ -10,7 +10,7 @@ func NewHashBackends(data []string) *HashBackends {
 	return &HashBackends{data: data}
 }
 
-func (s *HashBackends) Get(v string, offset int) string {
+func (s *HashBackends) Get(v string) string {
 	if len(s.data) == 0 {
 		return ""
 	}
@@ -18,5 +18,5 @@ func (s *HashBackends) Get(v string, offset int) string {
 	if _, err := h.Write([]byte(v)); err != nil {
 		return ""
 	}
-	return s.data[(int(h.Sum32())+offset)%len(s.data)]
+	return s.data[int(h.Sum32())%len(s.data)]
 }
