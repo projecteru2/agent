@@ -67,7 +67,7 @@ func Command() *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			// the hook runs inside runc's create, which waits for it however long an ipam plugin takes
+			// The hook runs inside runc's create, which waits for it however long an ipam plugin takes
 			ctx, cancel := context.WithTimeout(ctx, timeout)
 			defer cancel()
 

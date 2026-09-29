@@ -26,7 +26,6 @@ const (
 var (
 	errOtherKind = errors.New("meta file of another runtime")
 
-	// workloadID is the shape of a workload id, so nothing else eru names on a node is taken for one.
 	workloadID = regexp.MustCompile("^[0-9a-f]{32}$")
 )
 

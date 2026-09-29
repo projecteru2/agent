@@ -39,7 +39,7 @@ func (m *Manager) Exit(ctx context.Context) error {
 	logger := log.WithFunc("node.Exit").WithField("hostname", m.config.HostName)
 	logger.Info(ctx, "remove node status")
 
-	// a negative ttl removes the node status
+	// A negative ttl removes the node status
 	return m.setNodeStatus(ctx, -1)
 }
 

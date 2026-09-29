@@ -116,7 +116,7 @@ func (s *Systemd) Alive(ctx context.Context) bool {
 
 func (s *Systemd) watchUnits(ctx context.Context) error {
 	logger := log.WithFunc("systemd.watchUnits")
-	// a previous Events left its subscription on this shared connection, still feeding dead channels
+	// A previous Events left its subscription on this shared connection, still feeding dead channels
 	_ = s.conn.Unsubscribe()
 	if err := s.conn.Subscribe(); err != nil {
 		return err
@@ -133,7 +133,7 @@ func (s *Systemd) watchUnits(ctx context.Context) error {
 		case update := <-updates:
 			ID, ok := workloadIDFromUnit(update.UnitName)
 			if !ok {
-				// the subscription is node wide, so only a name under eru's prefix is worth a line
+				// The subscription is node wide, so only a name under eru's prefix is worth a line
 				if strings.HasPrefix(update.UnitName, unitPrefix) {
 					logger.Debugf(ctx, "ignoring unit %s, it is not a workload", update.UnitName)
 				}
@@ -147,7 +147,7 @@ func (s *Systemd) watchUnits(ctx context.Context) error {
 				s.reporter.Report(ID, action)
 			}
 		case err := <-errs:
-			// a subscriber that fell behind missed transitions, it did not lose the bus
+			// A subscriber that fell behind missed transitions, it did not lose the bus
 			logger.Warnf(ctx, "systemd subscription fell behind, relisting: %v", err)
 			if err := s.relist(ctx); err != nil {
 				return err
@@ -171,7 +171,7 @@ func (s *Systemd) relist(ctx context.Context) error {
 }
 
 func (s *Systemd) runningUnits(ctx context.Context) (map[string]bool, error) {
-	// the bus matches a glob only, so eru-agent.service comes back too and is dropped here
+	// The bus matches a glob only, so eru-agent.service comes back too and is dropped here
 	units, err := s.conn.ListUnitsByPatternsContext(ctx, nil, []string{unitPattern})
 	if err != nil {
 		return nil, err

@@ -55,7 +55,7 @@ func readSpec(raw typeurl.Any) (spec, error) {
 	if oci.Process != nil {
 		s.env = oci.Process.Env
 	}
-	// a container that shares the node's network has no network namespace of its own in the spec
+	// A container that shares the node's network has no network namespace of its own in the spec
 	s.hostNetwork = oci.Linux != nil && !slices.ContainsFunc(oci.Linux.Namespaces, func(ns ociNamespace) bool {
 		return ns.Type == string(specs.NetworkNamespace)
 	})
@@ -73,7 +73,7 @@ func (c *Containerd) workload(ctx context.Context, ID string, labels map[string]
 	meta := coreutils.DecodeMetaInLabel(ctx, labels)
 	nets := networks(labels)
 
-	// core's engines all report the node's own address for a host network workload
+	// Core's engines all report the node's own address for a host network workload
 	localIP := source.Addr(nets)
 	if len(nets) == 0 && s.hostNetwork {
 		nets, localIP = map[string]string{hostNetwork: c.nodeIP}, common.LocalIP

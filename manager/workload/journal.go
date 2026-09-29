@@ -47,7 +47,7 @@ func (m *Manager) forwardJournal(ctx context.Context) {
 
 // forwardConsole reads a vm's serial console, which journald only holds once this reader has written it there.
 func (m *Manager) forwardConsole(ctx context.Context, w *source.Workload) {
-	// a restarted vm gets a new console, so the path is read back per attempt rather than held from here
+	// A restarted vm gets a new console, so the path is read back per attempt rather than held from here
 	console := collector.NewConsole(w.ID, w.Meta.Appname, func() (string, error) {
 		fresh := m.refreshed(ctx, w.ID)
 		if fresh == nil {

@@ -109,7 +109,7 @@ func (j *Journal) Read(ctx context.Context, handle EntryHandler) error {
 			logger.Error(ctx, err, "failed to decode a journal record")
 			continue
 		}
-		// a console line reached the journal through the reader that already forwarded it
+		// A console line reached the journal through the reader that already forwarded it
 		if record.EruStream != common.StreamConsole {
 			handle(record.entry())
 		}
@@ -125,7 +125,7 @@ func (j *Journal) Read(ctx context.Context, handle EntryHandler) error {
 		_ = cmd.Wait()
 		return err
 	}
-	// a journalctl that dies looks like a clean eof on stdout, so its status is the only signal
+	// A journalctl that dies looks like a clean eof on stdout, so its status is the only signal
 	if err := cmd.Wait(); err != nil {
 		return fmt.Errorf("%s exited: %w: %s", j.binary, err, stderr)
 	}

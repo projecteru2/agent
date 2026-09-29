@@ -33,7 +33,7 @@ func (e *EventHandler) Watch(ctx context.Context, c <-chan *types.WorkloadEventM
 				return
 			}
 			logger.Infof(ctx, "workload %s action %s", ev.ID, ev.Action)
-			// one workload's events are applied in order, so a die cannot land after the next start
+			// One workload's events are applied in order, so a die cannot land after the next start
 			switch ev.Action {
 			case common.StatusStart:
 				e.queue.Go(ev.ID, func() { e.start(ctx, ev) })

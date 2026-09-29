@@ -1,10 +1,12 @@
 package logs
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -76,8 +78,9 @@ func TestNewWriters(t *testing.T) {
 
 	ctx := t.Context()
 
+	var writers sync.WaitGroup
 	for addr, expectedErr := range cases {
-		go func(addr string, expectedErr error) {
+		writers.Go(func() {
 			writer, err := NewWriter(ctx, addr, false)
 			assert.Equal(t, expectedErr, err)
 			if expectedErr != nil {
@@ -86,9 +89,25 @@ func TestNewWriters(t *testing.T) {
 			assert.NoError(t, err)
 			err = writer.Write(ctx, &types.Log{})
 			assert.NoError(t, err)
-		}(addr, expectedErr)
+		})
 	}
-	time.Sleep(closeWaitInterval + 2*time.Second)
+	writers.Wait()
+}
+
+func TestWriterClosesOnceItsContextIsCancelled(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	defer listener.Close()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	w, err := NewWriter(ctx, "tcp://"+listener.Addr().String(), false)
+	require.NoError(t, err)
+	require.NoError(t, w.Write(ctx, &types.Log{}))
+
+	cancel()
+	assert.Eventually(t, func() bool {
+		return errors.Is(w.Write(ctx, &types.Log{}), common.ErrConnecting)
+	}, time.Second, 10*time.Millisecond)
 }
 
 func TestWriteKeepsTheEncoderWhenADatagramIsTooBig(t *testing.T) {
