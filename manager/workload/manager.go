@@ -97,15 +97,11 @@ func (m *Manager) PullLog(ctx context.Context, app string, buf *bufio.ReadWriter
 	ID, errChan, unsubscribe := m.logBroadcaster.subscribe(ctx, app, buf)
 	defer unsubscribe()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case err := <-errChan:
-			if !errors.Is(err, io.EOF) {
-				log.WithFunc("workload.PullLog").WithField("ID", ID).Error(ctx, err, "failed to pull log")
-			}
-			return
+	select {
+	case <-ctx.Done():
+	case err := <-errChan:
+		if !errors.Is(err, io.EOF) {
+			log.WithFunc("workload.PullLog").WithField("ID", ID).Error(ctx, err, "failed to pull log")
 		}
 	}
 }

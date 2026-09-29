@@ -31,7 +31,7 @@ var (
 
 func WritePid(ctx context.Context, path string) {
 	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
-		log.Fatalf(ctx, err, "save pid file %s", path)
+		log.WithFunc("utils.WritePid").Fatalf(ctx, err, "save pid file %s", path)
 	}
 }
 

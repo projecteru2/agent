@@ -18,7 +18,6 @@ func (s *Store) GetNode(ctx context.Context, nodename string) (*types.Node, erro
 	return &types.Node{Endpoint: resp.Endpoint}, nil
 }
 
-// SetNodeStatus reports the node alive under core's ttl.
 func (s *Store) SetNodeStatus(ctx context.Context, ttl int64) error {
 	opts := &pb.SetNodeStatusOptions{
 		Nodename: s.config.HostName,

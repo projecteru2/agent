@@ -33,7 +33,6 @@ func (s *Store) ListRunningWorkloadIDs(ctx context.Context) ([]string, error) {
 	return IDs, nil
 }
 
-// WorkloadExists reports whether core still owns the workload.
 func (s *Store) WorkloadExists(ctx context.Context, ID string) (bool, error) {
 	_, err := call(ctx, s, func(ctx context.Context) (*pb.Workload, error) {
 		return s.client().GetWorkload(ctx, &pb.WorkloadID{Id: ID})
