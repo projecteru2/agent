@@ -81,7 +81,7 @@ func New(ctx context.Context, config *types.Config) *Collector {
 
 	total, err := hostMemTotal(c.procRoot)
 	if err != nil {
-		// without a node total the memory percentages of an unlimited workload stay unreported
+		// Without a node total the memory percentages of an unlimited workload stay unreported
 		log.WithFunc("collector.New").Warnf(ctx, "failed to read the node memory total: %v", err)
 	}
 	c.memTotal = total

@@ -78,7 +78,7 @@ func translate(ctx context.Context, envelope *events.Envelope) *types.WorkloadEv
 	case *apievents.TaskStart:
 		ID, action = e.ContainerID, common.StatusStart
 	case *apievents.TaskExit:
-		// an exec process exiting is not the workload exiting
+		// An exec process exiting is not the workload exiting
 		if e.ID != e.ContainerID {
 			return nil
 		}
@@ -86,7 +86,7 @@ func translate(ctx context.Context, envelope *events.Envelope) *types.WorkloadEv
 	case *apievents.ContainerDelete:
 		ID, action = e.ID, common.StatusDie
 	case *apievents.ContainerUpdate:
-		// the oci hook writes the cni addresses back as labels, so an update is a new set of facts
+		// The oci hook writes the cni addresses back as labels, so an update is a new set of facts
 		ID, action = e.ID, common.StatusStart
 	default:
 		return nil

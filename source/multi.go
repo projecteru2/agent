@@ -78,7 +78,7 @@ func (m *Multi) Events(ctx context.Context) (<-chan *types.WorkloadEventMessage,
 		defer close(eventChan)
 		defer close(errChan)
 
-		// one runtime failing stops them all, so the manager resubscribes to every runtime at once
+		// One runtime failing stops them all, so the manager resubscribes to every runtime at once
 		var wg sync.WaitGroup
 		for _, src := range m.sources {
 			events, errs := src.Events(ctx)

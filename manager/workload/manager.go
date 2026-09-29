@@ -76,14 +76,14 @@ func NewManager(ctx context.Context, config *types.Config, clients *manager.Clie
 }
 
 func (m *Manager) Run(ctx context.Context) error {
-	// watching before the initial load means an event raised during it is handled, not missed
+	// Watching before the initial load means an event raised during it is handled, not missed
 	go m.monitor(ctx)
 
 	if err := m.initWorkloadStatus(ctx); err != nil {
 		return err
 	}
 
-	// the journal reader starts once the load registered every target, so no backlog line is dropped
+	// The journal reader starts once the load registered every target, so no backlog line is dropped
 	go m.forwardJournal(ctx)
 
 	go m.healthCheck(ctx)

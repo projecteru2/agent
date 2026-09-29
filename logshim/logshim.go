@@ -105,7 +105,7 @@ func (s *stream) pump(reader io.Reader) {
 		if err != nil {
 			return
 		}
-		// a journal that refuses a line must not fail the container, so the line is lost
+		// A journal that refuses a line must not fail the container, so the line is lost
 		if sendErr := s.send(string(line), s.priority, vars); sendErr != nil {
 			s.dropped++
 			s.err = sendErr

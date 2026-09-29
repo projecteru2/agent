@@ -50,7 +50,7 @@ func newInotify(dir string, mask uint32) (*inotify, error) {
 	if err != nil {
 		return nil, err
 	}
-	// a non-blocking fd behind os.File rides the runtime poller, so Close unblocks the read
+	// A non-blocking fd behind os.File rides the runtime poller, so Close unblocks the read
 	f := os.NewFile(uintptr(fd), dir)
 	if _, err := unix.InotifyAddWatch(fd, dir, mask); err != nil {
 		_ = f.Close()

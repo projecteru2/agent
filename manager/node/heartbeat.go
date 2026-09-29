@@ -40,7 +40,7 @@ func (m *Manager) nodeStatusReport(ctx context.Context) {
 		return
 	}
 
-	// the ttl outlives the interval so one lost report cannot expire the node
+	// The ttl outlives the interval so one lost report cannot expire the node
 	ttl := int64(m.config.HeartbeatInterval * ttlHeartbeats)
 
 	if err := utils.BackoffRetry(ctx, reportAttempts, func() error {

@@ -46,7 +46,7 @@ func (s *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadSta
 		return nil
 	}
 
-	// core's selfmon owns status expiry
+	// Core's selfmon owns status expiry
 	statusPb := &pb.WorkloadStatus{
 		Id:        status.ID,
 		Running:   status.Running,

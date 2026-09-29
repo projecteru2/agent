@@ -66,7 +66,7 @@ func (c *Console) Read(ctx context.Context, handle EntryHandler) {
 		if delivered {
 			backoff = consoleRetryMin
 		}
-		// the console goes away with the vm and comes back with it, so a closed one is not a failure
+		// The console goes away with the vm and comes back with it, so a closed one is not a failure
 		logger.Debugf(ctx, "console stopped: %v", err)
 		if c.dropped > 0 {
 			logger.Warnf(ctx, "the journal refused %d console lines", c.dropped)

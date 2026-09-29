@@ -16,7 +16,7 @@ func Probe(ctx context.Context, w *source.Workload, timeout time.Duration) bool 
 	if check == nil {
 		return true
 	}
-	// without an address of its own there is nothing to dial, and the node's own ports are not the workload's
+	// Without an address of its own there is nothing to dial, and the node's own ports are not the workload's
 	if w.LocalIP == "" {
 		return false
 	}

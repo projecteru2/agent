@@ -78,7 +78,7 @@ func (h *Handler) log(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	logger := log.WithFunc("api.log").WithField("path", "/log")
-	// the status line must go out before the hijack, otherwise clients see no response
+	// The status line must go out before the hijack, otherwise clients see no response
 	w.WriteHeader(http.StatusOK)
 	if hijack, ok := w.(http.Hijacker); ok {
 		conn, buf, err := hijack.Hijack()
