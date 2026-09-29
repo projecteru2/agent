@@ -2,6 +2,8 @@ package collector
 
 import (
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -37,6 +39,28 @@ func TestProbeAcceptsAnOpenTCPPort(t *testing.T) {
 		ID:      "open-port",
 		LocalIP: "127.0.0.1",
 		Meta:    source.Meta{HealthCheck: &coretypes.HealthCheck{TCPPorts: []string{port}}},
+	}
+	assert.True(t, Probe(t.Context(), w, time.Second))
+}
+
+func TestProbeReachesAnIPv6Workload(t *testing.T) {
+	listener, err := net.Listen("tcp", "[::1]:0")
+	if err != nil {
+		t.Skipf("no ipv6 loopback: %v", err)
+	}
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	_ = server.Listener.Close()
+	server.Listener = listener
+	server.Start()
+	defer server.Close()
+
+	_, port, err := net.SplitHostPort(listener.Addr().String())
+	require.NoError(t, err)
+
+	w := &source.Workload{
+		ID:      "ipv6",
+		LocalIP: "::1",
+		Meta:    source.Meta{HealthCheck: &coretypes.HealthCheck{TCPPorts: []string{port}, HTTPPort: port, HTTPURL: "/"}},
 	}
 	assert.True(t, Probe(t.Context(), w, time.Second))
 }

@@ -2,7 +2,7 @@ package collector
 
 import (
 	"context"
-	"fmt"
+	"net"
 	"sync"
 	"time"
 
@@ -23,11 +23,11 @@ func Probe(ctx context.Context, w *source.Workload, timeout time.Duration) bool 
 
 	var tcpChecker []string
 	for _, port := range check.TCPPorts {
-		tcpChecker = append(tcpChecker, fmt.Sprintf("%s:%s", w.LocalIP, port))
+		tcpChecker = append(tcpChecker, net.JoinHostPort(w.LocalIP, port))
 	}
 	httpURL := ""
 	if check.HTTPPort != "" {
-		httpURL = fmt.Sprintf("http://%s:%s%s", w.LocalIP, check.HTTPPort, check.HTTPURL)
+		httpURL = "http://" + net.JoinHostPort(w.LocalIP, check.HTTPPort) + check.HTTPURL
 	}
 
 	var httpOK, tcpOK bool
