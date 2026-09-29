@@ -10,7 +10,8 @@ import (
 	"time"
 
 	pb "github.com/projecteru2/core/rpc/gen"
-	coretypes "github.com/projecteru2/core/types"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 
 	"github.com/projecteru2/agent/types"
 )
@@ -37,13 +38,7 @@ func (s *Store) WorkloadExists(ctx context.Context, ID string) (bool, error) {
 	_, err := call(ctx, s, func(ctx context.Context) (*pb.Workload, error) {
 		return s.client().GetWorkload(ctx, &pb.WorkloadID{Id: ID})
 	})
-	switch {
-	case err == nil:
-		return true, nil
-	case strings.Contains(err.Error(), coretypes.ErrInvaildCount.Error()), strings.Contains(err.Error(), coretypes.ErrWorkloadNotExists.Error()):
-		return false, nil
-	}
-	return false, err
+	return workloadLookupResult(err)
 }
 
 func (s *Store) SetWorkloadStatus(ctx context.Context, status *types.WorkloadStatus) error {
@@ -93,4 +88,14 @@ func statusKey(status *types.WorkloadStatus) string {
 func getCacheTTL(ttl int64) time.Duration {
 	delta := rand.Int64N(max(ttl, 1)) / 4 //nolint:gosec // cache ttl jitter needs no csprng
 	return time.Duration(ttl-ttl/8+delta) * time.Second
+}
+
+func workloadLookupResult(err error) (bool, error) {
+	switch {
+	case err == nil:
+		return true, nil
+	case grpcstatus.Code(err) == codes.NotFound:
+		return false, nil
+	}
+	return false, err
 }
